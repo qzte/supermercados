@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workflow — Revisão de Supermercados ULSM</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #21262d;
+    --text: #e6edf3; --muted: #7d8590;
+    --f1:#2d8c4e; --f2:#1c7ed6; --f3:#7950f2; --f4:#f59f00; --f5:#e03131; --f6:#0ca678; --f7:#ae3ec9;
+    --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:40px 24px;}
+  header{text-align:center;margin-bottom:48px;}
+  header .org{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;}
+  header h1{font-size:clamp(24px,4vw,36px);font-weight:700;line-height:1.2;background:linear-gradient(135deg,#e6edf3 30%,#7d8590);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
+  header p{color:var(--muted);font-size:14px;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:48px;}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--mono);color:var(--muted);cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid var(--border);transition:all .2s;}
+  .legend-item:hover{border-color:currentColor;color:var(--text);}
+  .legend-item .dot{width:10px;height:10px;border-radius:50%;}
+  .workflow{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:0;}
+  .phase{display:grid;grid-template-columns:200px 1fr;gap:0;position:relative;}
+  .phase-label{display:flex;flex-direction:column;align-items:flex-end;padding:24px 24px 24px 0;border-right:2px solid var(--border);position:relative;}
+  .phase-label::after{content:'';position:absolute;right:-6px;top:24px;width:10px;height:10px;border-radius:50%;background:var(--border);}
+  .phase-number{font-family:var(--mono);font-size:11px;letter-spacing:.15em;color:var(--muted);margin-bottom:4px;}
+  .phase-title{font-size:13px;font-weight:700;text-align:right;line-height:1.3;}
+  .phase-duration{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;text-align:right;}
+  .phase-content{padding:16px 0 16px 32px;display:flex;flex-direction:column;gap:8px;}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .2s;cursor:pointer;}
+  .step:hover{border-color:#30363d;}
+  .step-header{display:flex;align-items:center;gap:12px;padding:12px 16px;}
+  .step-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);min-width:28px;}
+  .step-title{font-size:13px;font-weight:600;flex:1;line-height:1.4;}
+  .step-time{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;}
+  .step-arrow{font-size:10px;color:var(--muted);transition:transform .2s;}
+  .step.open .step-arrow{transform:rotate(180deg);}
+  .step-body{display:none;padding:12px 16px 14px 52px;font-size:12px;line-height:1.7;color:#8b949e;border-top:1px solid var(--border);}
+  .step.open .step-body{display:block;}
+  .step-body ul{padding-left:16px;margin-top:6px;}
+  .step-body li{margin-bottom:4px;}
+  .step-body .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-family:var(--mono);margin-right:4px;background:rgba(255,255,255,.06);color:#8b949e;}
+  .role-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:10px;margin-right:4px;font-weight:600;}
+  .decision{background:rgba(240,183,10,.08);border:1px solid rgba(240,183,10,.3);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:12px;}
+  .decision::before{content:'⚡ Decisão: ';font-weight:600;color:#f59f00;}
+  .p1 .phase-label{border-color:var(--f1);} .p1 .phase-label::after{background:var(--f1);} .p1 .phase-title{color:var(--f1);} .p1 .step-header{border-left:3px solid var(--f1);}
+  .p2 .phase-label{border-color:var(--f2);} .p2 .phase-label::after{background:var(--f2);} .p2 .phase-title{color:var(--f2);} .p2 .step-header{border-left:3px solid var(--f2);}
+  .p3 .phase-label{border-color:var(--f3);} .p3 .phase-label::after{background:var(--f3);} .p3 .phase-title{color:var(--f3);} .p3 .step-header{border-left:3px solid var(--f3);}
+  .p4 .phase-label{border-color:var(--f4);} .p4 .phase-label::after{background:var(--f4);} .p4 .phase-title{color:var(--f4);} .p4 .step-header{border-left:3px solid var(--f4);}
+  .p5 .phase-label{border-color:var(--f5);} .p5 .phase-label::after{background:var(--f5);} .p5 .phase-title{color:var(--f5);} .p5 .step-header{border-left:3px solid var(--f5);}
+  .p6 .phase-label{border-color:var(--f6);} .p6 .phase-label::after{background:var(--f6);} .p6 .phase-title{color:var(--f6);} .p6 .step-header{border-left:3px solid var(--f6);}
+  .p7 .phase-label{border-color:var(--f7);} .p7 .phase-label::after{background:var(--f7);} .p7 .phase-title{color:var(--f7);} .p7 .step-header{border-left:3px solid var(--f7);}
+  .connector-line{display:grid;grid-template-columns:200px 1fr;height:24px;}
+  .connector-line .vline{border-right:2px dashed var(--border);}
+  .roles-row{display:flex;gap:12px;margin-bottom:32px;justify-content:center;flex-wrap:wrap;}
+  .role-pill{border-radius:20px;padding:6px 14px;font-size:11px;font-family:var(--mono);font-weight:600;display:flex;align-items:center;gap:6px;}
+  .role-sf{background:rgba(29,125,210,.15);color:#4dabf7;border:1px solid rgba(29,125,210,.3);}
+  .role-sl{background:rgba(45,140,78,.15);color:#69db7c;border:1px solid rgba(45,140,78,.3);}
+  .role-sc{background:rgba(240,183,10,.15);color:#fcc419;border:1px solid rgba(240,183,10,.3);}
+  .role-tas{background:rgba(228,49,49,.2);color:#fa5252;border:1px solid rgba(228,49,49,.3);}
+
+  /* ── Email button ── */
+  .email-btn{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:6px 14px;border-radius:6px;background:rgba(29,125,210,.12);border:1px solid rgba(29,125,210,.35);color:#4dabf7;font-size:11px;font-family:var(--mono);font-weight:600;cursor:pointer;transition:background .15s,border-color .15s;user-select:none;}
+  .email-btn:hover{background:rgba(29,125,210,.22);border-color:rgba(29,125,210,.6);}
+
+  /* ── Modal ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:24px;}
+  .modal-overlay.active{display:flex;}
+  .modal{background:#161b22;border:1px solid #30363d;border-radius:12px;max-width:700px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:modalIn .18s ease;}
+  @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.97);}to{opacity:1;transform:none;}}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #21262d;flex-shrink:0;}
+  .modal-header-left{display:flex;flex-direction:column;gap:4px;}
+  .modal-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#4dabf7;}
+  .modal-title{font-size:14px;font-weight:700;color:var(--text);}
+  .modal-close{width:28px;height:28px;border-radius:6px;border:1px solid #30363d;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;transition:all .15s;}
+  .modal-close:hover{background:#21262d;color:var(--text);}
+  .modal-meta{display:flex;flex-direction:column;gap:4px;padding:12px 20px;border-bottom:1px solid #21262d;flex-shrink:0;}
+  .meta-row{display:flex;gap:8px;align-items:baseline;font-size:11px;}
+  .meta-label{font-family:var(--mono);color:var(--muted);min-width:80px;flex-shrink:0;}
+  .meta-val{color:#8b949e;line-height:1.5;}
+  .modal-body{overflow-y:auto;padding:20px;flex:1;}
+  .email-subject{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;}
+  .email-content{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px 18px;font-size:13px;line-height:1.8;color:#c9d1d9;white-space:pre-wrap;font-family:var(--sans);}
+  .fill{background:rgba(245,159,0,.15);border:1px dashed rgba(245,159,0,.5);border-radius:3px;padding:0 4px;color:#fcc419;font-family:var(--mono);font-size:11px;}
+  .modal-footer{padding:12px 20px;border-top:1px solid #21262d;display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;}
+  .btn-copy{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:6px;background:rgba(29,125,210,.15);border:1px solid rgba(29,125,210,.4);color:#4dabf7;font-size:12px;font-family:var(--mono);cursor:pointer;transition:all .15s;}
+  .btn-copy:hover{background:rgba(29,125,210,.28);}
+  .btn-copy.copied{color:#69db7c;border-color:rgba(45,140,78,.5);background:rgba(45,140,78,.12);}
+  .btn-close-footer{padding:7px 16px;border-radius:6px;background:#21262d;border:1px solid #30363d;color:var(--muted);font-size:12px;font-family:var(--mono);cursor:pointer;transition:all .15s;}
+  .btn-close-footer:hover{background:#30363d;color:var(--text);}
+
+  @media(max-width:640px){.phase,.connector-line{grid-template-columns:100px 1fr;}.phase-label{padding:16px 12px 16px 0;}.phase-content{padding-left:16px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <p class="org">ULSM — Unidade Local de Saúde de Matosinhos</p>
+  <h1>Workflow de Revisão<br>do Supermercado Dupla Caixa</h1>
+  <p>Processo completo de criação e manutenção do stock dupla caixa</p>
+</header>
+
+<div class="roles-row">
+  <div class="role-pill role-sf">🔵 SF — Serviços Farmacêuticos</div>
+  <div class="role-pill role-sl">🟢 SL — Serviço de Logística</div>
+  <div class="role-pill role-sc">🟡 SC — Serviço Clínico</div>
+  <div class="role-pill role-tas">🔴 TAS — Técnico Auxiliar de Saúde</div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot" style="background:var(--f1)"></div> Fase 1 · Comunicação</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f2)"></div> Fase 2 · Consumos</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f3)"></div> Fase 3 · Validação / Protótipo</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f4)"></div> Fase 4 · Simulação</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f5)"></div> Fase 5 · Montagem</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f6)"></div> Fase 6 · Comunicação Final</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f7)"></div> Fase 7 · Formação e Auditoria</div>
+</div>
+
+<div class="workflow">
+
+<!-- ════ FASE 1 ════ -->
+<div class="phase p1">
+  <div class="phase-label">
+    <div class="phase-number">FASE 01</div>
+    <div class="phase-title">Comunicação<br>&amp; Planeamento</div>
+    <div class="phase-duration">⏱ ~2 dias</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">1.1</span>
+        <span class="step-title">Criar pasta de trabalho partilhada (DCLF)</span>
+        <span class="step-time">rápido</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Criar pasta com nomenclatura: <code>Código Serviço - Serviço</code>.
+        <ul>
+          <li>Ficheiro de trabalho: <code>SiglaServiço_revisão_A TRABALHAR</code></li>
+          <li>Ficheiros enviados pela Gestão: <code>SiglaServiço_revisão_farmácia_V1</code> / <code>_clínico_V1</code></li>
+          <li>Ficheiros do Enfermeiro gestor: <code>SiglaServiço_revisão_farmácia_E</code> (E2, E3…)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">1.2</span>
+        <span class="step-title">Enviar e-mail às chefias — abertura do processo</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Via <code>gestao.supermercados@ulsm.min-saude.pt</code> para Enfermeiro(a) gestor(a).<br>
+        CC: Diretores SF/SL, supervisores, gestores de departamento.<br>
+        Temas: funcionamento supermercado, localização stocks, espaço, centros de custo, cronograma, RFID, grupos funcionais, higienização, validades, temperatura/humidade.
+        <br>
+        <button class="email-btn" onclick="openEmail('abertura', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">1.3</span>
+        <span class="step-title">Reunião com Enfermeiro Chefe — gestão de expectativas</span>
+        <span class="step-time">1 hora</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><span class="role-badge role-sc">SC</span><br><br>
+        Confirmar: localização supermercados farmacêutico/clínico, prateleiras, centros de custo, cronograma detalhado, implementação RFID, agrupamento por grupo funcional, enfermeiro substituto, higienização, responsável validades, controlo temperatura/humidade.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">1.4</span>
+        <span class="step-title">Enviar ata da reunião com cronograma</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        E-mail padrão com ata e cronograma de revisão (template 4 semanas). Alertar para cumprimento de prazos.
+        <br>
+        <button class="email-btn" onclick="openEmail('ata', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 2 ════ -->
+<div class="phase p2">
+  <div class="phase-label">
+    <div class="phase-number">FASE 02</div>
+    <div class="phase-title">Análise de<br>Consumos</div>
+    <div class="phase-duration">⏱ ~2 dias</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.1</span>
+        <span class="step-title">Extrair listagem de consumos do Data Discovery</span>
+        <span class="step-time">5 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Movimentos → Filtros → intervalo 12 meses → configurar campos (Código Estado, Serviço, Armazém; Valor/Consumo/Aquisição como métricas) → Ver detalhe → Guardar → Exportar "Listagem (Excel)".<br>
+        Guardar em <code>Revisão Supermercados</code> como <code>Movimentos_list_xxxx</code>.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.2</span>
+        <span class="step-title">Atualizar Excel de análise — folha "Consumos"</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Consulta → Atualizar. Importar listagem para o Excel de análise (Anexo I — Template consumos).
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.3</span>
+        <span class="step-title">Extrair listagem do index (Data Discovery → Supermercados)</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Supermercados → Supermercados Config. → Ver detalhe → Guardar → Exportar Excel.<br>
+        Guardar como <code>Supermercados Config._list_xxxx</code>.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.4</span>
+        <span class="step-title">Atualizar folha "Listagem" e tabela dinâmica "TD Consumos"</span>
+        <span class="step-time">3 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Consulta → Atualizar. Verificar campos da tabela dinâmica e atualizar TD Consumos.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.5</span>
+        <span class="step-title">Decisão: artigos a remover, adicionar, ajustar quantidades</span>
+        <span class="step-time">1 hora</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Análise por preço médio, consumo diário, autonomia e estado (stockável/não-stockável, autorizado, ativo/inativo).
+        <div class="decision">Autonomia mínima ≥ 8 dias. Baixa rotação → "Pedido SGICM". Antimicrobianos → validação farmacêutico CCIRA.</div>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.6</span>
+        <span class="step-title">Corrigir preços em branco e grupos funcionais</span>
+        <span class="step-time">10 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body"><span class="role-badge role-sf">SF</span></div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.7</span>
+        <span class="step-title">Criar proposta (nº caixas, tipo, quantidades) — protótipo inicial</span>
+        <span class="step-time">30 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Farmácia: validar antimicrobianos com CCIRA por e-mail antes de avançar.
+        <br>
+        <button class="email-btn" onclick="openEmail('ccira', event)">✉ Ver template de e-mail (CCIRA)</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.8</span>
+        <span class="step-title">Enviar proposta ao serviço (PDF + Excel)</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Para: Enfermeiro gestor. CC: Diretores SF/SL, supervisores, gestores.<br>
+        O(A) Enfermeiro(a) gestor(a) tem <strong>1 semana</strong> para responder, sob penalização de entrar no próximo ciclo.
+        <br>
+        <button class="email-btn" onclick="openEmail('proposta', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 3 ════ -->
+<div class="phase p3">
+  <div class="phase-label">
+    <div class="phase-number">FASE 03</div>
+    <div class="phase-title">Validação<br>&amp; Protótipo</div>
+    <div class="phase-duration">⏱ ~1,5 semanas</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.1</span>
+        <span class="step-title">Análise do feedback do serviço</span>
+        <span class="step-time">3 dias</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Verificar: quantidades alteradas, observações, produtos novos/excluídos, pedidos de posição, consumos reais.
+        <div class="decision">Proposta aceite? → E-mail proposta final. Necessita ajuste? → E-mail pedido de esclarecimento.</div>
+        <button class="email-btn" onclick="openEmail('ajuste', event)">✉ Ver template — Pedido de ajuste</button>
+        <button class="email-btn" style="margin-left:6px" onclick="openEmail('acordofinal', event)">✉ Ver template — Acordo final</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.2</span>
+        <span class="step-title">Caracterização do tipo de caixa por artigo</span>
+        <span class="step-time">variável</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Regras: não exceder altura prateleira, peso C/D ≤ 8 kg, última prateleira ≥ 15 cm do solo, sem luz direta.<br>
+        Farmácia: pensos na horizontal, última posição vazia, LASA/High Alert assinalados, frio em embalagem primária.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.3</span>
+        <span class="step-title">Simulação informática do layout (grupos funcionais)</span>
+        <span class="step-time">3 horas</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Anexo II — Protótipo simulação. Grupos funcionais + tipologia de caixa. Se espaço insuficiente, contactar Enfermeiro gestor.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.4</span>
+        <span class="step-title">Montagem de estantes no arquivo para simulação física</span>
+        <span class="step-time">2h + 15 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        TAS monta estantes no arquivo conforme planta; coloca caixas necessárias nas prateleiras.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.5</span>
+        <span class="step-title">Carregamento de artigos no sistema Supermarket (Glintt)</span>
+        <span class="step-time">~2 min/artigo</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Template importar supermercado → Atualizar consulta → Filtrar serviço → Corrigir dados → Exportar CSV com código do supermercado → Importar no Supermarket → Confirmar.<br>
+        Criar supermercado (pórtico: 1=HPH / 2=ACES) e serviço com cores por polo/especialidade.
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 4 ════ -->
+<div class="phase p4">
+  <div class="phase-label">
+    <div class="phase-number">FASE 04</div>
+    <div class="phase-title">Simulação</div>
+    <div class="phase-duration">⏱ ~2 dias</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.1</span>
+        <span class="step-title">Impressão e corte de kanbans provisórios (p/b)</span>
+        <span class="step-time">10 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body"><span class="role-badge role-tas">TAS</span><br><br>Kanbans provisórios em preto e branco para fase de simulação.</div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.2</span>
+        <span class="step-title">Colagem dos kanbans provisórios nas caixas</span>
+        <span class="step-time">30 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body"><span class="role-badge role-tas">TAS</span></div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.3</span>
+        <span class="step-title">Convidar Enfermeiro para validar simulação no arquivo</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Ausência de resposta = aprovação tácita para avançar com produção definitiva.
+        <br>
+        <button class="email-btn" onclick="openEmail('validacaosimulacao', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.4</span>
+        <span class="step-title">Validação física com Enfermeiro + TAS armazém</span>
+        <span class="step-time">1 hora</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sc">SC</span><span class="role-badge role-tas">TAS</span><br><br>
+        Verificar: tamanho de caixas, posições, organização por grupo funcional. Registar alterações.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.5</span>
+        <span class="step-title">Ajuste de kanbans (físicos e informáticos) se necessário</span>
+        <span class="step-time">30 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body"><span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span></div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.6</span>
+        <span class="step-title">Confirmação final da simulação por e-mail</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Solicitar confirmação escrita ao Enfermeiro gestor sobre simulação aprovada.
+        <br>
+        <button class="email-btn" onclick="openEmail('confirmacaosimulacao', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 5 ════ -->
+<div class="phase p5">
+  <div class="phase-label">
+    <div class="phase-number">FASE 05</div>
+    <div class="phase-title">Montagem</div>
+    <div class="phase-duration">⏱ ~1 semana</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.1</span>
+        <span class="step-title">Impressão definitiva de kanbans, costas, frentes, posições e identificações</span>
+        <span class="step-time">5 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Impressão a cores. Plastificar → Cortar (guilhotina laser) → Fita dupla face → Inserir nas caixas ou colar.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.2</span>
+        <span class="step-title">Colocação de etiquetas nas caixas (normas de colagem)</span>
+        <span class="step-time">8 horas</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Etiquetas plastificadas com fita dupla face dentro das caixas. Colar etiqueta na caixa. Caixas nas posições definitivas.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.3</span>
+        <span class="step-title">Marcar posições nas prateleiras (fita preta + etiquetas de posição)</span>
+        <span class="step-time">30 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Para armários de enfermaria: marcação feita no SC. Retirar papel de transporte das caixas.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.4</span>
+        <span class="step-title">Colagem de etiquetas LASA e HIGH ALERT (TSDT Farmácia)</span>
+        <span class="step-time">10 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="tag">TSDT Farmácia</span><br><br>
+        Apenas medicamentos farmacêuticos. HIGH ALERT requer confirmação por 2 operadores.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.5</span>
+        <span class="step-title">Validar data de montagem com Enfermeiro chefe</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Comunicar data prevista. Solicitar higienização prévia se necessário.
+        <br>
+        <button class="email-btn" onclick="openEmail('datamontagem', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.6</span>
+        <span class="step-title">Deslocação e montagem no serviço clínico</span>
+        <span class="step-time">1 dia</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><span class="role-badge role-sf">SF</span><br><br>
+        Estantes: montar, caixas na posição, etiquetas de posição.<br>
+        Armários: fita cola preta, caixas na posição.<br>
+        Transferir medicação/materiais antigos. Verificar validades.<br>
+        Afixar: número prateleira/letra armário, index, normas de picking (Anexo V), indicadores visuais (Anexo IV).<br>
+        Caixas sem stock → zona "Kanbans para repor" (Anexo VI).
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.7</span>
+        <span class="step-title">Impressão de tags RFID em lote e saída pelo pórtico</span>
+        <span class="step-time">10 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Impressão Etiquetas → Caixa → selecionar supermercado → Localização → Selecionar todos → Imprimir Etiquetas.<br>
+        <em>Nota: só após validação do stock e posições no serviço.</em>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.8</span>
+        <span class="step-title">Colagem de tags RFID e validação pelo responsável</span>
+        <span class="step-time">2 horas</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Verificar número da etiqueta com posição da caixa. Para superfícies rugosas: fita dupla face antes da tag. Quando só existe uma caixa, colocar tag com número mais baixo.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.9</span>
+        <span class="step-title">Inventário das tags RFID para validar existências</span>
+        <span class="step-time">15 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        OPL de inventário RFID. Sempre precedido e sucedido por inventário ao criar, inativar ou eliminar tags.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.10</span>
+        <span class="step-title">Afixar normas de utilização e indicadores visuais</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Anexo IV (Indicadores Visuais) e Anexo V (Norma de Picking) afixados no local.
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 6 ════ -->
+<div class="phase p6">
+  <div class="phase-label">
+    <div class="phase-number">FASE 06</div>
+    <div class="phase-title">Comunicação<br>Final &amp; Devolução</div>
+    <div class="phase-duration">⏱ ~2 dias</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">6.1</span>
+        <span class="step-title">E-mail de conclusão ao serviço clínico</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Informar: rotas, designações, cores das caixas, organização do stock, zonas de consolidação, esquema de reposição, regras RFID (exclusividade TAS/SL, pórticos piso -1). Enviar index em PDF.
+        <br>
+        <button class="email-btn" onclick="openEmail('conclusaoSC', event)">✉ Ver template de e-mail (SC)</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">6.2</span>
+        <span class="step-title">E-mail de conclusão aos SF e SL</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Para: TSDT, farmacêuticos. Informar rotas, cores, procedimento RSA por PDA (não satisfação de pedidos), responsáveis farmácia. Index disponível em TEAMS.
+        <br>
+        <button class="email-btn" onclick="openEmail('conclusaoSFSL', event)">✉ Ver template de e-mail (SF/SL)</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">6.3</span>
+        <span class="step-title">Devolução de material excedente e limpeza de caixas/estantes</span>
+        <span class="step-time">7 horas</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Artigos excedentes ou retirados → devolver aos armazéns respetivos.<br>
+        Artigos com prazo expirado ou sem condições → inutilizar.<br>
+        Registar no template de Devoluções (Registo de devolução de artigos do SC ao armazém).
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">6.4</span>
+        <span class="step-title">E-mail com resultados finais (excesso de stock e validades)</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Partilhar dados de devoluções por excesso e prazos expirados. Reforçar responsabilidades do SC na gestão de validades e armazenamento.
+        <br>
+        <button class="email-btn" onclick="openEmail('resultadosfinais', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 7 ════ -->
+<div class="phase p7">
+  <div class="phase-label">
+    <div class="phase-number">FASE 07</div>
+    <div class="phase-title">Formação<br>&amp; Auditoria</div>
+    <div class="phase-duration">⏱ contínuo</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">7.1</span>
+        <span class="step-title">Formação aos intervenientes do serviço clínico</span>
+        <span class="step-time">40–60 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Apresentação PowerPoint. Serviço preenche formulário de formação interna. Enviar questionário de avaliação (Office Forms).
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">7.2</span>
+        <span class="step-title">Auditorias periódicas — verificação 5S</span>
+        <span class="step-time">periódico</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Análise do cumprimento das normas. Verificar: Manutenção, Reposição e Utilização. Identificar Responsabilidades Partilhadas.<br>
+        Não conformidades → contactar responsáveis → ações corretivas → ações de melhoria.
+        <br>
+        <button class="email-btn" onclick="openEmail('auditoria', event)">✉ Ver template de e-mail (auditoria)</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /workflow -->
+
+<div style="text-align:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border);">
+  <p style="font-family:var(--mono);font-size:11px;color:var(--muted);">Gestão de Supermercados · ULSM · Procedimento Sistema Distribuição Stock Dupla Caixa</p>
+</div>
+
+<!-- ══════════ EMAIL MODAL ══════════ -->
+<div class="modal-overlay" id="emailModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <span class="modal-label">✉ Template de E-mail</span>
+        <span class="modal-title" id="modalTitle"></span>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-meta" id="modalMeta"></div>
+    <div class="modal-body">
+      <div class="email-subject" id="modalSubjectLabel"></div>
+      <div class="email-content" id="modalBody"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-copy" id="copyBtn" onclick="copyEmail()">📋 Copiar texto</button>
+      <button class="btn-close-footer" onclick="closeModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggle(el){ el.classList.toggle('open'); }
+
+const T = {
+  abertura:{
+    title:'Comunicação de Abertura do Processo',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Revisão Supermercado — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que o supermercado referente ao serviço <FILL>[Nome do Serviço]</FILL> vai ser alvo de revisão.\n\nNecessitamos de agendar reunião com a seguinte ordem de trabalhos:\n\n1. Explicar como funciona um supermercado e que artigos podem constar (alta rotatividade e produtos emergentes);\n   1.1 Como ler o ficheiro de revisão de supermercado e como deve responder.\n2. Verificar localização dos supermercados de material farmacêutico e clínico;\n3. Verificar necessidade de adquirir prateleiras para armários (se aplicável);\n4. Verificar centros de custo;\n5. Estabelecer cronograma (explicação de etapas);\n6. Informar como irá decorrer o processo;\n7. Verificar agrupamento de artigos — arrumação por grupo funcional — para organização espacial;\n8. Enfermeiro substituto;\n9. Plano de higienização pré-montagem e manutenção do supermercado;\n10. Responsabilização de verificação de prazos de validade;\n11. Controlo de temperatura e humidade do supermercado.\n\nMais se informa que em anexo enviamos o cronograma previsto, bem como as responsabilidades.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  ata:{
+    title:'Ata da Reunião com Cronograma',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Ata Reunião — Revisão Stock Dupla Caixa [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio enviar o cronograma de revisão do stock de dupla caixa acordado em reunião, com a Enfermeira(o) gestora(o). Alertamos para a necessidade de cumprir as datas estabelecidas, sob penalização de a revisão ser adiada para o próximo ciclo de revisões.\n\nFicaram estabelecidos os seguintes temas:\n\n- Enfermeiro substituto: <FILL>_______________</FILL>\n- Centros de custo: <FILL>_______________</FILL>\n- Localização e organização dos produtos no supermercado.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  },
+  ccira:{
+    title:'Validação de Antimicrobianos — Farmacêutica CCIRA',
+    para:'ana.durães@ulsm.min-saude.pt',
+    cc:'—',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Validação Antimicrobianos — [Nome do Serviço]',
+    body:`Bom dia,\n\nVimos por este solicitar a validação dos antimicrobianos a constar no stock de dupla caixa do serviço <FILL>[Nome do Serviço]</FILL>.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  },
+  proposta:{
+    title:'Envio da Proposta de Consumos ao Serviço',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Proposta Revisão Supermercado — [Nome do Serviço] (PDF + Excel)',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio enviar o documento em formatos PDF e Excel com consumos e proposta da equipa da gestão de supermercados.\n\nA extração de consumos corresponde aos movimentos verificados nos últimos 12 meses. A análise dos consumos tem como princípio base a verificação de movimentos. Por este motivo, produtos que são solicitados a outros serviços não surgem nos dados e produtos desperdiçados por prazo de validade expirado surgem como consumidos pelo serviço. Alertamos para a necessidade de validar estes dados.\n\nOs antimicrobianos são alvo de análise pelo farmacêutico que integra a CCIRA e serão autorizados de acordo com os protocolos instituídos no serviço.\n\nConsideramos ainda importante explicar os conceitos pedido SGICM e produtos não stockáveis:\n\n- Pedido SGICM (PD): nestes artigos a gestão é da responsabilidade do serviço clínico. Correspondem a produtos de baixa rotação, multidoses ou artigos de justificação por doente que não justificam a implementação de dupla caixa, ainda assim é imprescindível a sua existência no serviço. Nestes casos a caixa será de cor diferente e as identificações têm cor laranja. A caixa deve permanecer no serviço e não tem etiqueta RFID.\n\n- Produtos não stockáveis: Estes produtos correspondem a artigos não stockáveis (não existe stock no armazém da logística/farmácia), assim, a retirada de kanban implica a criação de encomenda.\n\nSugerimos que esta proposta seja divulgada pelos Enfermeiros do serviço de forma a identificar lacunas na análise.\n\nPerante qualquer dúvida pode contactar a equipa de gestão de supermercados pelos contactos 3744 (SF) ou 2511 (SL), dependendo do tipo de artigo. No entanto, a resposta à proposta deverá ser sempre enviada através de e-mail.\n\nO(A) Enfermeiro(a) gestor(a) dispõe de 1 semana para enviar a proposta, sob penalização de só entrar no próximo ciclo de revisão.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  },
+  ajuste:{
+    title:'Pedido de Esclarecimento / Ajuste da Proposta',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Esclarecimento Proposta — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio solicitar o esclarecimento de algumas sugestões enviadas.\n\n<FILL>[Inserir motivo(s) — adaptar conforme necessário]</FILL>\n\nExemplos:\n- O produto solicitado não apresenta consumos que justifiquem a sua introdução em stock de dupla caixa.\n- As quantidades solicitadas não apresentam justificação. Cada produto tem autonomia mínima superior ou igual a 8 dias, o que não justifica o aumento da quantidade (aplicável a supermercados com rota diária).\n- Nos serviços de dose unitária a regra das autonomias de 8 dias não se aplica. Por norma cada produto deverá ter 2 a 3 dias de autonomia (a avaliar consoante o serviço).\n- Tendo em conta o espaço disponível não é possível colocar as referências solicitadas. Existe possibilidade de disponibilizar mais espaço?\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  acordofinal:{
+    title:'Divulgação de Proposta Final (Acordo Fechado)',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Acordo Final Supermercado — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que foi fechado o acordo final. Iremos proceder à simulação nos próximos dias e assim que esteja pronta enviaremos e-mail a solicitar a validação da simulação.\n\nEm anexo enviamos o acordo que será simulado em formato PDF.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  validacaosimulacao:{
+    title:'Convite para Validação da Simulação',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Validação da Simulação — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio solicitar o comparecimento do(a) Enfermeiro(a) gestor(a) no Serviço de Logística de forma a validar a simulação (organização espacial com etiquetas impressas a preto/branco) criada pela equipa da gestão de supermercados. Hora e data pode ser acordada através deste e-mail.\n\nA ausência de contacto será interpretada como resposta positiva para avançar com produção do supermercado, com impressão, corte e colagem de etiquetas definitivas.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  },
+  confirmacaosimulacao:{
+    title:'Confirmação da Simulação por E-mail',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Confirmação Simulação — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio solicitar a confirmação do(a) Enfermeiro(a) gestor(a) sobre a simulação visualizada a <FILL>[inserir data]</FILL>.\n\nJunto remeto a listagem da disposição dos artigos solicitada pela Enfermeiro(a).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  datamontagem:{
+    title:'Validação da Data de Montagem',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Coordenador TAS/AO · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Data de Montagem Supermercado — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que prevemos que será iniciada a montagem do stock de dupla caixa no dia <FILL>[data]</FILL>. Caso o(a) Enfermeiro(a) gestor(a) preconize que o espaço deve ser higienizado deve, por favor, agilizar com o serviço responsável pela higienização do espaço.\n\nSe a data enunciada causar alguma perturbação no serviço por favor responda a este e-mail com sugestão alternativa.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  conclusaoSC:{
+    title:'Conclusão da Revisão — E-mail ao Serviço Clínico',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Revisão Concluída — Stock Dupla Caixa [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa se encontra terminada.\n\nA rota passa a ter os supermercados <FILL>_________</FILL>, com as designações <FILL>____________</FILL>. As caixas do stock são <FILL>___cor___</FILL>. As caixas dos pedidos SGICM estão identificadas com a cor <FILL>__________</FILL>. De relembrar que correspondem a artigos cuja gestão é realizada pelos enfermeiros, devendo ser requisitados por pedido eletrónico (Pedido SGICM). Estas devem manter-se sempre no serviço.\n\nO stock está organizado da seguinte forma:\n<FILL>[Mencionar as zonas existentes]</FILL>\n\nAs zonas de consolidação de caixas vazias estão representadas na planta pelo triângulo amarelo e no local pela seguinte sinalética:\n\nAgradecemos o vosso cuidado na separação de material farmacêutico vs material clínico, de modo a evitar constrangimentos no processo e possíveis falhas no abastecimento.\n\nA organização do stock de dupla caixa está simulada na seguinte planta:\n[COLAR IMAGEM DA PLANTA]\n\nA reposição de material farmacêutico ocorre <FILL>[esquema de reposição]</FILL>.\n\nRelembro que o stock está equipado com etiquetas RFID, assim a rota tem de ser transportada exclusivamente pelos TAS do Serviço de Logística, que devem passar pelos pórticos sitos no piso -1. O procedimento de enviar caixas/kanbans através de TAS do próprio serviço está proibido.\n\nEnviamos em anexo o Index dos produtos farmacêuticos e clínicos em formatos PDF.\n\nA próxima etapa crucial é a formação dos utilizadores dos supermercados. Esta formação, com a duração de uma hora, será agendada de acordo com a vossa conveniência.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  conclusaoSFSL:{
+    title:'Conclusão da Revisão — E-mail aos SF e SL',
+    para:'tsdt.farmacia@ulsm.min-saude.pt · farmacêuticos_ulsm@ulsm.min-saude.pt',
+    cc:'filipe.sousa@ulsm.min-saude.pt · marta.lourenco@ulsm.min-saude.pt · vera.soares.lopes@ulsm.min-saude.pt',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Revisão Concluída SF/SL — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa de <FILL>[inserir serviço]</FILL> se encontra terminada.\n\nA rota passa a ter os supermercados <FILL>_________</FILL>, com as designações <FILL>____________</FILL>. As caixas do stock são <FILL>___cor___</FILL>. As caixas dos pedidos SGICM estão identificadas com a cor <FILL>__________</FILL>.\n\nO stock está organizado da seguinte forma:\n<FILL>[Mencionar as zonas existentes]</FILL>\n\nA organização do stock de dupla caixa está simulada na seguinte planta:\n[COLAR IMAGEM DA PLANTA]\n\nA reposição de material farmacêutico ocorre <FILL>[esquema de reposição]</FILL>.\n\nRelembro que o stock está equipado com etiquetas RFID, assim a rota tem de ser transportada exclusivamente pelos TAS do Serviço de Logística, que devem passar pelos pórticos sitos no piso -1. O procedimento de enviar caixas/kanbans através de TAS do próprio serviço passa a ser proibido. A rota deve ser debitada com recurso a PDA, com movimento do tipo RSA (não deve ser consolidado pedido através do menu "satisfação de pedidos").\n\nNo caso dos Serviços Farmacêuticos, a existência de problemas deve ser reportada aos responsáveis (Ana Correia, Andreia, Rafaela, Marta Figueiredo e Flávia). O Index de material farmacêutico está disponível no TEAMS: Geral > Ficheiros > STOCKS Serviços (pasta vermelha).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  resultadosfinais:{
+    title:'Notificação com Resultados Finais (Devoluções e Validades)',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Resultados Finais — Devoluções e Validades [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nApós análise dos artigos dispensados, apresentamos os seguintes dados:\n\n<FILL>[COLAR DADOS RELATIVOS A DEVOLUÇÕES POR EXCESSO DE STOCK E RELATIVOS A PRAZOS DE VALIDADE EXPIRADOS]</FILL>\n\nA distribuição pelo método de dupla caixa é um bom método para garantir a gestão eficiente de stock, promovendo um controlo adequado das quantidades e reduzindo o desperdício. No entanto, para que este resulte da melhor maneira, é essencial que as regras sejam rigorosamente cumpridas. É da responsabilidade do serviço clínico garantir que os intervenientes do processo realizem a gestão de prazos de validade e cumpram as regras de armazenamento e de utilização.\n\nContamos com a colaboração de todos para assegurar que as normas são cumpridas e que este sistema continue a apresentar-se como uma mais valia.\n\n<FILL>[Notas adicionais sobre eventos não decorram como planeado, se aplicável]</FILL>\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  auditoria:{
+    title:'Envio de Relatório de Auditoria 5S',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Relatório de Auditoria 5S — Supermercado [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nNo âmbito da Verificação 5S realizada, foi efetuada uma análise ao cumprimento das normas estabelecidas no "Supermercado | stock dupla caixa", tendo em conta as responsabilidades específicas de cada interveniente no processo, nomeadamente os responsáveis pela Manutenção, pela Reposição e pela Utilização do "Supermercado". No mesmo processo foram identificados pontos de contacto entre diferentes funções, os quais se traduzem em Responsabilidades Partilhadas, especialmente entre os Utilizadores e os responsáveis pela Reposição, e encontram-se devidamente assinalados na grelha de verificação.\n\nO principal objetivo desta análise é identificar o grau de conformidade com os procedimentos estabelecidos, promovendo a melhoria contínua e a responsabilidade clara dos intervenientes. A partilha feita em anexo dos resultados com os gestores do Serviço/Supermercado visa apoiar a tomada de decisões, corrigir eventuais não conformidades e reforçar o alinhamento entre as equipas, contribuindo para uma gestão mais eficiente e sustentável de todos os recursos.\n\nFico ao dispor para qualquer esclarecimento adicional ou dúvidas que possam surgir entretanto.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  }
+};
+
+function openEmail(key, event){
+  event.stopPropagation();
+  const t = T[key]; if(!t) return;
+  document.getElementById('modalTitle').textContent = t.title;
+  let m = `<div class="meta-row"><span class="meta-label">De:</span><span class="meta-val">${t.rem}</span></div>`;
+  m += `<div class="meta-row"><span class="meta-label">Para:</span><span class="meta-val">${t.para}</span></div>`;
+  if(t.cc && t.cc!=='—') m += `<div class="meta-row"><span class="meta-label">CC:</span><span class="meta-val">${t.cc}</span></div>`;
+  document.getElementById('modalMeta').innerHTML = m;
+  document.getElementById('modalSubjectLabel').textContent = 'Assunto: ' + t.assunto;
+  // Render FILL placeholders
+  const html = t.body.replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/&lt;FILL&gt;(.*?)&lt;\/FILL&gt;/g,'<span class="fill">$1</span>');
+  document.getElementById('modalBody').innerHTML = html;
+  const btn = document.getElementById('copyBtn');
+  btn.innerHTML = '📋 Copiar texto'; btn.classList.remove('copied');
+  document.getElementById('emailModal').classList.add('active');
+}
+
+function closeModal(event){
+  if(!event || event.target===document.getElementById('emailModal'))
+    document.getElementById('emailModal').classList.remove('active');
+}
+
+function copyEmail(){
+  const body = document.getElementById('modalBody').innerText;
+  const subj = document.getElementById('modalSubjectLabel').textContent;
+  navigator.clipboard.writeText(subj+'\n\n'+body).then(()=>{
+    const btn=document.getElementById('copyBtn');
+    btn.innerHTML='✓ Copiado!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.innerHTML='📋 Copiar texto'; btn.classList.remove('copied'); },2000);
+  });
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal({target:document.getElementById('emailModal')}); });
+</script>
+</body>
+</html>
