@@ -23,6 +23,10 @@
   .legend-item{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--mono);color:var(--muted);cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid var(--border);transition:all .2s;}
   .legend-item:hover{border-color:currentColor;color:var(--text);}
   .legend-item .dot{width:10px;height:10px;border-radius:50%;}
+  .editor-panel{max-width:1100px;margin:0 auto 20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+  .editor-btn{padding:8px 14px;border:1px solid #30363d;border-radius:8px;background:#161b22;color:#8b949e;font-family:var(--mono);font-size:11px;cursor:pointer;}
+  .editor-btn:hover{color:var(--text);border-color:#4dabf7;}
+  .editor-btn.active{color:#69db7c;border-color:#69db7c;background:rgba(45,140,78,.12);}
   .workflow{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:0;}
   .phase{display:grid;grid-template-columns:200px 1fr;gap:0;position:relative;}
   .phase-label{display:flex;flex-direction:column;align-items:flex-end;padding:24px 24px 24px 0;border-right:2px solid var(--border);position:relative;}
@@ -38,6 +42,13 @@
   .step-title{font-size:13px;font-weight:600;flex:1;line-height:1.4;}
   .step-time{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;}
   .step-arrow{font-size:10px;color:var(--muted);transition:transform .2s;}
+  .editor-controls{display:none;gap:6px;}
+  .editor-controls button{border:1px solid #30363d;background:#0d1117;color:#8b949e;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;}
+  .editor-controls button:hover{color:var(--text);border-color:#4dabf7;}
+  body.edit-mode .editor-controls{display:flex;}
+  body.edit-mode .step{cursor:default;}
+  body.edit-mode .step-title,body.edit-mode .step-time,body.edit-mode .step-body{outline:1px dashed rgba(77,171,247,.4);outline-offset:2px;}
+  .step-image{max-width:100%;border-radius:8px;border:1px solid #30363d;margin-top:10px;display:block;}
   .step.open .step-arrow{transform:rotate(180deg);}
   .step-body{display:none;padding:12px 16px 14px 52px;font-size:12px;line-height:1.7;color:#8b949e;border-top:1px solid var(--border);}
   .step.open .step-body{display:block;}
@@ -109,6 +120,15 @@
   <div class="role-pill role-sl">🟢 SL — Serviço de Logística</div>
   <div class="role-pill role-sc">🟡 SC — Serviço Clínico</div>
   <div class="role-pill role-tas">🔴 TAS — Técnico Auxiliar de Saúde</div>
+</div>
+
+<div class="editor-panel">
+  <button class="editor-btn" id="toggleEditBtn">✏️ Ativar modo de edição</button>
+  <button class="editor-btn" id="saveTemplateBtn">💾 Guardar template (JSON)</button>
+  <button class="editor-btn" id="loadTemplateBtn">📂 Carregar template (JSON)</button>
+  <button class="editor-btn" id="resetTemplateBtn">↺ Repor versão original</button>
+  <input type="file" id="templateInput" accept="application/json" hidden>
+  <input type="file" id="imageInput" accept="image/*" hidden>
 </div>
 
 <div class="legend">
@@ -744,7 +764,13 @@
 </div>
 
 <script>
-function toggle(el){ el.classList.toggle('open'); }
+let editMode = false;
+let activeImageStep = null;
+
+function toggle(el){
+  if(editMode) return;
+  el.classList.toggle('open');
+}
 
 const T = {
   abertura:{
@@ -941,7 +967,222 @@ function copyEmail(){
   });
 }
 
+function createStepElement(stepData = {}){
+  const step = document.createElement('div');
+  step.className = 'step';
+  step.setAttribute('onclick', 'toggle(this)');
+  step.innerHTML = `
+    <div class="step-header">
+      <span class="step-num">0.0</span>
+      <span class="step-title">${stepData.title || 'Novo passo'}</span>
+      <span class="step-time">${stepData.time || '5 min'}</span><span class="step-arrow">▾</span>
+    </div>
+    <div class="step-body">${stepData.body || 'Editar detalhes deste passo.'}</div>
+  `;
+  attachStepControls(step);
+  return step;
+}
+
+function renumberAllPhases(){
+  document.querySelectorAll('.phase').forEach((phase, phaseIndex) => {
+    phase.querySelectorAll('.step').forEach((step, stepIndex) => {
+      const num = step.querySelector('.step-num');
+      if (num) num.textContent = `${phaseIndex + 1}.${stepIndex + 1}`;
+    });
+  });
+}
+
+function setEditableState(enabled){
+  document.querySelectorAll('.step-title, .step-time, .step-body').forEach(el => {
+    el.setAttribute('contenteditable', enabled ? 'true' : 'false');
+  });
+  if(enabled){
+    document.querySelectorAll('.step').forEach(step => step.classList.add('open'));
+  }
+}
+
+function saveToLocalStorage(){
+  localStorage.setItem('workflowTemplate', JSON.stringify(serializeWorkflow()));
+}
+
+function serializeWorkflow(){
+  return {
+    phases: [...document.querySelectorAll('.phase')].map(phase => ({
+      steps: [...phase.querySelectorAll('.step')].map(step => ({
+        title: step.querySelector('.step-title')?.textContent || '',
+        time: step.querySelector('.step-time')?.textContent || '',
+        body: step.querySelector('.step-body')?.innerHTML || ''
+      }))
+    }))
+  };
+}
+
+function applyTemplate(data){
+  if(!data?.phases) return;
+  const phases = [...document.querySelectorAll('.phase')];
+  data.phases.forEach((phaseData, idx) => {
+    const phase = phases[idx];
+    if(!phase || !Array.isArray(phaseData.steps)) return;
+    const content = phase.querySelector('.phase-content');
+    content.querySelectorAll('.step').forEach(step => step.remove());
+    phaseData.steps.forEach(stepData => content.appendChild(createStepElement(stepData)));
+  });
+  renumberAllPhases();
+  setEditableState(editMode);
+}
+
+function attachStepControls(step){
+  const header = step.querySelector('.step-header');
+  if(!header || header.querySelector('.editor-controls')) return;
+
+  const controls = document.createElement('div');
+  controls.className = 'editor-controls';
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = '+ passo';
+  addBtn.onclick = (event) => {
+    event.stopPropagation();
+    const phaseContent = step.closest('.phase-content');
+    const newStep = createStepElement();
+    step.insertAdjacentElement('afterend', newStep);
+    renumberAllPhases();
+    setEditableState(editMode);
+    saveToLocalStorage();
+  };
+
+  const imageBtn = document.createElement('button');
+  imageBtn.type = 'button';
+  imageBtn.textContent = '🖼 imagem';
+  imageBtn.onclick = (event) => {
+    event.stopPropagation();
+    activeImageStep = step;
+    document.getElementById('imageInput').click();
+  };
+
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.textContent = '🗑';
+  delBtn.onclick = (event) => {
+    event.stopPropagation();
+    const phase = step.closest('.phase');
+    const total = phase.querySelectorAll('.step').length;
+    if(total <= 1){
+      alert('Cada fase precisa de pelo menos 1 passo.');
+      return;
+    }
+    step.remove();
+    renumberAllPhases();
+    saveToLocalStorage();
+  };
+
+  controls.append(addBtn, imageBtn, delBtn);
+  header.appendChild(controls);
+}
+
+function openEmail(key, event){
+  if(editMode){
+    event.stopPropagation();
+    return;
+  }
+  const t = T[key]; if(!t) return;
+
+  document.getElementById('modalTitle').textContent = t.title;
+
+  const meta = document.getElementById('modalMeta');
+  meta.replaceChildren(
+    createMetaRow('De:', t.rem),
+    createMetaRow('Para:', t.para)
+  );
+  if (t.cc && t.cc !== '—') {
+    meta.appendChild(createMetaRow('CC:', t.cc));
+  }
+
+  document.getElementById('modalSubjectLabel').textContent = 'Assunto: ' + t.assunto;
+
+  const modalBody = document.getElementById('modalBody');
+  modalBody.replaceChildren(renderEmailBody(t.body));
+
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = '📋 Copiar texto';
+  btn.classList.remove('copied');
+  document.getElementById('emailModal').classList.add('active');
+}
+
+function initEditorMode(){
+  document.querySelectorAll('.step').forEach(attachStepControls);
+  renumberAllPhases();
+
+  const toggleBtn = document.getElementById('toggleEditBtn');
+  toggleBtn.addEventListener('click', () => {
+    editMode = !editMode;
+    document.body.classList.toggle('edit-mode', editMode);
+    toggleBtn.classList.toggle('active', editMode);
+    toggleBtn.textContent = editMode ? '✅ Modo de edição ativo' : '✏️ Ativar modo de edição';
+    setEditableState(editMode);
+  });
+
+  document.getElementById('saveTemplateBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(serializeWorkflow(), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'workflow-template.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('loadTemplateBtn').addEventListener('click', () => {
+    document.getElementById('templateInput').click();
+  });
+
+  document.getElementById('templateInput').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if(!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      applyTemplate(data);
+      saveToLocalStorage();
+    } catch {
+      alert('Template inválido.');
+    }
+  });
+
+  document.getElementById('imageInput').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if(!file || !activeImageStep) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = document.createElement('img');
+      img.src = reader.result;
+      img.className = 'step-image';
+      activeImageStep.querySelector('.step-body').appendChild(img);
+      activeImageStep.classList.add('open');
+      saveToLocalStorage();
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  });
+
+  document.getElementById('resetTemplateBtn').addEventListener('click', () => {
+    localStorage.removeItem('workflowTemplate');
+    location.reload();
+  });
+
+  document.addEventListener('input', (event) => {
+    if(!editMode) return;
+    if(event.target.closest('.step-title, .step-time, .step-body')){
+      saveToLocalStorage();
+    }
+  });
+
+  const saved = localStorage.getItem('workflowTemplate');
+  if(saved){
+    try { applyTemplate(JSON.parse(saved)); } catch {}
+  }
+}
+
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal({target:document.getElementById('emailModal')}); });
+document.addEventListener('DOMContentLoaded', initEditorMode);
 </script>
 </body>
 </html>
