@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'">
 <title>Workflow — Revisão de Supermercados ULSM</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -852,21 +853,72 @@ const T = {
   }
 };
 
+function createMetaRow(label, value){
+  const row = document.createElement('div');
+  row.className = 'meta-row';
+
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'meta-label';
+  labelSpan.textContent = label;
+
+  const valueSpan = document.createElement('span');
+  valueSpan.className = 'meta-val';
+  valueSpan.textContent = value;
+
+  row.appendChild(labelSpan);
+  row.appendChild(valueSpan);
+  return row;
+}
+
+function renderEmailBody(text){
+  const fragment = document.createDocumentFragment();
+  const fillRegex = /<FILL>(.*?)<\/FILL>/gs;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = fillRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+    }
+
+    const fillSpan = document.createElement('span');
+    fillSpan.className = 'fill';
+    fillSpan.textContent = match[1];
+    fragment.appendChild(fillSpan);
+
+    lastIndex = fillRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+
+  return fragment;
+}
+
 function openEmail(key, event){
   event.stopPropagation();
   const t = T[key]; if(!t) return;
+
   document.getElementById('modalTitle').textContent = t.title;
-  let m = `<div class="meta-row"><span class="meta-label">De:</span><span class="meta-val">${t.rem}</span></div>`;
-  m += `<div class="meta-row"><span class="meta-label">Para:</span><span class="meta-val">${t.para}</span></div>`;
-  if(t.cc && t.cc!=='—') m += `<div class="meta-row"><span class="meta-label">CC:</span><span class="meta-val">${t.cc}</span></div>`;
-  document.getElementById('modalMeta').innerHTML = m;
+
+  const meta = document.getElementById('modalMeta');
+  meta.replaceChildren(
+    createMetaRow('De:', t.rem),
+    createMetaRow('Para:', t.para)
+  );
+  if (t.cc && t.cc !== '—') {
+    meta.appendChild(createMetaRow('CC:', t.cc));
+  }
+
   document.getElementById('modalSubjectLabel').textContent = 'Assunto: ' + t.assunto;
-  // Render FILL placeholders
-  const html = t.body.replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/&lt;FILL&gt;(.*?)&lt;\/FILL&gt;/g,'<span class="fill">$1</span>');
-  document.getElementById('modalBody').innerHTML = html;
+
+  const modalBody = document.getElementById('modalBody');
+  modalBody.replaceChildren(renderEmailBody(t.body));
+
   const btn = document.getElementById('copyBtn');
-  btn.innerHTML = '📋 Copiar texto'; btn.classList.remove('copied');
+  btn.textContent = '📋 Copiar texto';
+  btn.classList.remove('copied');
   document.getElementById('emailModal').classList.add('active');
 }
 
@@ -880,10 +932,15 @@ function copyEmail(){
   const subj = document.getElementById('modalSubjectLabel').textContent;
   navigator.clipboard.writeText(subj+'\n\n'+body).then(()=>{
     const btn=document.getElementById('copyBtn');
-    btn.innerHTML='✓ Copiado!'; btn.classList.add('copied');
-    setTimeout(()=>{ btn.innerHTML='📋 Copiar texto'; btn.classList.remove('copied'); },2000);
+    btn.textContent='✓ Copiado!';
+    btn.classList.add('copied');
+    setTimeout(()=>{
+      btn.textContent='📋 Copiar texto';
+      btn.classList.remove('copied');
+    },2000);
   });
 }
+
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal({target:document.getElementById('emailModal')}); });
 </script>
 </body>
