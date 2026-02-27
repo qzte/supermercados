@@ -245,12 +245,120 @@ const ROLE_COLORS = { SF:"#4dabf7", SL:"#69db7c", SC:"#fcc419", TAS:"#fa5252", T
 // STORAGE
 // ─────────────────────────────────────────────────────────────────────────────
 const SKEY = "ulsm-integrated-v1";
+const STORAGE_VERSION = 2;
+
+function isObj(v) { return !!v && typeof v === "object" && !Array.isArray(v); }
+function toSafeText(v, max = 240) {
+  return typeof v === "string" ? v.trim().slice(0, max) : "";
+}
+function toSafeDate(v) {
+  if(typeof v !== "string") return "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "";
+}
+function toSafeIso(v) {
+  if(typeof v !== "string") return new Date().toISOString();
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+function sanitizeHistory(v) {
+  if(!Array.isArray(v)) return [];
+  return v
+    .filter(isObj)
+    .map(item => ({ ts: toSafeIso(item.ts), action: toSafeText(item.action, 400) }))
+    .filter(item => item.action)
+    .slice(-250);
+}
+
+function sanitizeEmailLog(v) {
+  if(!Array.isArray(v)) return [];
+  return v
+    .filter(isObj)
+    .map(item => ({
+      ts: toSafeIso(item.ts),
+      key: toSafeText(item.key, 64),
+      label: toSafeText(item.label, 180),
+      to: toSafeText(item.to, 220),
+      cc: toSafeText(item.cc, 220),
+      subject: toSafeText(item.subject, 220),
+    }))
+    .slice(-250);
+}
+
+function sanitizeProc(proc, idx = 0) {
+  if(!isObj(proc)) return null;
+  const phaseNum = Number.isInteger(proc.currentPhase) ? proc.currentPhase : 1;
+  const currentPhase = Math.min(Math.max(phaseNum, 1), PHASES.length);
+  const phase = PHASES[currentPhase - 1];
+  const maxStep = Math.max(0, (phase?.steps?.length || 1) - 1);
+  const stepNum = Number.isInteger(proc.currentStep) ? proc.currentStep : 0;
+  const currentStep = Math.min(Math.max(stepNum, 0), maxStep);
+  const status = Object.prototype.hasOwnProperty.call(STATUS_CFG, proc.status) ? proc.status : "ok";
+
+  const clean = {
+    id: Number.isFinite(proc.id) ? proc.id : Date.now() + idx,
+    service: toSafeText(proc.service, 180),
+    costCenter: toSafeText(proc.costCenter, 120),
+    responsible: toSafeText(proc.responsible, 120),
+    coResponsible: toSafeText(proc.coResponsible, 120),
+    startDate: toSafeDate(proc.startDate) || new Date().toISOString().slice(0,10),
+    targetDate: toSafeDate(proc.targetDate),
+    currentPhase,
+    currentStep,
+    status,
+    notes: toSafeText(proc.notes, 4000),
+    emailLog: sanitizeEmailLog(proc.emailLog),
+    history: sanitizeHistory(proc.history),
+    createdAt: toSafeIso(proc.createdAt),
+  };
+  if(clean.history.length === 0) {
+    clean.history = [{ ts: new Date().toISOString(), action: "Processo carregado" }];
+  }
+  return clean;
+}
+
+function sanitizeProcs(raw) {
+  if(!Array.isArray(raw)) return [];
+  return raw.map((p, i) => sanitizeProc(p, i)).filter(Boolean);
+}
+
+function createStorageEnvelope(list, checksum) {
+  return { version: STORAGE_VERSION, updatedAt: new Date().toISOString(), checksum, data: list };
+}
+
+async function makeChecksum(list) {
+  return sha256Hex(JSON.stringify(list));
+}
+
 async function loadData() {
-  try { const r = await window.storage.get(SKEY, true); return r ? JSON.parse(r.value) : []; }
-  catch { return []; }
+  try {
+    const r = await window.storage.get(SKEY, true);
+    if(!r?.value) return [];
+    const parsed = JSON.parse(r.value);
+
+    if(Array.isArray(parsed)) {
+      return sanitizeProcs(parsed);
+    }
+    if(!isObj(parsed) || !Array.isArray(parsed.data)) return [];
+
+    const safeData = sanitizeProcs(parsed.data);
+    const expected = await makeChecksum(safeData);
+    if(typeof parsed.checksum !== "string" || parsed.checksum !== expected) {
+      console.warn("Storage checksum mismatch: restoring empty state.");
+      return [];
+    }
+    return safeData;
+  } catch {
+    return [];
+  }
 }
 async function saveData(list) {
-  try { await window.storage.set(SKEY, JSON.stringify(list), true); } catch(e) { console.error(e); }
+  try {
+    const safeData = sanitizeProcs(list);
+    const checksum = await makeChecksum(safeData);
+    const envelope = createStorageEnvelope(safeData, checksum);
+    await window.storage.set(SKEY, JSON.stringify(envelope), true);
+  } catch(e) { console.error(e); }
 }
 
 const EDITOR_PIN_HASH = (window.__ULSM_EDITOR_PIN_HASH || "").trim().toLowerCase();
