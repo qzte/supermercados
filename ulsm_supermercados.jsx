@@ -253,6 +253,22 @@ async function saveData(list) {
   try { await window.storage.set(SKEY, JSON.stringify(list), true); } catch(e) { console.error(e); }
 }
 
+const EDITOR_PIN_HASH = (window.__ULSM_EDITOR_PIN_HASH || "").trim().toLowerCase();
+
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map(n => n.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function canUnlockEditor(pin) {
+  if(!pin || !EDITOR_PIN_HASH) return false;
+  const hash = await sha256Hex(pin);
+  return hash === EDITOR_PIN_HASH;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -830,9 +846,10 @@ export default function App() {
   const [showNew, setShowNew] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [pin, setPin] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const PIN = "ulsm2025";
 
   useEffect(()=>{ loadData().then(d=>{ setProcs(d); setLoading(false); }); },[]);
 
@@ -864,6 +881,24 @@ export default function App() {
     done: procs.filter(p=>p.status==="done"||totalPct(p)===100).length,
   };
 
+  const handleEditorLogin = async() => {
+    if(!EDITOR_PIN_HASH) {
+      setAuthError("Modo editor desativado: hash não configurado.");
+      return;
+    }
+    setAuthBusy(true);
+    const ok = await canUnlockEditor(pin);
+    if(ok) {
+      setIsEditor(true);
+      setPin("");
+      setAuthError("");
+    } else {
+      setPin("");
+      setAuthError("PIN inválido.");
+    }
+    setAuthBusy(false);
+  };
+
   return (
     <div style={{ background:"#0d1117", minHeight:"100vh", fontFamily:"'IBM Plex Sans',sans-serif", color:"#e6edf3" }}>
       <style>{`
@@ -893,14 +928,16 @@ export default function App() {
           {!isEditor ? (
             <>
               <input type="password" placeholder="PIN editor…" value={pin} onChange={e=>setPin(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&(pin===PIN?(setIsEditor(true),setPin()):setPin(""))}
+                onKeyDown={e=>e.key==="Enter"&&!authBusy&&void handleEditorLogin()}
                 style={{ background:"#0d1117",border:"1px solid #30363d",borderRadius:6,
                   color:"#e6edf3",padding:"6px 10px",fontSize:12,width:120,outline:"none",fontFamily:"monospace" }}/>
-              <button onClick={()=>pin===PIN?(setIsEditor(true),setPin()):setPin("")}
+              <button onClick={handleEditorLogin} disabled={authBusy||!EDITOR_PIN_HASH}
                 style={{ background:"rgba(29,125,210,.2)",border:"1px solid rgba(29,125,210,.4)",
-                  color:"#4dabf7",borderRadius:6,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"monospace" }}>
-                Entrar
+                  color:"#4dabf7",borderRadius:6,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"monospace",
+                  opacity: authBusy||!EDITOR_PIN_HASH ? .5 : 1 }}>
+                {authBusy ? "A validar…" : "Entrar"}
               </button>
+              {authError && <span style={{ fontSize:11,color:"#fa5252",fontFamily:"monospace" }}>{authError}</span>}
             </>
           ) : (
             <>
