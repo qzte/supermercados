@@ -35,20 +35,23 @@ Foram identificados **4 riscos principais**:
 ---
 
 ### 2) Armazenamento e confiança no cliente sem verificação de integridade (**Severidade: Alta**)
-**Evidência técnica**
-- A aplicação carrega e grava estado via `window.storage.get/set` e aceita os dados como válidos.
-- Não há assinatura, checksum, controlo de versões seguro ou validação robusta de esquema.
+**Evidência técnica (estado anterior)**
+- A aplicação carregava e gravava estado via `window.storage.get/set` e aceitava os dados como válidos.
+- Não havia checksum, envelope versionado nem validação robusta de esquema no carregamento.
 
-**Impacto**
-- Dados podem ser alterados manualmente por utilizadores locais (ou extensões), permitindo:
-  - falsificação de histórico;
-  - alteração de estados e responsáveis;
-  - perda de rastreabilidade/auditabilidade.
+**Correção aplicada nesta revisão**
+- O payload persistido passou a usar envelope com metadados (`version`, `updatedAt`, `checksum`, `data`).
+- Foi adicionada sanitização/validação defensiva ao carregar dados (tipos, datas, limites, status, fase/passo).
+- O carregamento agora valida checksum SHA-256 do conteúdo sanitizado e rejeita estado adulterado/inconsistente.
+- Mantida compatibilidade com formato antigo (array simples), com migração segura para o novo formato na próxima gravação.
+
+**Impacto residual**
+- Em arquitetura puramente client-side, utilizadores locais ainda podem adulterar estado se controlarem runtime e processo de gravação.
+- O checksum melhora deteção de corrupção/tampering simples, mas não fornece não repúdio sem backend/assinatura externa.
 
 **Recomendação**
 - Persistir dados num backend com autenticação e trilha de auditoria imutável.
-- Validar esquema de entrada (ex.: Zod/Yup) ao carregar dados.
-- Adicionar assinatura/verificação criptográfica quando existir requisito de não repúdio.
+- Para requisito de não repúdio, usar assinatura digital com chave privada fora do cliente.
 
 ---
 
