@@ -1,94 +1,105 @@
 # Auditoria de Segurança — `supermercados`
 
-Data: 2026-02-27
+Data: 2026-03-01
 
 ## Escopo auditado
-- `workflow_supermercados.html`
+- `ulsm_supermercados.html`
 - `ulsm_supermercados.jsx`
 
 ## Resumo executivo
-A revisão do código identificou **3 riscos relevantes** e **1 risco residual de menor gravidade**:
+A revisão do estado atual do código identificou **5 riscos principais**:
 
-1. **Autorização apenas no cliente para modo editor** (Alta).
-2. **Persistência e integridade de dados dependentes do cliente** (Média/Alta).
-3. **CSP ainda permissiva por necessidade de código inline** (Média).
-4. **Dependência de terceiros para fontes web** (Baixa).
-
-Também foi aplicada uma melhoria de hardening na CSP para reduzir superfície de ataque em recursos não usados (`connect-src 'none'`, `form-action 'none'`, `frame-src 'none'`, `manifest-src 'none'`).
+1. **Credenciais de editor hardcoded no cliente** (Alta).
+2. **XSS persistente via conteúdo HTML não sanitizado** (Alta).
+3. **Cadeia de supply chain externa sem SRI (CDN + fontes)** (Média/Alta).
+4. **Arquitetura exclusivamente client-side para permissões e persistência** (Média).
+5. **Ausência de CSP explícita no HTML atual** (Média).
 
 ---
 
 ## Achados detalhados
 
-### 1) Modo editor protegido apenas no front-end (**Severidade: Alta**)
+### 1) Credenciais de editor hardcoded no cliente (**Severidade: Alta**)
 **Evidência técnica**
-- O desbloqueio do modo editor depende de validação local de PIN por hash (`SHA-256`) em variável de runtime (`window.__ULSM_EDITOR_PIN_HASH`).
-- Não existe backend de autenticação/autorização para validar identidade/permissões do utilizador.
+- O ficheiro HTML define diretamente os PINs de editor em `window.__ULSM_EDITOR_PINS`.
+- A verificação de permissões ocorre apenas no browser (`pins.includes(input.value.trim())`).
 
 **Risco**
-- Quem controla o browser/runtime consegue contornar barreiras de UI e adulterar comportamento local.
-- Não há garantias fortes de identidade nem trilho de auditoria confiável.
+- Qualquer utilizador com acesso ao código-fonte consegue ler ou alterar os PINs.
+- Não há autenticação forte nem trilho de auditoria centralizado.
 
 **Recomendação**
-- Migrar autenticação/autorização para backend (SSO/OIDC/sessão).
-- Aplicar RBAC por perfil e registos de auditoria server-side.
+- Remover segredos do front-end.
+- Implementar autenticação/autorização server-side (SSO/OIDC + RBAC).
 
 ---
 
-### 2) Integridade de dados limitada por arquitetura client-side (**Severidade: Média/Alta**)
+### 2) XSS persistente por `innerHTML` com dados editáveis/importados (**Severidade: Alta**)
 **Evidência técnica**
-- A aplicação usa envelope com checksum para validar persistência local, o que melhora robustez.
-- Contudo, checksum sem segredo servidor continua sujeito a forja por utilizador com controlo local.
+- A construção de passos usa `step.innerHTML` com `stepData.title` e `stepData.body` (dados vindos de template/localStorage).
+- A serialização guarda HTML bruto (`.innerHTML`) em armazenamento local.
+- O carregamento reaplica o conteúdo sem sanitização (`applyTemplate` + `createStepElement`).
 
 **Risco**
-- Alterações maliciosas podem ser reconstruídas com novo checksum válido no cliente.
-- Não há não-repúdio nem histórico imutável de alterações.
+- Um JSON malicioso ou conteúdo adulterado em `localStorage` pode injetar script/event handlers.
+- O ataque persiste entre sessões enquanto os dados estiverem guardados.
 
 **Recomendação**
-- Persistir estado em backend autenticado.
-- Para requisitos fortes de integridade: assinatura digital com chave privada fora do cliente.
+- Substituir inserção HTML por APIs seguras (`textContent`, `createElement`).
+- Sanitizar rigorosamente conteúdo permitido (allowlist).
+- Validar e normalizar templates no momento de importação.
 
 ---
 
-### 3) Política CSP ainda depende de `unsafe-inline` para scripts/handlers inline (**Severidade: Média**)
+### 3) Dependências externas críticas sem Subresource Integrity (**Severidade: Média/Alta**)
 **Evidência técnica**
-- O HTML usa diversos `onclick` inline e bloco `<script>` inline.
-- Isso exige `script-src 'unsafe-inline'`, reduzindo proteção contra XSS.
+- React, ReactDOM e Babel são carregados de CDN sem atributos `integrity`.
+- Fontes Google são carregadas de terceiros.
 
-**Mitigação aplicada nesta revisão**
-- Endurecimento adicional da CSP com diretivas restritivas para vetores não usados:
-  - `connect-src 'none'`
-  - `form-action 'none'`
-  - `frame-src 'none'`
-  - `manifest-src 'none'`
-
-**Risco residual**
-- Enquanto houver inline script/handlers, a proteção XSS fica abaixo do ideal.
+**Risco**
+- Maior exposição a ataques de supply chain ou alteração indevida de assets externos.
+- Dependência de disponibilidade e política de terceiros.
 
 **Recomendação**
-- Remover handlers inline e mover JS para ficheiro externo.
-- Trocar `script-src 'unsafe-inline'` por nonce/hash.
+- Fixar versões com `integrity` + `crossorigin` adequado.
+- Preferir self-host de bibliotecas e fontes para ambientes críticos.
 
 ---
 
-### 4) Dependência externa para fontes (**Severidade: Baixa**)
+### 4) Integridade e autorização limitadas por arquitetura client-side (**Severidade: Média**)
 **Evidência técnica**
-- Uso de `fonts.googleapis.com` e `fonts.gstatic.com`.
+- O estado de workflow é gravado em `localStorage` (`workflowTemplate`) e pode ser manipulado localmente.
+- O fallback de `window.storage` também grava em `localStorage` sem autoridade externa.
 
 **Risco**
-- Dependência de terceiros (disponibilidade/supply chain/privacidade).
+- Não há não-repúdio, controlo de versões confiável nem proteção forte contra adulteração local.
 
 **Recomendação**
-- Self-host de fontes quando possível.
-- Rever requisitos de privacidade/compliance da organização.
+- Migrar persistência crítica para backend autenticado com registo de auditoria.
+- Aplicar controlo de acesso por perfil e histórico imutável.
+
+---
+
+### 5) CSP ausente no HTML atual (**Severidade: Média**)
+**Evidência técnica**
+- Não há meta tag nem header CSP definido no documento auditado.
+- Existem múltiplos handlers inline (`onclick`), o que dificulta hardening sem refatoração.
+
+**Risco**
+- Superfície de ataque XSS maior do que o necessário.
+
+**Recomendação**
+- Introduzir CSP por header HTTP (preferencial) e refatorar inline handlers.
+- Evoluir para `script-src` com nonce/hash e sem `unsafe-inline`.
 
 ---
 
 ## Priorização sugerida
-1. **P0**: autenticação/autorização real em backend para ações de editor.
-2. **P1**: mover persistência crítica para backend com auditoria imutável.
-3. **P1**: remover inline JS e endurecer CSP sem `unsafe-inline`.
-4. **P2**: eliminar dependência de fontes de terceiros.
+1. **P0**: eliminar credenciais hardcoded e mover autenticação/autorização para backend.
+2. **P0**: bloquear vetor de XSS persistente (remover `innerHTML` não sanitizado).
+3. **P1**: implementar CSP robusta e remover handlers inline.
+4. **P1**: reforçar supply chain (`integrity`/self-host).
+5. **P2**: migrar persistência crítica para backend com auditoria.
 
 ## Conclusão
-A base atual está mais madura que uma versão inicial (há validações defensivas e CSP), mas os riscos estruturais de uma aplicação client-side permanecem: identidade fraca, integridade sem autoridade externa e CSP limitada por inline code.
+O principal risco atual não é apenas “falta de backend”, mas a combinação de **segredos expostos no cliente + HTML não sanitizado + dependências externas sem validação de integridade**. Estes pontos devem ser tratados antes de considerar o sistema apto para dados/processos críticos.
