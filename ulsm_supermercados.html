@@ -1,0 +1,2923 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão de Supermercados — ULSM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js" crossorigin></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117; --surface: #161b22; --border: #21262d;
+  --text: #e6edf3; --muted: #7d8590;
+  --f1:#2d8c4e; --f2:#1c7ed6; --f3:#7950f2; --f4:#f59f00; --f5:#e03131; --f6:#0ca678; --f7:#ae3ec9;
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+  --nav-h: 52px;
+}
+html, body { min-height: 100vh; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 99px; }
+select option { background: #1c2128; }
+input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.5); }
+#app-nav {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h); z-index: 9000;
+  background: #161b22; border-bottom: 1px solid #21262d;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 24px; gap: 16px;
+}
+#app-nav .brand { display: flex; flex-direction: column; }
+#app-nav .brand-sup { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; color: var(--muted); text-transform: uppercase; }
+#app-nav .brand-name { font-size: 14px; font-weight: 700; }
+#app-nav .nav-right { display: flex; align-items: center; gap: 10px; }
+#app-nav .nav-tabs { display: flex; gap: 4px; }
+#app-nav .nav-tab {
+  padding: 6px 18px; border-radius: 6px; border: 1px solid transparent;
+  font-family: var(--mono); font-size: 11px; font-weight: 600; cursor: pointer;
+  background: transparent; color: var(--muted); transition: all .15s;
+}
+#app-nav .nav-tab:hover { color: var(--text); border-color: #30363d; }
+#app-nav .nav-tab.active { background: rgba(77,171,247,.12); border-color: rgba(77,171,247,.4); color: #4dabf7; }
+#nav-editor-badge { display: none; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: #69db7c; }
+#nav-editor-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #69db7c; box-shadow: 0 0 6px #69db7c; }
+#nav-editor-exit { display: none; background: rgba(224,49,49,.12); border: 1px solid rgba(224,49,49,.3); color: #fa5252; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; }
+#view-tracking, #view-workflow { padding-top: var(--nav-h); min-height: 100vh; }
+#view-tracking { display: none; }
+#view-workflow { display: block; }
+body.view-tracking #view-tracking { display: block; }
+body.view-tracking #view-workflow { display: none; }
+#tracking-root { min-height: calc(100vh - var(--nav-h)); }
+.workflow-inner { padding: 40px 24px; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;} }
+@keyframes slideIn { from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:none;} }
+@keyframes modalIn { from{opacity:0;transform:translateY(12px) scale(.97);}to{opacity:1;transform:none;} }
+:root {
+    --bg: #0d1117; --surface: #161b22; --border: #21262d;
+    --text: #e6edf3; --muted: #7d8590;
+    --f1:#2d8c4e; --f2:#1c7ed6; --f3:#7950f2; --f4:#f59f00; --f5:#e03131; --f6:#0ca678; --f7:#ae3ec9;
+    --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:40px 24px;}
+  header{text-align:center;margin-bottom:48px;}
+  header .org{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;}
+  header h1{font-size:clamp(24px,4vw,36px);font-weight:700;line-height:1.2;background:linear-gradient(135deg,#e6edf3 30%,#7d8590);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
+  header p{color:var(--muted);font-size:14px;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:48px;}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--mono);color:var(--muted);cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid var(--border);transition:all .2s;}
+  .legend-item:hover{border-color:currentColor;color:var(--text);}
+  .legend-item .dot{width:10px;height:10px;border-radius:50%;}
+  .editor-panel{max-width:1100px;margin:0 auto 20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+  body:not(.edit-mode) .editor-panel .edit-only{display:none;}
+  .editor-btn{padding:8px 14px;border:1px solid #30363d;border-radius:8px;background:#161b22;color:#8b949e;font-family:var(--mono);font-size:11px;cursor:pointer;}
+  .editor-btn:hover{color:var(--text);border-color:#4dabf7;}
+  .editor-btn.active{color:#69db7c;border-color:#69db7c;background:rgba(45,140,78,.12);}
+  .workflow{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:0;}
+  .phase{display:grid;grid-template-columns:200px 1fr;gap:0;position:relative;}
+  .phase-label{display:flex;flex-direction:column;align-items:flex-end;padding:24px 24px 24px 0;border-right:2px solid var(--border);position:relative;}
+  .phase-label::after{content:'';position:absolute;right:-6px;top:24px;width:10px;height:10px;border-radius:50%;background:var(--border);}
+  .phase-number{font-family:var(--mono);font-size:11px;letter-spacing:.15em;color:var(--muted);margin-bottom:4px;}
+  .phase-title{font-size:13px;font-weight:700;text-align:right;line-height:1.3;}
+  .phase-duration{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;text-align:right;}
+  .phase-content{padding:16px 0 16px 32px;display:flex;flex-direction:column;gap:8px;}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .2s;cursor:pointer;}
+  .step:hover{border-color:#30363d;}
+  .step-header{display:flex;align-items:center;gap:12px;padding:12px 16px;}
+  .step-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);min-width:28px;}
+  .step-title{font-size:13px;font-weight:600;flex:1;line-height:1.4;}
+  .step-time{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;}
+  .step-arrow{font-size:10px;color:var(--muted);transition:transform .2s;}
+  .editor-controls{display:none;gap:6px;}
+  .editor-controls button{border:1px solid #30363d;background:#0d1117;color:#8b949e;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;}
+  .editor-controls button:hover{color:var(--text);border-color:#4dabf7;}
+  body.edit-mode .editor-controls{display:flex;}
+  body.edit-mode .step{cursor:default;}
+  body.edit-mode .step-title,body.edit-mode .step-time,body.edit-mode .step-body{outline:1px dashed rgba(77,171,247,.4);outline-offset:2px;}
+  .step-image{max-width:100%;border-radius:8px;border:1px solid #30363d;margin-top:10px;display:block;}
+  .step-pdf-pill{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:7px 12px;background:#161b22;border:1px solid #30363d;border-radius:8px;font-family:var(--mono);font-size:12px;color:#c9d1d9;max-width:100%;}
+  .pdf-pill-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;}
+  .pdf-pill-open{background:rgba(77,171,247,.12);border:1px solid rgba(77,171,247,.3);color:#4dabf7;border-radius:5px;padding:3px 8px;font-size:12px;cursor:pointer;flex-shrink:0;}
+  .pdf-pill-open:hover{background:rgba(77,171,247,.25);}
+  #pdfPopup{display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.85);backdrop-filter:blur(4px);flex-direction:column;}
+  #pdfPopup.open{display:flex;}
+  #pdfPopupBar{height:48px;background:#161b22;border-bottom:1px solid #21262d;display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;}
+  #pdfPopupTitle{font-family:var(--mono);font-size:12px;color:#c9d1d9;}
+  #pdfPopupClose{background:rgba(224,49,49,.12);border:1px solid rgba(224,49,49,.3);color:#fa5252;border-radius:6px;padding:5px 14px;font-family:var(--mono);font-size:11px;cursor:pointer;}
+  #pdfPopupEmbed{flex:1;width:100%;border:none;display:block;}
+  .step.open .step-arrow{transform:rotate(180deg);}
+  .step-body{display:none;padding:12px 16px 14px 52px;font-size:12px;line-height:1.7;color:#8b949e;border-top:1px solid var(--border);}
+  .step.open .step-body{display:block;}
+  .step-body ul{padding-left:16px;margin-top:6px;}
+  .step-body li{margin-bottom:4px;}
+  .step-body .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-family:var(--mono);margin-right:4px;background:rgba(255,255,255,.06);color:#8b949e;}
+  .role-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:10px;margin-right:4px;font-weight:600;}
+  .decision{background:rgba(240,183,10,.08);border:1px solid rgba(240,183,10,.3);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:12px;}
+  .decision::before{content:'⚡ Decisão: ';font-weight:600;color:#f59f00;}
+  .p1 .phase-label{border-color:var(--f1);} .p1 .phase-label::after{background:var(--f1);} .p1 .phase-title{color:var(--f1);} .p1 .step-header{border-left:3px solid var(--f1);}
+  .p2 .phase-label{border-color:var(--f2);} .p2 .phase-label::after{background:var(--f2);} .p2 .phase-title{color:var(--f2);} .p2 .step-header{border-left:3px solid var(--f2);}
+  .p3 .phase-label{border-color:var(--f3);} .p3 .phase-label::after{background:var(--f3);} .p3 .phase-title{color:var(--f3);} .p3 .step-header{border-left:3px solid var(--f3);}
+  .p4 .phase-label{border-color:var(--f4);} .p4 .phase-label::after{background:var(--f4);} .p4 .phase-title{color:var(--f4);} .p4 .step-header{border-left:3px solid var(--f4);}
+  .p5 .phase-label{border-color:var(--f5);} .p5 .phase-label::after{background:var(--f5);} .p5 .phase-title{color:var(--f5);} .p5 .step-header{border-left:3px solid var(--f5);}
+  .p6 .phase-label{border-color:var(--f6);} .p6 .phase-label::after{background:var(--f6);} .p6 .phase-title{color:var(--f6);} .p6 .step-header{border-left:3px solid var(--f6);}
+  .p7 .phase-label{border-color:var(--f7);} .p7 .phase-label::after{background:var(--f7);} .p7 .phase-title{color:var(--f7);} .p7 .step-header{border-left:3px solid var(--f7);}
+  .connector-line{display:grid;grid-template-columns:200px 1fr;height:24px;}
+  .connector-line .vline{border-right:2px dashed var(--border);}
+  .roles-row{display:flex;gap:12px;margin-bottom:32px;justify-content:center;flex-wrap:wrap;}
+  .role-pill{border-radius:20px;padding:6px 14px;font-size:11px;font-family:var(--mono);font-weight:600;display:flex;align-items:center;gap:6px;}
+  .role-sf{background:rgba(29,125,210,.15);color:#4dabf7;border:1px solid rgba(29,125,210,.3);}
+  .role-sl{background:rgba(45,140,78,.15);color:#69db7c;border:1px solid rgba(45,140,78,.3);}
+  .role-sc{background:rgba(240,183,10,.15);color:#fcc419;border:1px solid rgba(240,183,10,.3);}
+  .role-tas{background:rgba(228,49,49,.2);color:#fa5252;border:1px solid rgba(228,49,49,.3);}
+
+  /* ── Email button ── */
+  .email-btn{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:6px 14px;border-radius:6px;background:rgba(29,125,210,.12);border:1px solid rgba(29,125,210,.35);color:#4dabf7;font-size:11px;font-family:var(--mono);font-weight:600;cursor:pointer;transition:background .15s,border-color .15s;user-select:none;}
+  .email-btn:hover{background:rgba(29,125,210,.22);border-color:rgba(29,125,210,.6);}
+
+  /* ── Modal ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:24px;}
+  .modal-overlay.active{display:flex;}
+  .modal{background:#161b22;border:1px solid #30363d;border-radius:12px;max-width:700px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:modalIn .18s ease;}
+  @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.97);}to{opacity:1;transform:none;}}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #21262d;flex-shrink:0;}
+  .modal-header-left{display:flex;flex-direction:column;gap:4px;}
+  .modal-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#4dabf7;}
+  .modal-title{font-size:14px;font-weight:700;color:var(--text);}
+  .modal-close{width:28px;height:28px;border-radius:6px;border:1px solid #30363d;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;transition:all .15s;}
+  .modal-close:hover{background:#21262d;color:var(--text);}
+  .modal-meta{display:flex;flex-direction:column;gap:4px;padding:12px 20px;border-bottom:1px solid #21262d;flex-shrink:0;}
+  .meta-row{display:flex;gap:8px;align-items:baseline;font-size:11px;}
+  .meta-label{font-family:var(--mono);color:var(--muted);min-width:80px;flex-shrink:0;}
+  .meta-val{color:#8b949e;line-height:1.5;}
+  .modal-body{overflow-y:auto;padding:20px;flex:1;}
+  .email-subject{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;}
+  .email-content{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px 18px;font-size:13px;line-height:1.8;color:#c9d1d9;white-space:pre-wrap;font-family:var(--sans);}
+  .fill{background:rgba(245,159,0,.15);border:1px dashed rgba(245,159,0,.5);border-radius:3px;padding:0 4px;color:#fcc419;font-family:var(--mono);font-size:11px;}
+  .modal-footer{padding:12px 20px;border-top:1px solid #21262d;display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;}
+  .btn-copy{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:6px;background:rgba(29,125,210,.15);border:1px solid rgba(29,125,210,.4);color:#4dabf7;font-size:12px;font-family:var(--mono);cursor:pointer;transition:all .15s;}
+  .btn-copy:hover{background:rgba(29,125,210,.28);}
+  .btn-copy.copied{color:#69db7c;border-color:rgba(45,140,78,.5);background:rgba(45,140,78,.12);}
+  .btn-close-footer{padding:7px 16px;border-radius:6px;background:#21262d;border:1px solid #30363d;color:var(--muted);font-size:12px;font-family:var(--mono);cursor:pointer;transition:all .15s;}
+  .btn-close-footer:hover{background:#30363d;color:var(--text);}
+  .template-form{display:grid;grid-template-columns:1fr;gap:10px;}
+  .template-form label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);font-family:var(--mono);}
+  .template-form input,.template-form textarea,.template-form select{background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;padding:8px 10px;font-size:12px;font-family:var(--sans);}
+  .template-form textarea{min-height:170px;resize:vertical;line-height:1.5;}
+  .template-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+
+  @media(max-width:640px){.phase,.connector-line{grid-template-columns:100px 1fr;}.phase-label{padding:16px 12px 16px 0;}.phase-content{padding-left:16px;}}
+</style>
+</head>
+<body>
+
+<nav id="app-nav">
+  <div class="brand">
+    <span class="brand-sup">ULSM · Gestão de Supermercados</span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa</span>
+  </div>
+  <div class="nav-right">
+    <span id="nav-editor-badge"><span class="dot"></span>EDITOR</span>
+    <button id="nav-editor-exit" onclick="window.__triggerEditorExit&&window.__triggerEditorExit()">Sair do editor</button>
+    <div class="nav-tabs">
+      <button class="nav-tab" id="tab-tracking" onclick="switchView('tracking')">📊 Tracking</button>
+      <button class="nav-tab active" id="tab-workflow" onclick="switchView('workflow')">🗺 Workflow</button>
+    </div>
+    <button id="nav-entrar-btn" onclick="openPinModal()" class="nav-tab">🔓 Entrar</button>
+  </div>
+</nav>
+
+<!-- PIN Modal -->
+<div id="pinModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:32px 28px;width:320px;animation:modalIn .2s ease;">
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:.15em;color:#7d8590;text-transform:uppercase;margin-bottom:12px;">Modo Editor</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:20px;">Introduza o PIN de acesso</div>
+    <input type="password" id="modalPinInput" placeholder="PIN..." autocomplete="off"
+      style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;padding:10px 14px;font-size:14px;font-family:var(--mono);outline:none;margin-bottom:8px;"
+      onkeydown="if(event.key==='Enter')confirmPinModal();if(event.key==='Escape')closePinModal();">
+    <div id="modalPinError" style="font-size:11px;color:#fa5252;font-family:var(--mono);min-height:18px;margin-bottom:12px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closePinModal()" style="flex:1;padding:9px;border:1px solid #30363d;border-radius:8px;background:transparent;color:#8b949e;font-family:var(--mono);font-size:11px;cursor:pointer;">Cancelar</button>
+      <button onclick="confirmPinModal()" style="flex:1;padding:9px;border:1px solid rgba(77,171,247,.4);border-radius:8px;background:rgba(77,171,247,.12);color:#4dabf7;font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF Popup -->
+<div id="pdfPopup">
+  <div id="pdfPopupBar">
+    <span id="pdfPopupTitle">📄</span>
+    <button id="pdfPopupClose" onclick="closePdfPopup()">✕ Fechar</button>
+  </div>
+  <embed id="pdfPopupEmbed" type="application/pdf" src="">
+</div>
+
+<div id="view-tracking"><div id="tracking-root"></div></div>
+<div id="view-workflow"><div class="workflow-inner">
+<header>
+  <p class="org">ULSM — Unidade Local de Saúde de Matosinhos</p>
+  <h1>Workflow de Revisão<br>do Supermercado Dupla Caixa</h1>
+  <p>Processo completo de criação e manutenção do stock dupla caixa</p>
+</header>
+
+<div class="roles-row">
+  <div class="role-pill role-sf">🔵 SF — Serviços Farmacêuticos</div>
+  <div class="role-pill role-sl">🟢 SL — Serviço de Logística</div>
+  <div class="role-pill role-sc">🟡 SC — Serviço Clínico</div>
+  <div class="role-pill role-tas">🔴 TAS — Técnico Auxiliar de Saúde</div>
+</div>
+
+<div class="editor-panel">
+  <div id="editorPinArea" style="display:none;"></div>
+  <button class="editor-btn edit-only" id="saveTemplateBtn">💾 Guardar template (JSON)</button>
+  <button class="editor-btn edit-only" id="loadTemplateBtn">📂 Carregar template (JSON)</button>
+  <button class="editor-btn edit-only" id="editEmailsBtn">✉ Editar templates de e-mail</button>
+  <button class="editor-btn edit-only" id="resetTemplateBtn">↺ Repor versão original</button>
+  <button class="editor-btn edit-only" id="exitWorkflowEditBtn" style="color:#fa5252;border-color:rgba(224,49,49,.4);">🔒 Sair do editor</button>
+  <input type="file" id="templateInput" accept="application/json" hidden>
+  <input type="file" id="imageInput" accept="image/*,application/pdf" hidden>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot" style="background:var(--f1)"></div> Fase 1 · Comunicação</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f2)"></div> Fase 2 · Consumos</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f3)"></div> Fase 3 · Validação / Protótipo</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f4)"></div> Fase 4 · Simulação</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f5)"></div> Fase 5 · Montagem</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f6)"></div> Fase 6 · Comunicação Final</div>
+  <div class="legend-item"><div class="dot" style="background:var(--f7)"></div> Fase 7 · Formação e Auditoria</div>
+</div>
+
+<div class="workflow">
+
+<!-- ════ FASE 1 ════ -->
+<div class="phase p1">
+  <div class="phase-label">
+    <div class="phase-number">FASE 01</div>
+    <div class="phase-title">Comunicação<br>&amp; Planeamento</div>
+    <div class="phase-duration">⏱ ~2 dias</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">1.1</span>
+        <span class="step-title">Criar pasta de trabalho partilhada (DCLF)</span>
+        <span class="step-time">rápido</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Criar pasta com nomenclatura: <code>Código Serviço - Serviço</code>.
+        <ul>
+          <li>Ficheiro de trabalho: <code>SiglaServiço_revisão_A TRABALHAR</code></li>
+          <li>Ficheiros enviados pela Gestão: <code>SiglaServiço_revisão_farmácia_V1</code> / <code>_clínico_V1</code></li>
+          <li>Ficheiros do Enfermeiro gestor: <code>SiglaServiço_revisão_farmácia_E</code> (E2, E3…)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">1.2</span>
+        <span class="step-title">Enviar e-mail às chefias — abertura do processo</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Via <code>gestao.supermercados@ulsm.min-saude.pt</code> para Enfermeiro(a) gestor(a).<br>
+        CC: Diretores SF/SL, supervisores, gestores de departamento.<br>
+        Temas: funcionamento supermercado, localização stocks, espaço, centros de custo, cronograma, RFID, grupos funcionais, higienização, validades, temperatura/humidade.
+        <br>
+        <button class="email-btn" onclick="openEmail('abertura', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">1.3</span>
+        <span class="step-title">Reunião com Enfermeiro Chefe — gestão de expectativas</span>
+        <span class="step-time">1 hora</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><span class="role-badge role-sc">SC</span><br><br>
+        Confirmar: localização supermercados farmacêutico/clínico, prateleiras, centros de custo, cronograma detalhado, implementação RFID, agrupamento por grupo funcional, enfermeiro substituto, higienização, responsável validades, controlo temperatura/humidade.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">1.4</span>
+        <span class="step-title">Enviar ata da reunião com cronograma</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        E-mail padrão com ata e cronograma de revisão (template 4 semanas). Alertar para cumprimento de prazos.
+        <br>
+        <button class="email-btn" onclick="openEmail('ata', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 2 ════ -->
+<div class="phase p2">
+  <div class="phase-label">
+    <div class="phase-number">FASE 02</div>
+    <div class="phase-title">Análise de<br>Consumos</div>
+    <div class="phase-duration">⏱ ~2 dias</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.1</span>
+        <span class="step-title">Extrair listagem de consumos do Data Discovery</span>
+        <span class="step-time">5 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Movimentos → Filtros → intervalo 12 meses → configurar campos (Código Estado, Serviço, Armazém; Valor/Consumo/Aquisição como métricas) → Ver detalhe → Guardar → Exportar "Listagem (Excel)".<br>
+        Guardar em <code>Revisão Supermercados</code> como <code>Movimentos_list_xxxx</code>.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.2</span>
+        <span class="step-title">Atualizar Excel de análise — folha "Consumos"</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Consulta → Atualizar. Importar listagem para o Excel de análise (Anexo I — Template consumos).
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.3</span>
+        <span class="step-title">Extrair listagem do index (Data Discovery → Supermercados)</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Supermercados → Supermercados Config. → Ver detalhe → Guardar → Exportar Excel.<br>
+        Guardar como <code>Supermercados Config._list_xxxx</code>.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.4</span>
+        <span class="step-title">Atualizar folha "Listagem" e tabela dinâmica "TD Consumos"</span>
+        <span class="step-time">3 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Consulta → Atualizar. Verificar campos da tabela dinâmica e atualizar TD Consumos.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.5</span>
+        <span class="step-title">Decisão: artigos a remover, adicionar, ajustar quantidades</span>
+        <span class="step-time">1 hora</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Análise por preço médio, consumo diário, autonomia e estado (stockável/não-stockável, autorizado, ativo/inativo).
+        <div class="decision">Autonomia mínima ≥ 8 dias. Baixa rotação → "Pedido SGICM". Antimicrobianos → validação farmacêutico CCIRA.</div>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.6</span>
+        <span class="step-title">Corrigir preços em branco e grupos funcionais</span>
+        <span class="step-time">10 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body"><span class="role-badge role-sf">SF</span></div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.7</span>
+        <span class="step-title">Criar proposta (nº caixas, tipo, quantidades) — protótipo inicial</span>
+        <span class="step-time">30 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Farmácia: validar antimicrobianos com CCIRA por e-mail antes de avançar.
+        <br>
+        <button class="email-btn" onclick="openEmail('ccira', event)">✉ Ver template de e-mail (CCIRA)</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">2.8</span>
+        <span class="step-title">Enviar proposta ao serviço (PDF + Excel)</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Para: Enfermeiro gestor. CC: Diretores SF/SL, supervisores, gestores.<br>
+        O(A) Enfermeiro(a) gestor(a) tem <strong>1 semana</strong> para responder, sob penalização de entrar no próximo ciclo.
+        <br>
+        <button class="email-btn" onclick="openEmail('proposta', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 3 ════ -->
+<div class="phase p3">
+  <div class="phase-label">
+    <div class="phase-number">FASE 03</div>
+    <div class="phase-title">Validação<br>&amp; Protótipo</div>
+    <div class="phase-duration">⏱ ~1,5 semanas</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.1</span>
+        <span class="step-title">Análise do feedback do serviço</span>
+        <span class="step-time">3 dias</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Verificar: quantidades alteradas, observações, produtos novos/excluídos, pedidos de posição, consumos reais.
+        <div class="decision">Proposta aceite? → E-mail proposta final. Necessita ajuste? → E-mail pedido de esclarecimento.</div>
+        <button class="email-btn" onclick="openEmail('ajuste', event)">✉ Ver template — Pedido de ajuste</button>
+        <button class="email-btn" style="margin-left:6px" onclick="openEmail('acordofinal', event)">✉ Ver template — Acordo final</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.2</span>
+        <span class="step-title">Caracterização do tipo de caixa por artigo</span>
+        <span class="step-time">variável</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Regras: não exceder altura prateleira, peso C/D ≤ 8 kg, última prateleira ≥ 15 cm do solo, sem luz direta.<br>
+        Farmácia: pensos na horizontal, última posição vazia, LASA/High Alert assinalados, frio em embalagem primária.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.3</span>
+        <span class="step-title">Simulação informática do layout (grupos funcionais)</span>
+        <span class="step-time">3 horas</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Anexo II — Protótipo simulação. Grupos funcionais + tipologia de caixa. Se espaço insuficiente, contactar Enfermeiro gestor.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.4</span>
+        <span class="step-title">Montagem de estantes no arquivo para simulação física</span>
+        <span class="step-time">2h + 15 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        TAS monta estantes no arquivo conforme planta; coloca caixas necessárias nas prateleiras.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">3.5</span>
+        <span class="step-title">Carregamento de artigos no sistema Supermarket (Glintt)</span>
+        <span class="step-time">~2 min/artigo</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Template importar supermercado → Atualizar consulta → Filtrar serviço → Corrigir dados → Exportar CSV com código do supermercado → Importar no Supermarket → Confirmar.<br>
+        Criar supermercado (pórtico: 1=HPH / 2=ACES) e serviço com cores por polo/especialidade.
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 4 ════ -->
+<div class="phase p4">
+  <div class="phase-label">
+    <div class="phase-number">FASE 04</div>
+    <div class="phase-title">Simulação</div>
+    <div class="phase-duration">⏱ ~2 dias</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.1</span>
+        <span class="step-title">Impressão e corte de kanbans provisórios (p/b)</span>
+        <span class="step-time">10 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body"><span class="role-badge role-tas">TAS</span><br><br>Kanbans provisórios em preto e branco para fase de simulação.</div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.2</span>
+        <span class="step-title">Colagem dos kanbans provisórios nas caixas</span>
+        <span class="step-time">30 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body"><span class="role-badge role-tas">TAS</span></div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.3</span>
+        <span class="step-title">Convidar Enfermeiro para validar simulação no arquivo</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Ausência de resposta = aprovação tácita para avançar com produção definitiva.
+        <br>
+        <button class="email-btn" onclick="openEmail('validacaosimulacao', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.4</span>
+        <span class="step-title">Validação física com Enfermeiro + TAS armazém</span>
+        <span class="step-time">1 hora</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sc">SC</span><span class="role-badge role-tas">TAS</span><br><br>
+        Verificar: tamanho de caixas, posições, organização por grupo funcional. Registar alterações.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.5</span>
+        <span class="step-title">Ajuste de kanbans (físicos e informáticos) se necessário</span>
+        <span class="step-time">30 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body"><span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span></div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">4.6</span>
+        <span class="step-title">Confirmação final da simulação por e-mail</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Solicitar confirmação escrita ao Enfermeiro gestor sobre simulação aprovada.
+        <br>
+        <button class="email-btn" onclick="openEmail('confirmacaosimulacao', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 5 ════ -->
+<div class="phase p5">
+  <div class="phase-label">
+    <div class="phase-number">FASE 05</div>
+    <div class="phase-title">Montagem</div>
+    <div class="phase-duration">⏱ ~1 semana</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.1</span>
+        <span class="step-title">Impressão definitiva de kanbans, costas, frentes, posições e identificações</span>
+        <span class="step-time">5 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Impressão a cores. Plastificar → Cortar (guilhotina laser) → Fita dupla face → Inserir nas caixas ou colar.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.2</span>
+        <span class="step-title">Colocação de etiquetas nas caixas (normas de colagem)</span>
+        <span class="step-time">8 horas</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Etiquetas plastificadas com fita dupla face dentro das caixas. Colar etiqueta na caixa. Caixas nas posições definitivas.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.3</span>
+        <span class="step-title">Marcar posições nas prateleiras (fita preta + etiquetas de posição)</span>
+        <span class="step-time">30 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Para armários de enfermaria: marcação feita no SC. Retirar papel de transporte das caixas.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.4</span>
+        <span class="step-title">Colagem de etiquetas LASA e HIGH ALERT (TSDT Farmácia)</span>
+        <span class="step-time">10 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="tag">TSDT Farmácia</span><br><br>
+        Apenas medicamentos farmacêuticos. HIGH ALERT requer confirmação por 2 operadores.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.5</span>
+        <span class="step-title">Validar data de montagem com Enfermeiro chefe</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><br><br>
+        Comunicar data prevista. Solicitar higienização prévia se necessário.
+        <br>
+        <button class="email-btn" onclick="openEmail('datamontagem', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.6</span>
+        <span class="step-title">Deslocação e montagem no serviço clínico</span>
+        <span class="step-time">1 dia</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><span class="role-badge role-sf">SF</span><br><br>
+        Estantes: montar, caixas na posição, etiquetas de posição.<br>
+        Armários: fita cola preta, caixas na posição.<br>
+        Transferir medicação/materiais antigos. Verificar validades.<br>
+        Afixar: número prateleira/letra armário, index, normas de picking (Anexo V), indicadores visuais (Anexo IV).<br>
+        Caixas sem stock → zona "Kanbans para repor" (Anexo VI).
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.7</span>
+        <span class="step-title">Impressão de tags RFID em lote e saída pelo pórtico</span>
+        <span class="step-time">10 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Impressão Etiquetas → Caixa → selecionar supermercado → Localização → Selecionar todos → Imprimir Etiquetas.<br>
+        <em>Nota: só após validação do stock e posições no serviço.</em>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.8</span>
+        <span class="step-title">Colagem de tags RFID e validação pelo responsável</span>
+        <span class="step-time">2 horas</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Verificar número da etiqueta com posição da caixa. Para superfícies rugosas: fita dupla face antes da tag. Quando só existe uma caixa, colocar tag com número mais baixo.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.9</span>
+        <span class="step-title">Inventário das tags RFID para validar existências</span>
+        <span class="step-time">15 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        OPL de inventário RFID. Sempre precedido e sucedido por inventário ao criar, inativar ou eliminar tags.
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">5.10</span>
+        <span class="step-title">Afixar normas de utilização e indicadores visuais</span>
+        <span class="step-time">2 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Anexo IV (Indicadores Visuais) e Anexo V (Norma de Picking) afixados no local.
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 6 ════ -->
+<div class="phase p6">
+  <div class="phase-label">
+    <div class="phase-number">FASE 06</div>
+    <div class="phase-title">Comunicação<br>Final &amp; Devolução</div>
+    <div class="phase-duration">⏱ ~2 dias</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">6.1</span>
+        <span class="step-title">E-mail de conclusão ao serviço clínico</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Informar: rotas, designações, cores das caixas, organização do stock, zonas de consolidação, esquema de reposição, regras RFID (exclusividade TAS/SL, pórticos piso -1). Enviar index em PDF.
+        <br>
+        <button class="email-btn" onclick="openEmail('conclusaoSC', event)">✉ Ver template de e-mail (SC)</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">6.2</span>
+        <span class="step-title">E-mail de conclusão aos SF e SL</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Para: TSDT, farmacêuticos. Informar rotas, cores, procedimento RSA por PDA (não satisfação de pedidos), responsáveis farmácia. Index disponível em TEAMS.
+        <br>
+        <button class="email-btn" onclick="openEmail('conclusaoSFSL', event)">✉ Ver template de e-mail (SF/SL)</button>
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">6.3</span>
+        <span class="step-title">Devolução de material excedente e limpeza de caixas/estantes</span>
+        <span class="step-time">7 horas</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-tas">TAS</span><br><br>
+        Artigos excedentes ou retirados → devolver aos armazéns respetivos.<br>
+        Artigos com prazo expirado ou sem condições → inutilizar.<br>
+        Registar no template de Devoluções (Registo de devolução de artigos do SC ao armazém).
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">6.4</span>
+        <span class="step-title">E-mail com resultados finais (excesso de stock e validades)</span>
+        <span class="step-time">1 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Partilhar dados de devoluções por excesso e prazos expirados. Reforçar responsabilidades do SC na gestão de validades e armazenamento.
+        <br>
+        <button class="email-btn" onclick="openEmail('resultadosfinais', event)">✉ Ver template de e-mail</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="connector-line"><div class="vline"></div></div>
+
+<!-- ════ FASE 7 ════ -->
+<div class="phase p7">
+  <div class="phase-label">
+    <div class="phase-number">FASE 07</div>
+    <div class="phase-title">Formação<br>&amp; Auditoria</div>
+    <div class="phase-duration">⏱ contínuo</div>
+  </div>
+  <div class="phase-content">
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">7.1</span>
+        <span class="step-title">Formação aos intervenientes do serviço clínico</span>
+        <span class="step-time">40–60 min</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Apresentação PowerPoint. Serviço preenche formulário de formação interna. Enviar questionário de avaliação (Office Forms).
+      </div>
+    </div>
+
+    <div class="step" onclick="toggle(this)">
+      <div class="step-header">
+        <span class="step-num">7.2</span>
+        <span class="step-title">Auditorias periódicas — verificação 5S</span>
+        <span class="step-time">periódico</span><span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <span class="role-badge role-sf">SF</span><span class="role-badge role-sl">SL</span><br><br>
+        Análise do cumprimento das normas. Verificar: Manutenção, Reposição e Utilização. Identificar Responsabilidades Partilhadas.<br>
+        Não conformidades → contactar responsáveis → ações corretivas → ações de melhoria.
+        <br>
+        <button class="email-btn" onclick="openEmail('auditoria', event)">✉ Ver template de e-mail (auditoria)</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /workflow -->
+
+<div style="text-align:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--border);">
+  <p style="font-family:var(--mono);font-size:11px;color:var(--muted);">Gestão de Supermercados · ULSM · Procedimento Sistema Distribuição Stock Dupla Caixa</p>
+</div>
+
+<!-- ══════════ EMAIL MODAL ══════════ -->
+<div class="modal-overlay" id="emailModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <span class="modal-label">✉ Template de E-mail</span>
+        <span class="modal-title" id="modalTitle"></span>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-meta" id="modalMeta"></div>
+    <div class="modal-body">
+      <div class="email-subject" id="modalSubjectLabel"></div>
+      <div class="email-content" id="modalBody"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-copy" id="copyBtn" onclick="copyEmail()">📋 Copiar texto</button>
+      <button class="btn-close-footer" onclick="closeModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="templateEditorModal" onclick="closeTemplateEditor(event)">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <span class="modal-label">✏️ Edição de Template</span>
+        <span class="modal-title">Template de e-mail</span>
+      </div>
+      <button class="modal-close" onclick="closeTemplateEditor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form class="template-form" id="templateEditorForm">
+        <label>Template
+          <select id="tplKey"></select>
+        </label>
+        <label>Título
+          <input id="tplTitle" type="text">
+        </label>
+        <label>De
+          <input id="tplRem" type="text">
+        </label>
+        <label>Para
+          <input id="tplPara" type="text">
+        </label>
+        <label>CC
+          <input id="tplCc" type="text">
+        </label>
+        <label>Assunto
+          <input id="tplAssunto" type="text">
+        </label>
+        <label>Corpo
+          <textarea id="tplBody"></textarea>
+        </label>
+      </form>
+      <div class="template-actions">
+        <button class="btn-copy" type="button" onclick="saveTemplateEditor()">💾 Guardar template</button>
+        <button class="btn-close-footer" type="button" onclick="closeTemplateEditor()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div>
+
+<script>
+// ── PINs de editor — adicionar/remover à vontade ─────────────────────────────
+window.__ULSM_EDITOR_PINS = ["JOAQUIM", "MARTA", "MARIANA", "JESSICA", "ANA"];
+// ─────────────────────────────────────────────────────────────────────────────
+
+window.__onEditorModeChange = function(isEditor) {
+  document.getElementById('nav-editor-badge').style.display = isEditor ? 'flex' : 'none';
+  document.getElementById('nav-editor-exit').style.display  = isEditor ? 'flex' : 'none';
+};
+
+// ── JSON session state (shared across views) ──────────────────────────────
+window.__ULSM_SESSION = { loaded: false, procs: [], filename: "" };
+
+let _trackingMounted = false;
+function switchView(view) {
+  if (!window.__ULSM_SESSION.loaded) return;
+  document.body.classList.toggle('view-tracking', view === 'tracking');
+  document.getElementById('tab-tracking').classList.toggle('active', view === 'tracking');
+  document.getElementById('tab-workflow').classList.toggle('active', view === 'workflow');
+}
+</script>
+
+<script>
+let editMode = false;
+let activeImageStep = null;
+
+function toggle(el){
+  if(editMode) return;
+  el.classList.toggle('open');
+}
+
+function toggle(el){
+  if(editMode) return;
+  el.classList.toggle('open');
+}
+
+const DEFAULT_TEMPLATES = {
+  abertura:{
+    title:'Comunicação de Abertura do Processo',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Revisão Supermercado — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que o supermercado referente ao serviço <FILL>[Nome do Serviço]</FILL> vai ser alvo de revisão.\n\nNecessitamos de agendar reunião com a seguinte ordem de trabalhos:\n\n1. Explicar como funciona um supermercado e que artigos podem constar (alta rotatividade e produtos emergentes);\n   1.1 Como ler o ficheiro de revisão de supermercado e como deve responder.\n2. Verificar localização dos supermercados de material farmacêutico e clínico;\n3. Verificar necessidade de adquirir prateleiras para armários (se aplicável);\n4. Verificar centros de custo;\n5. Estabelecer cronograma (explicação de etapas);\n6. Informar como irá decorrer o processo;\n7. Verificar agrupamento de artigos — arrumação por grupo funcional — para organização espacial;\n8. Enfermeiro substituto;\n9. Plano de higienização pré-montagem e manutenção do supermercado;\n10. Responsabilização de verificação de prazos de validade;\n11. Controlo de temperatura e humidade do supermercado.\n\nMais se informa que em anexo enviamos o cronograma previsto, bem como as responsabilidades.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  ata:{
+    title:'Ata da Reunião com Cronograma',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Ata Reunião — Revisão Stock Dupla Caixa [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio enviar o cronograma de revisão do stock de dupla caixa acordado em reunião, com a Enfermeira(o) gestora(o). Alertamos para a necessidade de cumprir as datas estabelecidas, sob penalização de a revisão ser adiada para o próximo ciclo de revisões.\n\nFicaram estabelecidos os seguintes temas:\n\n- Enfermeiro substituto: <FILL>_______________</FILL>\n- Centros de custo: <FILL>_______________</FILL>\n- Localização e organização dos produtos no supermercado.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  },
+  ccira:{
+    title:'Validação de Antimicrobianos — Farmacêutica CCIRA',
+    para:'ana.durães@ulsm.min-saude.pt',
+    cc:'—',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Validação Antimicrobianos — [Nome do Serviço]',
+    body:`Bom dia,\n\nVimos por este solicitar a validação dos antimicrobianos a constar no stock de dupla caixa do serviço <FILL>[Nome do Serviço]</FILL>.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  },
+  proposta:{
+    title:'Envio da Proposta de Consumos ao Serviço',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Proposta Revisão Supermercado — [Nome do Serviço] (PDF + Excel)',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio enviar o documento em formatos PDF e Excel com consumos e proposta da equipa da gestão de supermercados.\n\nA extração de consumos corresponde aos movimentos verificados nos últimos 12 meses. A análise dos consumos tem como princípio base a verificação de movimentos. Por este motivo, produtos que são solicitados a outros serviços não surgem nos dados e produtos desperdiçados por prazo de validade expirado surgem como consumidos pelo serviço. Alertamos para a necessidade de validar estes dados.\n\nOs antimicrobianos são alvo de análise pelo farmacêutico que integra a CCIRA e serão autorizados de acordo com os protocolos instituídos no serviço.\n\nConsideramos ainda importante explicar os conceitos pedido SGICM e produtos não stockáveis:\n\n- Pedido SGICM (PD): nestes artigos a gestão é da responsabilidade do serviço clínico. Correspondem a produtos de baixa rotação, multidoses ou artigos de justificação por doente que não justificam a implementação de dupla caixa, ainda assim é imprescindível a sua existência no serviço. Nestes casos a caixa será de cor diferente e as identificações têm cor laranja. A caixa deve permanecer no serviço e não tem etiqueta RFID.\n\n- Produtos não stockáveis: Estes produtos correspondem a artigos não stockáveis (não existe stock no armazém da logística/farmácia), assim, a retirada de kanban implica a criação de encomenda.\n\nSugerimos que esta proposta seja divulgada pelos Enfermeiros do serviço de forma a identificar lacunas na análise.\n\nPerante qualquer dúvida pode contactar a equipa de gestão de supermercados pelos contactos 3744 (SF) ou 2511 (SL), dependendo do tipo de artigo. No entanto, a resposta à proposta deverá ser sempre enviada através de e-mail.\n\nO(A) Enfermeiro(a) gestor(a) dispõe de 1 semana para enviar a proposta, sob penalização de só entrar no próximo ciclo de revisão.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  },
+  ajuste:{
+    title:'Pedido de Esclarecimento / Ajuste da Proposta',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Esclarecimento Proposta — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio solicitar o esclarecimento de algumas sugestões enviadas.\n\n<FILL>[Inserir motivo(s) — adaptar conforme necessário]</FILL>\n\nExemplos:\n- O produto solicitado não apresenta consumos que justifiquem a sua introdução em stock de dupla caixa.\n- As quantidades solicitadas não apresentam justificação. Cada produto tem autonomia mínima superior ou igual a 8 dias, o que não justifica o aumento da quantidade (aplicável a supermercados com rota diária).\n- Nos serviços de dose unitária a regra das autonomias de 8 dias não se aplica. Por norma cada produto deverá ter 2 a 3 dias de autonomia (a avaliar consoante o serviço).\n- Tendo em conta o espaço disponível não é possível colocar as referências solicitadas. Existe possibilidade de disponibilizar mais espaço?\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  acordofinal:{
+    title:'Divulgação de Proposta Final (Acordo Fechado)',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Acordo Final Supermercado — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que foi fechado o acordo final. Iremos proceder à simulação nos próximos dias e assim que esteja pronta enviaremos e-mail a solicitar a validação da simulação.\n\nEm anexo enviamos o acordo que será simulado em formato PDF.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  validacaosimulacao:{
+    title:'Convite para Validação da Simulação',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Validação da Simulação — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio solicitar o comparecimento do(a) Enfermeiro(a) gestor(a) no Serviço de Logística de forma a validar a simulação (organização espacial com etiquetas impressas a preto/branco) criada pela equipa da gestão de supermercados. Hora e data pode ser acordada através deste e-mail.\n\nA ausência de contacto será interpretada como resposta positiva para avançar com produção do supermercado, com impressão, corte e colagem de etiquetas definitivas.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  },
+  confirmacaosimulacao:{
+    title:'Confirmação da Simulação por E-mail',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Confirmação Simulação — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio solicitar a confirmação do(a) Enfermeiro(a) gestor(a) sobre a simulação visualizada a <FILL>[inserir data]</FILL>.\n\nJunto remeto a listagem da disposição dos artigos solicitada pela Enfermeiro(a).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  datamontagem:{
+    title:'Validação da Data de Montagem',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Coordenador TAS/AO · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Data de Montagem Supermercado — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que prevemos que será iniciada a montagem do stock de dupla caixa no dia <FILL>[data]</FILL>. Caso o(a) Enfermeiro(a) gestor(a) preconize que o espaço deve ser higienizado deve, por favor, agilizar com o serviço responsável pela higienização do espaço.\n\nSe a data enunciada causar alguma perturbação no serviço por favor responda a este e-mail com sugestão alternativa.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  conclusaoSC:{
+    title:'Conclusão da Revisão — E-mail ao Serviço Clínico',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Revisão Concluída — Stock Dupla Caixa [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa se encontra terminada.\n\nA rota passa a ter os supermercados <FILL>_________</FILL>, com as designações <FILL>____________</FILL>. As caixas do stock são <FILL>___cor___</FILL>. As caixas dos pedidos SGICM estão identificadas com a cor <FILL>__________</FILL>. De relembrar que correspondem a artigos cuja gestão é realizada pelos enfermeiros, devendo ser requisitados por pedido eletrónico (Pedido SGICM). Estas devem manter-se sempre no serviço.\n\nO stock está organizado da seguinte forma:\n<FILL>[Mencionar as zonas existentes]</FILL>\n\nAs zonas de consolidação de caixas vazias estão representadas na planta pelo triângulo amarelo e no local pela seguinte sinalética:\n\nAgradecemos o vosso cuidado na separação de material farmacêutico vs material clínico, de modo a evitar constrangimentos no processo e possíveis falhas no abastecimento.\n\nA organização do stock de dupla caixa está simulada na seguinte planta:\n[COLAR IMAGEM DA PLANTA]\n\nA reposição de material farmacêutico ocorre <FILL>[esquema de reposição]</FILL>.\n\nRelembro que o stock está equipado com etiquetas RFID, assim a rota tem de ser transportada exclusivamente pelos TAS do Serviço de Logística, que devem passar pelos pórticos sitos no piso -1. O procedimento de enviar caixas/kanbans através de TAS do próprio serviço está proibido.\n\nEnviamos em anexo o Index dos produtos farmacêuticos e clínicos em formatos PDF.\n\nA próxima etapa crucial é a formação dos utilizadores dos supermercados. Esta formação, com a duração de uma hora, será agendada de acordo com a vossa conveniência.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  conclusaoSFSL:{
+    title:'Conclusão da Revisão — E-mail aos SF e SL',
+    para:'tsdt.farmacia@ulsm.min-saude.pt · farmacêuticos_ulsm@ulsm.min-saude.pt',
+    cc:'filipe.sousa@ulsm.min-saude.pt · marta.lourenco@ulsm.min-saude.pt · vera.soares.lopes@ulsm.min-saude.pt',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Revisão Concluída SF/SL — [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa de <FILL>[inserir serviço]</FILL> se encontra terminada.\n\nA rota passa a ter os supermercados <FILL>_________</FILL>, com as designações <FILL>____________</FILL>. As caixas do stock são <FILL>___cor___</FILL>. As caixas dos pedidos SGICM estão identificadas com a cor <FILL>__________</FILL>.\n\nO stock está organizado da seguinte forma:\n<FILL>[Mencionar as zonas existentes]</FILL>\n\nA organização do stock de dupla caixa está simulada na seguinte planta:\n[COLAR IMAGEM DA PLANTA]\n\nA reposição de material farmacêutico ocorre <FILL>[esquema de reposição]</FILL>.\n\nRelembro que o stock está equipado com etiquetas RFID, assim a rota tem de ser transportada exclusivamente pelos TAS do Serviço de Logística, que devem passar pelos pórticos sitos no piso -1. O procedimento de enviar caixas/kanbans através de TAS do próprio serviço passa a ser proibido. A rota deve ser debitada com recurso a PDA, com movimento do tipo RSA (não deve ser consolidado pedido através do menu "satisfação de pedidos").\n\nNo caso dos Serviços Farmacêuticos, a existência de problemas deve ser reportada aos responsáveis (Ana Correia, Andreia, Rafaela, Marta Figueiredo e Flávia). O Index de material farmacêutico está disponível no TEAMS: Geral > Ficheiros > STOCKS Serviços (pasta vermelha).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  resultadosfinais:{
+    title:'Notificação com Resultados Finais (Devoluções e Validades)',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Resultados Finais — Devoluções e Validades [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nApós análise dos artigos dispensados, apresentamos os seguintes dados:\n\n<FILL>[COLAR DADOS RELATIVOS A DEVOLUÇÕES POR EXCESSO DE STOCK E RELATIVOS A PRAZOS DE VALIDADE EXPIRADOS]</FILL>\n\nA distribuição pelo método de dupla caixa é um bom método para garantir a gestão eficiente de stock, promovendo um controlo adequado das quantidades e reduzindo o desperdício. No entanto, para que este resulte da melhor maneira, é essencial que as regras sejam rigorosamente cumpridas. É da responsabilidade do serviço clínico garantir que os intervenientes do processo realizem a gestão de prazos de validade e cumpram as regras de armazenamento e de utilização.\n\nContamos com a colaboração de todos para assegurar que as normas são cumpridas e que este sistema continue a apresentar-se como uma mais valia.\n\n<FILL>[Notas adicionais sobre eventos não decorram como planeado, se aplicável]</FILL>\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`
+  },
+  auditoria:{
+    title:'Envio de Relatório de Auditoria 5S',
+    para:'Serviço Clínico: Enfermeiro(a) gestor(a)',
+    cc:'Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF',
+    rem:'gestao.supermercados@ulsm.min-saude.pt',
+    assunto:'Relatório de Auditoria 5S — Supermercado [Nome do Serviço]',
+    body:`Bom dia/Boa tarde,\n\nNo âmbito da Verificação 5S realizada, foi efetuada uma análise ao cumprimento das normas estabelecidas no "Supermercado | stock dupla caixa", tendo em conta as responsabilidades específicas de cada interveniente no processo, nomeadamente os responsáveis pela Manutenção, pela Reposição e pela Utilização do "Supermercado". No mesmo processo foram identificados pontos de contacto entre diferentes funções, os quais se traduzem em Responsabilidades Partilhadas, especialmente entre os Utilizadores e os responsáveis pela Reposição, e encontram-se devidamente assinalados na grelha de verificação.\n\nO principal objetivo desta análise é identificar o grau de conformidade com os procedimentos estabelecidos, promovendo a melhoria contínua e a responsabilidade clara dos intervenientes. A partilha feita em anexo dos resultados com os gestores do Serviço/Supermercado visa apoiar a tomada de decisões, corrigir eventuais não conformidades e reforçar o alinhamento entre as equipas, contribuindo para uma gestão mais eficiente e sustentável de todos os recursos.\n\nFico ao dispor para qualquer esclarecimento adicional ou dúvidas que possam surgir entretanto.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`
+  }
+};
+
+let T = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+
+function createMetaRow(label, value){
+  const row = document.createElement('div');
+  row.className = 'meta-row';
+
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'meta-label';
+  labelSpan.textContent = label;
+
+  const valueSpan = document.createElement('span');
+  valueSpan.className = 'meta-val';
+  valueSpan.textContent = value;
+
+  row.appendChild(labelSpan);
+  row.appendChild(valueSpan);
+  return row;
+}
+
+function renderEmailBody(text){
+  const fragment = document.createDocumentFragment();
+  const fillRegex = /<FILL>(.*?)<\/FILL>/gs;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = fillRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+    }
+
+    const fillSpan = document.createElement('span');
+    fillSpan.className = 'fill';
+    fillSpan.textContent = match[1];
+    fragment.appendChild(fillSpan);
+
+    lastIndex = fillRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+
+  return fragment;
+}
+
+function closeModal(event){
+  if(!event || event.target===document.getElementById('emailModal'))
+    document.getElementById('emailModal').classList.remove('active');
+}
+
+function copyEmail(){
+  const body = document.getElementById('modalBody').innerText;
+  const subj = document.getElementById('modalSubjectLabel').textContent;
+  navigator.clipboard.writeText(subj+'\n\n'+body).then(()=>{
+    const btn=document.getElementById('copyBtn');
+    btn.textContent='✓ Copiado!';
+    btn.classList.add('copied');
+    setTimeout(()=>{
+      btn.textContent='📋 Copiar texto';
+      btn.classList.remove('copied');
+    },2000);
+  });
+}
+
+
+function openTemplateEditor(initialKey){
+  const modal = document.getElementById('templateEditorModal');
+  const keySelect = document.getElementById('tplKey');
+
+  keySelect.replaceChildren(...Object.keys(T).map((key)=>{
+    const o=document.createElement('option');
+    o.value=key;
+    o.textContent=key;
+    return o;
+  }));
+
+  keySelect.value = (initialKey && T[initialKey]) ? initialKey : keySelect.value;
+  loadTemplateFields(keySelect.value);
+  modal.classList.add('active');
+}
+
+function closeTemplateEditor(event){
+  if(!event || event.target===document.getElementById('templateEditorModal')){
+    document.getElementById('templateEditorModal').classList.remove('active');
+  }
+}
+
+function loadTemplateFields(key){
+  const tpl = T[key];
+  if(!tpl) return;
+  document.getElementById('tplTitle').value = tpl.title || '';
+  document.getElementById('tplRem').value = tpl.rem || '';
+  document.getElementById('tplPara').value = tpl.para || '';
+  document.getElementById('tplCc').value = tpl.cc || '';
+  document.getElementById('tplAssunto').value = tpl.assunto || '';
+  document.getElementById('tplBody').value = tpl.body || '';
+}
+
+function saveTemplateEditor(){
+  const key = document.getElementById('tplKey').value;
+  if(!T[key]) return;
+  T[key] = {
+    title: document.getElementById('tplTitle').value,
+    rem: document.getElementById('tplRem').value,
+    para: document.getElementById('tplPara').value,
+    cc: document.getElementById('tplCc').value,
+    assunto: document.getElementById('tplAssunto').value,
+    body: document.getElementById('tplBody').value
+  };
+  saveToLocalStorage();
+}
+
+function createStepElement(stepData = {}){
+  const step = document.createElement('div');
+  step.className = 'step';
+  step.setAttribute('onclick', 'toggle(this)');
+  step.innerHTML = `
+    <div class="step-header">
+      <span class="step-num">0.0</span>
+      <span class="step-title">${stepData.title || 'Novo passo'}</span>
+      <span class="step-time">${stepData.time || '5 min'}</span><span class="step-arrow">▾</span>
+    </div>
+    <div class="step-body">${stepData.body || 'Editar detalhes deste passo.'}</div>
+  `;
+  attachStepControls(step);
+  return step;
+}
+
+function renumberAllPhases(){
+  document.querySelectorAll('.phase').forEach((phase, phaseIndex) => {
+    phase.querySelectorAll('.step').forEach((step, stepIndex) => {
+      const num = step.querySelector('.step-num');
+      if (num) num.textContent = `${phaseIndex + 1}.${stepIndex + 1}`;
+    });
+  });
+}
+
+function setEditableState(enabled){
+  document.querySelectorAll('.step-title, .step-time, .step-body').forEach(el => {
+    el.setAttribute('contenteditable', enabled ? 'true' : 'false');
+  });
+  if(enabled){
+    document.querySelectorAll('.step').forEach(step => step.classList.add('open'));
+  }
+}
+
+function saveToLocalStorage(){
+  const payload = JSON.stringify(serializeWorkflow());
+  localStorage.setItem('workflowTemplate', payload);
+  if(window.storage && typeof window.storage.set === 'function'){
+    window.storage.set('ulsm:workflowTemplate', payload, true).catch(()=>{});
+  }
+}
+
+async function loadFromStorage(){
+  if(window.storage && typeof window.storage.get === 'function'){
+    try {
+      const r = await window.storage.get('ulsm:workflowTemplate', true);
+      if(r?.value) return r.value;
+    } catch {}
+  }
+  return localStorage.getItem('workflowTemplate');
+}
+
+function serializeWorkflow(){
+  return {
+    emailTemplates: T,
+    phases: [...document.querySelectorAll('.phase')].map(phase => ({
+      steps: [...phase.querySelectorAll('.step')].map(step => ({
+        title: step.querySelector('.step-title')?.textContent || '',
+        time: step.querySelector('.step-time')?.textContent || '',
+        body: step.querySelector('.step-body')?.innerHTML || ''
+      }))
+    }))
+  };
+}
+
+function applyTemplate(data){
+  if(data?.emailTemplates){
+    T = JSON.parse(JSON.stringify(data.emailTemplates));
+  }
+  if(!data?.phases) return;
+  const phases = [...document.querySelectorAll('.phase')];
+  data.phases.forEach((phaseData, idx) => {
+    const phase = phases[idx];
+    if(!phase || !Array.isArray(phaseData.steps)) return;
+    const content = phase.querySelector('.phase-content');
+    content.querySelectorAll('.step').forEach(step => step.remove());
+    phaseData.steps.forEach(stepData => content.appendChild(createStepElement(stepData)));
+  });
+  renumberAllPhases();
+  setEditableState(editMode);
+}
+
+function attachStepControls(step){
+  const header = step.querySelector('.step-header');
+  if(!header || header.querySelector('.editor-controls')) return;
+
+  const controls = document.createElement('div');
+  controls.className = 'editor-controls';
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = '+ passo';
+  addBtn.onclick = (event) => {
+    event.stopPropagation();
+    const phaseContent = step.closest('.phase-content');
+    const newStep = createStepElement();
+    step.insertAdjacentElement('afterend', newStep);
+    renumberAllPhases();
+    setEditableState(editMode);
+    saveToLocalStorage();
+  };
+
+  const imageBtn = document.createElement('button');
+  imageBtn.type = 'button';
+  imageBtn.textContent = '🖼 imagem';
+  imageBtn.onclick = (event) => {
+    event.stopPropagation();
+    activeImageStep = step;
+    document.getElementById('imageInput').click();
+  };
+
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.textContent = '🗑';
+  delBtn.onclick = (event) => {
+    event.stopPropagation();
+    const phase = step.closest('.phase');
+    const total = phase.querySelectorAll('.step').length;
+    if(total <= 1){
+      alert('Cada fase precisa de pelo menos 1 passo.');
+      return;
+    }
+    step.remove();
+    renumberAllPhases();
+    saveToLocalStorage();
+  };
+
+  controls.append(addBtn, imageBtn, delBtn);
+  header.appendChild(controls);
+}
+
+function openEmail(key, event){
+  event.stopPropagation();
+  if(editMode){
+    openTemplateEditor(key);
+    return;
+  }
+  const t = T[key]; if(!t) return;
+
+  document.getElementById('modalTitle').textContent = t.title;
+
+  const meta = document.getElementById('modalMeta');
+  meta.replaceChildren(
+    createMetaRow('De:', t.rem),
+    createMetaRow('Para:', t.para)
+  );
+  if (t.cc && t.cc !== '—') {
+    meta.appendChild(createMetaRow('CC:', t.cc));
+  }
+
+  document.getElementById('modalSubjectLabel').textContent = 'Assunto: ' + t.assunto;
+
+  const modalBody = document.getElementById('modalBody');
+  modalBody.replaceChildren(renderEmailBody(t.body));
+
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = '📋 Copiar texto';
+  btn.classList.remove('copied');
+  document.getElementById('emailModal').classList.add('active');
+}
+
+function openPdfPopup(src, name){
+  document.getElementById('pdfPopupEmbed').src = src;
+  document.getElementById('pdfPopupTitle').textContent = '📄 ' + name;
+  document.getElementById('pdfPopup').classList.add('open');
+}
+function closePdfPopup(){
+  document.getElementById('pdfPopup').classList.remove('open');
+  document.getElementById('pdfPopupEmbed').src = '';
+}
+
+function openPinModal(){
+  const modal = document.getElementById('pinModal');
+  modal.style.display = 'flex';
+  document.getElementById('modalPinInput').value = '';
+  document.getElementById('modalPinError').textContent = '';
+  setTimeout(()=>document.getElementById('modalPinInput').focus(), 50);
+}
+function closePinModal(){
+  document.getElementById('pinModal').style.display = 'none';
+  document.getElementById('modalPinInput').value = '';
+  document.getElementById('modalPinError').textContent = '';
+}
+function confirmPinModal(){
+  const input = document.getElementById('modalPinInput');
+  const errEl = document.getElementById('modalPinError');
+  const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
+  if(pins.length === 0 || !pins.includes(input.value.trim())) {
+    errEl.textContent = 'PIN invalido. Tente novamente.';
+    input.value = '';
+    input.focus();
+    return;
+  }
+  closePinModal();
+  editMode = true;
+  document.body.classList.add('edit-mode');
+  const btn = document.getElementById('nav-entrar-btn');
+  btn.classList.add('active');
+  btn.textContent = '🔒 Editor';
+  btn.onclick = null;
+  setEditableState(true);
+}
+
+function activateWorkflowEditor(){
+  openPinModal();
+}
+
+function deactivateWorkflowEditor(){
+  editMode = false;
+  document.body.classList.remove('edit-mode');
+  const btn = document.getElementById('nav-entrar-btn');
+  btn.classList.remove('active');
+  btn.textContent = '🔓 Entrar';
+  btn.onclick = openPinModal;
+  setEditableState(false);
+}
+
+function initEditorMode(){
+  document.querySelectorAll('.step').forEach(attachStepControls);
+  renumberAllPhases();
+
+  // Entrar button is in the nav bar; PIN handled via modal
+
+  document.getElementById('exitWorkflowEditBtn').addEventListener('click', deactivateWorkflowEditor);
+
+  document.getElementById('saveTemplateBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(serializeWorkflow(), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'workflow-template.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('loadTemplateBtn').addEventListener('click', () => {
+    document.getElementById('templateInput').click();
+  });
+
+  document.getElementById('templateInput').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if(!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      applyTemplate(data);
+      saveToLocalStorage();
+    } catch {
+      alert('Template inválido.');
+    }
+  });
+
+  document.getElementById('imageInput').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if(!file || !activeImageStep) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const body = activeImageStep.querySelector('.step-body');
+      if(file.type === 'application/pdf') {
+        const pdfData = reader.result;
+        const pill = document.createElement('div');
+        pill.className = 'step-pdf-pill';
+        pill.innerHTML = `<span>📄</span><span class="pdf-pill-name">${file.name}</span><button class="pdf-pill-open" title="Abrir PDF">&#x2197;</button>`;
+        pill.querySelector('.pdf-pill-open').addEventListener('click', () => openPdfPopup(pdfData, file.name));
+        body.appendChild(pill);
+      } else {
+        const img = document.createElement('img');
+        img.src = reader.result;
+        img.className = 'step-image';
+        body.appendChild(img);
+      }
+      activeImageStep.classList.add('open');
+      saveToLocalStorage();
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  });
+
+  document.getElementById('editEmailsBtn').addEventListener('click', () => openTemplateEditor());
+
+  document.getElementById('tplKey').addEventListener('change', (event) => loadTemplateFields(event.target.value));
+
+  document.getElementById('resetTemplateBtn').addEventListener('click', () => {
+    localStorage.removeItem('workflowTemplate');
+    if(window.storage && typeof window.storage.delete === 'function'){
+      window.storage.delete('ulsm:workflowTemplate', true).catch(()=>{});
+    }
+    location.reload();
+  });
+
+  document.addEventListener('input', (event) => {
+    if(!editMode) return;
+    if(event.target.closest('.step-title, .step-time, .step-body')){
+      saveToLocalStorage();
+    }
+  });
+
+  // Load saved template from storage (window.storage preferred, fallback to localStorage)
+  loadFromStorage().then(saved => {
+    if(saved){ try { applyTemplate(JSON.parse(saved)); } catch {} }
+  });
+}
+
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal({target:document.getElementById('emailModal')}); closeTemplateEditor({target:document.getElementById('templateEditorModal')}); }});
+document.addEventListener('DOMContentLoaded', initEditorMode);
+</script>
+
+<script type="text/babel" data-presets="react">
+if (typeof window.storage === 'undefined') {
+  window.storage = {
+    async get(key, shared) {
+      const k=(shared?'shared:':'local:')+key, v=localStorage.getItem(k);
+      if(v===null) throw new Error('Key not found: '+key);
+      return {key,value:v,shared:!!shared};
+    },
+    async set(key,value,shared) { localStorage.setItem((shared?'shared:':'local:')+key,value); return {key,value,shared:!!shared}; },
+    async delete(key,shared) { localStorage.removeItem((shared?'shared:':'local:')+key); return {key,deleted:true,shared:!!shared}; },
+    async list(prefix,shared) {
+      const p=(shared?'shared:':'local:')+(prefix||'');
+      return {keys:Object.keys(localStorage).filter(k=>k.startsWith(p)).map(k=>k.slice(shared?7:6)),prefix,shared:!!shared};
+    }
+  };
+}
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA: PHASES, STEPS, EMAIL TEMPLATES
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EMAIL_TEMPLATES = {
+  abertura: {
+    label: "Abertura do processo",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Revisão Supermercado — [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio informar que o supermercado referente ao serviço ___[Nome do Serviço]___ vai ser alvo de revisão.\n\nNecessitamos de agendar reunião com a seguinte ordem de trabalhos:\n1. Explicar como funciona um supermercado e que artigos podem constar;\n2. Verificar localização dos supermercados farmacêutico e clínico;\n3. Verificar necessidade de adquirir prateleiras para armários;\n4. Verificar centros de custo;\n5. Estabelecer cronograma;\n6. Informar como irá decorrer o processo e implementação RFID;\n7. Verificar agrupamento por grupo funcional;\n8. Enfermeiro substituto;\n9. Plano de higienização pré-montagem;\n10. Responsabilização de verificação de prazos de validade;\n11. Controlo de temperatura e humidade.\n\nMais se informa que em anexo enviamos o cronograma previsto, bem como as responsabilidades.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`,
+  },
+  ata: {
+    label: "Ata da reunião + cronograma",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Ata Reunião — Revisão Stock Dupla Caixa [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio enviar o cronograma de revisão do stock de dupla caixa acordado em reunião. Alertamos para a necessidade de cumprir as datas estabelecidas, sob penalização de a revisão ser adiada para o próximo ciclo.\n\nFicaram estabelecidos os seguintes temas:\n- Enfermeiro substituto: _______________\n- Centros de custo: _______________\n- Localização e organização dos produtos no supermercado.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`,
+  },
+  ccira: {
+    label: "Validação antimicrobianos (CCIRA)",
+    para: "ana.durães@ulsm.min-saude.pt",
+    cc: "—",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Validação Antimicrobianos — [Nome do Serviço]",
+    body: `Bom dia,\n\nVimos por este solicitar a validação dos antimicrobianos a constar no stock de dupla caixa do serviço ___[Nome do Serviço]___.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`,
+  },
+  proposta: {
+    label: "Envio da proposta ao serviço",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Proposta Revisão Supermercado — [Nome do Serviço] (PDF + Excel)",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio enviar o documento em formatos PDF e Excel com consumos e proposta da equipa da gestão de supermercados.\n\nA extração de consumos corresponde aos movimentos verificados nos últimos 12 meses. Por este motivo, produtos solicitados a outros serviços não surgem nos dados e produtos desperdiçados por prazo expirado surgem como consumidos pelo serviço. Alertamos para a necessidade de validar estes dados.\n\nOs antimicrobianos são alvo de análise pelo farmacêutico da CCIRA.\n\n- Pedido SGICM (PD): artigos de baixa rotação que não justificam dupla caixa. Caixa de cor diferente, sem etiqueta RFID.\n- Produtos não stockáveis: a retirada de kanban implica criação de encomenda.\n\nO(A) Enfermeiro(a) gestor(a) dispõe de 1 semana para enviar a proposta, sob penalização de só entrar no próximo ciclo de revisão.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`,
+  },
+  ajuste: {
+    label: "Pedido de ajuste / esclarecimento",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Esclarecimento Proposta — [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio solicitar o esclarecimento de algumas sugestões enviadas.\n\n___[Inserir motivo(s)]___\n\nExemplos:\n- O produto solicitado não apresenta consumos que justifiquem a introdução em stock de dupla caixa.\n- As quantidades não apresentam justificação. Autonomia mínima ≥ 8 dias (rotas diárias) ou 2-3 dias (dose unitária).\n- Tendo em conta o espaço disponível não é possível colocar as referências solicitadas.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`,
+  },
+  acordofinal: {
+    label: "Acordo final fechado",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Acordo Final Supermercado — [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio informar que foi fechado o acordo final. Iremos proceder à simulação nos próximos dias e assim que esteja pronta enviaremos e-mail a solicitar a validação.\n\nEm anexo enviamos o acordo simulado em formato PDF.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`,
+  },
+  validacaosimulacao: {
+    label: "Convite validação da simulação",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Validação da Simulação — [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio solicitar o comparecimento do(a) Enfermeiro(a) gestor(a) no Serviço de Logística para validar a simulação (organização espacial com etiquetas a preto/branco). Hora e data pode ser acordada através deste e-mail.\n\nA ausência de contacto será interpretada como resposta positiva para avançar com produção definitiva.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`,
+  },
+  confirmacaosimulacao: {
+    label: "Confirmação da simulação",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Confirmação Simulação — [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio solicitar a confirmação do(a) Enfermeiro(a) gestor(a) sobre a simulação visualizada a ___[inserir data]___.\n\nJunto remeto a listagem da disposição dos artigos solicitada.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`,
+  },
+  datamontagem: {
+    label: "Validação data de montagem",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Coordenador TAS/AO · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Data de Montagem Supermercado — [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio informar que prevemos iniciar a montagem do stock de dupla caixa no dia ___[data]___. Caso o(a) Enfermeiro(a) gestor(a) preconize que o espaço deve ser higienizado deve, por favor, agilizar com o serviço responsável.\n\nSe a data causar alguma perturbação, por favor responda com sugestão alternativa.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`,
+  },
+  conclusaoSC: {
+    label: "Conclusão — Serviço Clínico",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Revisão Concluída — Stock Dupla Caixa [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa se encontra terminada.\n\nA rota passa a ter os supermercados _________, com as designações ____________. As caixas do stock são ___cor___. As caixas dos pedidos SGICM estão identificadas com a cor __________.\n\nO stock está organizado da seguinte forma:\n___[Mencionar as zonas existentes]___\n\nA reposição de material farmacêutico ocorre ___[esquema de reposição]___.\n\nO stock está equipado com etiquetas RFID. A rota deve ser transportada exclusivamente pelos TAS do Serviço de Logística, pelos pórticos do piso -1.\n\nEnviamos em anexo o Index em formatos PDF.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`,
+  },
+  conclusaoSFSL: {
+    label: "Conclusão — SF e SL",
+    para: "tsdt.farmacia@ulsm.min-saude.pt · farmacêuticos_ulsm@ulsm.min-saude.pt",
+    cc: "filipe.sousa@ulsm.min-saude.pt · marta.lourenco@ulsm.min-saude.pt · vera.soares.lopes@ulsm.min-saude.pt",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Revisão Concluída SF/SL — [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa de ___[inserir serviço]___ se encontra terminada.\n\nA rota passa a ter os supermercados _________, com as designações ____________.\n\nA rota deve ser debitada com recurso a PDA, com movimento do tipo RSA (não consolidar pedido via "satisfação de pedidos").\n\nProblemas no SF devem ser reportados aos responsáveis (Ana Correia, Andreia, Rafaela, Marta Figueiredo e Flávia). O Index está disponível no TEAMS: Geral > Ficheiros > STOCKS Serviços (pasta vermelha).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`,
+  },
+  resultadosfinais: {
+    label: "Resultados finais (devoluções/validades)",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Resultados Finais — Devoluções e Validades [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nApós análise dos artigos dispensados, apresentamos os seguintes dados:\n\n___[COLAR DADOS — DEVOLUÇÕES POR EXCESSO E PRAZOS EXPIRADOS]___\n\nA distribuição pelo método de dupla caixa promove uma gestão eficiente de stock, reduzindo o desperdício. Para que resulte da melhor maneira, é essencial que as regras sejam rigorosamente cumpridas. É da responsabilidade do serviço clínico garantir a gestão de prazos de validade e o cumprimento das regras de armazenamento.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados`,
+  },
+  auditoria: {
+    label: "Relatório de auditoria 5S",
+    para: "Serviço Clínico: Enfermeiro(a) gestor(a)",
+    cc: "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+    rem: "gestao.supermercados@ulsm.min-saude.pt",
+    assunto: "Relatório de Auditoria 5S — Supermercado [Nome do Serviço]",
+    body: `Bom dia/Boa tarde,\n\nNo âmbito da Verificação 5S realizada, foi efetuada uma análise ao cumprimento das normas do "Supermercado | stock dupla caixa", tendo em conta as responsabilidades de Manutenção, Reposição e Utilização. Foram identificados pontos de contacto com Responsabilidades Partilhadas, devidamente assinalados na grelha de verificação.\n\nO objetivo é identificar o grau de conformidade, promovendo a melhoria contínua e a responsabilidade clara dos intervenientes.\n\nFico ao dispor para qualquer esclarecimento.\n\nCom os melhores cumprimentos,\nGestão de Supermercados`,
+  },
+};
+
+const PHASES = [
+  {
+    id: 1, code: "F01", color: "#2d8c4e", label: "Comunicação & Planeamento", duration: "~2 dias",
+    steps: [
+      { id: "1.1", title: "Criar pasta de trabalho partilhada (DCLF)", role: ["SF","SL"], time: "rápido",
+        instructions: "Criar pasta na área partilhada com a nomenclatura: Código Serviço - Serviço.\n\nRegras de nomenclatura:\n• Ficheiro de trabalho: SiglaServiço_revisão_A TRABALHAR\n• Ficheiros da Gestão: SiglaServiço_revisão_farmácia_V1 e _clínico_V1\n• Ficheiros do Enf. gestor: SiglaServiço_revisão_farmácia_E (E2, E3…)" },
+      { id: "1.2", title: "Enviar e-mail às chefias — abertura do processo", role: ["SF","SL"], time: "2 min", emailKey: "abertura",
+        instructions: "Enviar via gestao.supermercados@ulsm.min-saude.pt para o Enfermeiro(a) gestor(a).\n\nCC obrigatório: Diretores SF/SL, Coordenador TSDT, Enf.º gestor c/ funções de direção, Gestor de departamento, Gestor SF.\n\nTemas a cobrir: funcionamento supermercado, localização stocks, espaço, centros de custo, cronograma, RFID, grupos funcionais, higienização, validades, temperatura/humidade." },
+      { id: "1.3", title: "Reunião com Enfermeiro Chefe — gestão de expectativas", role: ["SF","SL","SC"], time: "1 hora",
+        instructions: "Confirmar em reunião:\n• Localização dos supermercados farmacêutico e clínico\n• Necessidade de prateleiras adicionais\n• Centros de custo\n• Cronograma detalhado (atualizar com o Enf. gestor)\n• Implementação RFID\n• Agrupamento por grupo funcional (dar proposta de grupos)\n• Identificar enfermeiro substituto\n• Plano de higienização pré-montagem\n• Responsável pela verificação de prazos de validade\n• Controlo de temperatura e humidade" },
+      { id: "1.4", title: "Enviar ata da reunião com cronograma", role: ["SF","SL"], time: "2 min", emailKey: "ata",
+        instructions: "E-mail padrão com ata e cronograma de revisão (template de 4 semanas).\n\nAlertar para cumprimento de prazos sob penalização de adiamento para o próximo ciclo." },
+    ],
+  },
+  {
+    id: 2, code: "F02", color: "#1c7ed6", label: "Análise de Consumos", duration: "~2 dias",
+    steps: [
+      { id: "2.1", title: "Extrair listagem de consumos do Data Discovery", role: ["SF","SL"], time: "5 min",
+        instructions: "Movimentos → Movimentos → ⚙ Filtros → intervalo 12 meses\n\nConfigurar campos:\n• Filtros: Código Estado, Código Serviço, Código Armazém\n• Linhas: Armazém\n• Métricas: Valor, Valor Consumo, Valor Aquisição\n\nExportar: símbolo abaixo da engrenagem → Listagem (Excel) → Confirmar\n\nGuardar como Movimentos_list_xxxx na pasta Revisão Supermercados." },
+      { id: "2.2", title: "Atualizar Excel de análise — folha \"Consumos\"", role: ["SF"], time: "2 min",
+        instructions: "Abrir o Excel de análise (Anexo I — Template consumos).\nSelecionar a folha Consumos → Consulta → Atualizar." },
+      { id: "2.3", title: "Extrair listagem do index (Data Discovery → Supermercados)", role: ["SF","SL"], time: "2 min",
+        instructions: "Supermercados → Supermercados Config. → Ver detalhe → Guardar\n\nExportar: Listagem (Excel)\n\nGuardar como Supermercados Config._list_xxxx." },
+      { id: "2.4", title: "Atualizar folha \"Listagem\" e tabela dinâmica \"TD Consumos\"", role: ["SF"], time: "3 min",
+        instructions: "Folha Listagem → Consulta → Atualizar\n\nFolha TD Consumos → clicar na tabela dinâmica → Atualizar\n\nVerificar campos selecionados." },
+      { id: "2.5", title: "Decisão: artigos a remover, adicionar, ajustar quantidades", role: ["SF","SL"], time: "1 hora",
+        instructions: "Analisar por: preço médio, consumo diário médio, autonomia, estado (stockável/não-stockável, autorizado, ativo/inativo).\n\n⚡ Regras de decisão:\n• Autonomia mínima ≥ 8 dias (rota diária) ou 2-3 dias (dose unitária)\n• Baixa rotação → classificar como Pedido SGICM\n• Antimicrobianos SF → validação obrigatória pela farmacêutica CCIRA antes de avançar" },
+      { id: "2.6", title: "Corrigir preços em branco e grupos funcionais", role: ["SF"], time: "10 min",
+        instructions: "Verificar coluna de preço médio e preencher valores em branco.\n\nVerificar e corrigir o grupo funcional de cada artigo (necessário para simulação de layout por grupos)." },
+      { id: "2.7", title: "Criar proposta (nº caixas, tipo, quantidades) — protótipo inicial", role: ["SF","SL"], time: "30 min", emailKey: "ccira",
+        instructions: "Definir artigo a artigo:\n• Número de caixas (normalmente 2)\n• Tipo de caixa (A, B, C, D, O, EL, EM, CF)\n• Quantidade por caixa\n\nFarmácia: antes de enviar ao serviço, enviar antimicrobianos para validação pela farmacêutica CCIRA (ana.durães@ulsm.min-saude.pt)." },
+      { id: "2.8", title: "Enviar proposta ao serviço (PDF + Excel)", role: ["SF","SL"], time: "2 min", emailKey: "proposta",
+        instructions: "Enviar PDF e Excel ao Enfermeiro(a) gestor(a).\n\n⏰ Prazo: o Enf. gestor tem 1 semana para responder, sob penalização de entrada no próximo ciclo de revisão." },
+    ],
+  },
+  {
+    id: 3, code: "F03", color: "#7950f2", label: "Validação & Protótipo", duration: "~1,5 semanas",
+    steps: [
+      { id: "3.1", title: "Análise do feedback do serviço", role: ["SF","SL"], time: "3 dias", emailKey: "ajuste",
+        instructions: "Verificar:\n• Quantidades alteradas (com justificação)\n• Observações\n• Produtos a introduzir (verificar consumos reais)\n• Produtos a excluir (verificar porquê)\n• Solicitações sobre posições\n\n⚡ Decisão:\n→ Proposta aceite: enviar e-mail acordo final\n→ Necessita ajuste: enviar e-mail pedido de esclarecimento" },
+      { id: "3.2", title: "Enviar e-mail de acordo final ao serviço", role: ["SF","SL"], time: "2 min", emailKey: "acordofinal",
+        instructions: "Só avançar quando houver acordo fechado com o Enf. gestor.\n\nEnviar acordo em PDF como anexo." },
+      { id: "3.3", title: "Caracterização do tipo de caixa por artigo", role: ["SF","SL"], time: "variável",
+        instructions: "Regras gerais:\n• Não exceder altura de prateleira\n• Peso caixas C/D ≤ 8 kg\n• Última prateleira ≥ 15 cm do solo\n• Caixas A/O: não colocar nas prateleiras superiores nem inferiores\n• Artigos pesados: não nas prateleiras superiores\n• Sem luz direta\n\nFarmácia (cuidados especiais):\n• Pensos na horizontal (princípio ativo)\n• Última posição do stock medicamentos: deixar vazia (substituições)\n• Medicamentos de frio: dispensar em embalagem primária\n• Assinalar LASA e HIGH ALERT" },
+      { id: "3.4", title: "Simulação informática do layout (grupos funcionais)", role: ["SF","SL"], time: "3 horas",
+        instructions: "Usar Anexo II — Protótipo simulação (Excel).\n\nConsiderar:\n1. Grupos funcionais (artigos do mesmo grupo ficam juntos)\n2. Tipologia de caixa (tamanho + peso)\n3. Ergonomia (artigos pesados a altura de cintura)\n\nSe espaço insuficiente: contactar Enf. gestor para aumentar espaço disponível ou reduzir artigos/quantidades." },
+      { id: "3.5", title: "Informar TAS para montagem de estantes no arquivo", role: ["TAS"], time: "2 horas",
+        instructions: "TAS monta as estantes no arquivo conforme a planta do serviço.\n\nApós montagem: TAS coloca as caixas necessárias nas prateleiras conforme simulação (15 min).\n\nValidar as posições: verificar se as caixas cabem nas posições definidas." },
+      { id: "3.6", title: "Carregamento de artigos no sistema Supermarket (Glintt)", role: ["SF","SL"], time: "~2 min/artigo",
+        instructions: "1. Abrir template importar supermercado\n2. Atualizar consulta dinâmica\n3. Filtrar pelo código do serviço\n4. Corrigir os dados\n5. Exportar CSV com código do supermercado\n6. Confirmar 'Ok' e 'Sim'\n7. Abrir Supermarket → Importar Ficheiro → Confirmar\n\nCriação de supermercado:\n• Pórtico: 1 para HPH / 2 para ACES\n• Descrição: letras maiúsculas sem acentos\n• AKA: máx. 8 caracteres, sem pontos\n• Cores: seguir tabela de cores por polo/especialidade" },
+    ],
+  },
+  {
+    id: 4, code: "F04", color: "#f59f00", label: "Simulação", duration: "~2 dias",
+    steps: [
+      { id: "4.1", title: "Impressão e corte de kanbans provisórios (p/b)", role: ["TAS"], time: "10 min",
+        instructions: "Imprimir kanbans em preto e branco para fase de simulação.\n\nNão usar cor — são provisórios para validação espacial." },
+      { id: "4.2", title: "Colagem dos kanbans provisórios nas caixas", role: ["TAS"], time: "30 min",
+        instructions: "Colar kanbans provisórios nas caixas correspondentes às posições da simulação." },
+      { id: "4.3", title: "Convidar Enfermeiro para validar simulação no arquivo", role: ["SF"], time: "1 min", emailKey: "validacaosimulacao",
+        instructions: "E-mail padrão a solicitar presença do Enf. gestor no arquivo do Serviço de Logística.\n\n⚠️ Ausência de resposta = aprovação tácita para avançar com produção definitiva." },
+      { id: "4.4", title: "Validação física com Enfermeiro + TAS armazém", role: ["SC","TAS"], time: "1 hora",
+        instructions: "Verificar:\n• Tamanho de caixas adequado a cada artigo\n• Posições fazem sentido para o utilizador\n• Organização por grupo funcional\n• Zona 'Kanbans para repor' adequada\n\nRegistar todas as alterações solicitadas." },
+      { id: "4.5", title: "Ajuste de kanbans (físicos e informáticos) se necessário", role: ["SF","SL"], time: "30 min",
+        instructions: "Atualizar no Supermarket as posições alteradas.\n\nReimprimir e recolocar kanbans provisórios nas posições corrigidas." },
+      { id: "4.6", title: "Confirmação final da simulação por e-mail", role: ["SF"], time: "2 min", emailKey: "confirmacaosimulacao",
+        instructions: "Solicitar confirmação escrita ao Enf. gestor sobre a simulação aprovada.\n\nAnexar listagem da disposição dos artigos." },
+    ],
+  },
+  {
+    id: 5, code: "F05", color: "#e03131", label: "Montagem", duration: "~1 semana",
+    steps: [
+      { id: "5.1", title: "Impressão definitiva de kanbans, costas, frentes, posições", role: ["SF","SL"], time: "5 min",
+        instructions: "Impressão a cores na impressora a cores.\n\nPlastificar → Cortar com guilhotina laser → Fita dupla face TESA → Inserir dentro das caixas ou colar por fora.\n\nRetirar etiqueta do papel de transporte das caixas." },
+      { id: "5.2", title: "Colocação das etiquetas nas caixas (normas de colagem)", role: ["TAS"], time: "8 horas",
+        instructions: "Processo de colagem:\n1. Plastificar as etiquetas\n2. Cortar\n3. Colocar fita dupla face (TESA)\n4. Colocar dentro das caixas\n5. Colar na caixa exterior\n6. Colocar caixas nas posições definitivas" },
+      { id: "5.3", title: "Marcar posições nas prateleiras (fita preta + etiquetas de posição)", role: ["TAS"], time: "30 min",
+        instructions: "Estantes standard: colocar fita cola preta para marcar posições + etiquetas de posição nas prateleiras.\n\nArmários de enfermaria: marcação com fita cola preta e etiquetas de posição feita no serviço clínico (não no arquivo)." },
+      { id: "5.4", title: "Colagem de etiquetas LASA e HIGH ALERT (TSDT Farmácia)", role: ["TSDT"], time: "10 min",
+        instructions: "Apenas para medicamentos farmacêuticos.\n\nLASA (Look Alike Sound Alike): assinalar na caixa e na etiqueta.\n\nHIGH ALERT: requer confirmação por 2 operadores na utilização." },
+      { id: "5.5", title: "Validar data de montagem com Enfermeiro chefe", role: ["SF"], time: "1 min", emailKey: "datamontagem",
+        instructions: "Comunicar data prevista ao Enf. gestor.\n\nSolicitar higienização prévia do espaço se necessário.\n\nSe a data causar perturbação, aguardar sugestão alternativa." },
+      { id: "5.6", title: "Deslocação e montagem no serviço clínico", role: ["TAS","SF"], time: "1 dia",
+        instructions: "Estantes:\n• Montar estantes\n• Caixas na posição certa\n• Colar etiqueta de posição\n\nArmários:\n• Fita cola preta para marcar posições\n• Caixas na posição certa\n\nTransferência:\n• Medicação/materiais antigos → novas caixas\n• Sem stock → virar caixa de baixo para baixo\n• Stock para 1 caixa → colocar e virar a outra\n\nVerificar prazos de validade e condições.\n\nAfixar:\n• Número prateleira/letra armário\n• Index (porta do armário ou sala)\n• Normas de picking (Anexo V)\n• Indicadores visuais (Anexo IV)\n\nCaixas sem stock → zona 'Kanbans para repor' (Anexo VI)" },
+      { id: "5.7", title: "Impressão de tags RFID em lote e saída pelo pórtico", role: ["SF","SL"], time: "10 min",
+        instructions: "⚠️ Só imprimir depois de validado o stock e posições no serviço.\n\nImpressão Etiquetas → Caixa → selecionar supermercado → aumentar itens por página → filtrar → Localização → Selecionar todos → Imprimir Etiquetas → Sim\n\nAs tags geradas precisam de sair pelo pórtico para serem ativadas." },
+      { id: "5.8", title: "Colagem de tags RFID e validação pelo responsável", role: ["TAS"], time: "2 horas",
+        instructions: "Normas de colagem RFID:\n• Verificar número da etiqueta com posição da caixa\n• Para superfícies rugosas (envelopes, tubos): aplicar fita dupla face antes\n• Quando só existe uma caixa: colocar tag com número mais baixo\n• Quando há 2 caixas: cada uma tem a sua tag" },
+      { id: "5.9", title: "Inventário das tags RFID para validar existências", role: ["TAS"], time: "15 min",
+        instructions: "OPL de inventário RFID.\n\nSempre precedido e sucedido por inventário ao:\n• Criar novas tags\n• Inativar tags\n• Eliminar tags\n\nGarantir que todas as tags criadas estão fisicamente no serviço." },
+      { id: "5.10", title: "Afixar normas de utilização e indicadores visuais", role: ["TAS"], time: "2 min",
+        instructions: "Afixar no local:\n• Anexo IV — Indicadores Visuais\n• Anexo V — Norma de Picking no Supermercado\n\nGarantir que estão visíveis e acessíveis para todos os utilizadores." },
+    ],
+  },
+  {
+    id: 6, code: "F06", color: "#0ca678", label: "Comunicação Final & Devolução", duration: "~2 dias",
+    steps: [
+      { id: "6.1", title: "E-mail de conclusão ao serviço clínico", role: ["SF","SL"], time: "1 min", emailKey: "conclusaoSC",
+        instructions: "Informar:\n• Rotas e designações dos supermercados\n• Cores das caixas (stock vs SGICM)\n• Organização do stock por zonas\n• Zonas de consolidação (triângulo amarelo na planta)\n• Esquema de reposição farmacêutica\n• Regras RFID: exclusividade TAS/SL, pórticos piso -1\n\nAnexar Index em PDF." },
+      { id: "6.2", title: "E-mail de conclusão aos SF e SL", role: ["SF","SL"], time: "1 min", emailKey: "conclusaoSFSL",
+        instructions: "Para: TSDT + farmacêuticos.\n\nInformar:\n• Rotas, designações, cores\n• Procedimento RSA por PDA (não satisfação de pedidos)\n• Responsáveis para reporte de problemas\n• Index disponível em TEAMS: Geral > Ficheiros > STOCKS Serviços (pasta vermelha)" },
+      { id: "6.3", title: "Devolução de material excedente e limpeza de caixas/estantes", role: ["TAS"], time: "7 horas",
+        instructions: "Artigos excedentes ou retirados → devolver aos armazéns respetivos (SF ou SL).\n\nArtigos com prazo expirado ou sem condições → inutilizar.\n\nRegistar no template de Devoluções (Registo de devolução de artigos do SC ao armazém):\n• Excesso de stock\n• Fora do prazo / sem condições" },
+      { id: "6.4", title: "E-mail com resultados finais (devoluções e validades)", role: ["SF","SL"], time: "1 min", emailKey: "resultadosfinais",
+        instructions: "Enviar dados consolidados das devoluções:\n• Quantidade e custo de artigos por excesso de stock\n• Quantidade e custo de artigos por prazo expirado\n\nReforçar responsabilidades do SC na gestão de validades e armazenamento." },
+    ],
+  },
+  {
+    id: 7, code: "F07", color: "#ae3ec9", label: "Formação & Auditoria", duration: "contínuo",
+    steps: [
+      { id: "7.1", title: "Formação aos intervenientes do serviço clínico", role: ["SF","SL"], time: "40–60 min",
+        instructions: "Apresentação em PowerPoint com:\n• Funcionamento do sistema dupla caixa\n• Normas de utilização (picking, kanbans para repor)\n• Regras RFID\n• Casos práticos\n\nServiço preenche formulário de formação interna.\n\nEnviar questionário de avaliação (Office Forms):\nhttps://forms.office.com/Pages/ResponsePage.aspx?id=CEbIIh3wxUaAJGPMli5fUbQH0K98ewFHk-G3-YoM3Z5UMUw3OVZaRFNXSkFIMTRET1U4WkI5UTdMVy4u" },
+      { id: "7.2", title: "Auditorias periódicas — verificação 5S", role: ["SF","SL"], time: "periódico", emailKey: "auditoria",
+        instructions: "Análise de cumprimento das normas do stock dupla caixa.\n\nVerificar:\n• Manutenção (SF/SL)\n• Reposição (TAS SL)\n• Utilização (SC)\n• Responsabilidades Partilhadas\n\nEnviar relatório com grelha de verificação ao Enf. gestor e chefias.\n\nNão conformidades detetadas:\n1. Contactar responsáveis dos intervenientes\n2. Definir ações corretivas\n3. Acompanhar implementação\n4. Registar na próxima auditoria" },
+    ],
+  },
+];
+
+const TEAM = ["Ana Correia", "Mariana Bastos", "Jessica Silveira", "Marta Figueiredo", "Joaquim Camelo"];
+
+const STATUS_CFG = {
+  ok:      { label: "No prazo",  dot: "#69db7c", bg: "rgba(45,140,78,.18)",   border: "rgba(45,140,78,.45)"   },
+  warning: { label: "Em risco",  dot: "#fcc419", bg: "rgba(245,159,0,.18)",   border: "rgba(245,159,0,.45)"   },
+  late:    { label: "Atrasado",  dot: "#fa5252", bg: "rgba(224,49,49,.18)",   border: "rgba(224,49,49,.45)"   },
+  done:    { label: "Concluído", dot: "#38d9a9", bg: "rgba(12,166,120,.15)",  border: "rgba(12,166,120,.4)"   },
+  paused:  { label: "Em pausa", dot: "#7d8590", bg: "rgba(125,133,144,.12)", border: "rgba(125,133,144,.35)" },
+};
+
+const ROLE_COLORS = { SF:"#4dabf7", SL:"#69db7c", SC:"#fcc419", TAS:"#fa5252", TSDT:"#da77f2" };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STORAGE — JSON FILE (time-sharing via pasta partilhada)
+// ─────────────────────────────────────────────────────────────────────────────
+const STORAGE_VERSION = 2;
+const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
+
+function isObj(v) { return !!v && typeof v === "object" && !Array.isArray(v); }
+function toSafeText(v, max = 240) {
+  return typeof v === "string" ? v.trim().slice(0, max) : "";
+}
+function toSafeDate(v) {
+  if(typeof v !== "string") return "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "";
+}
+function toSafeIso(v) {
+  if(typeof v !== "string") return new Date().toISOString();
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+function sanitizeHistory(v) {
+  if(!Array.isArray(v)) return [];
+  return v
+    .filter(isObj)
+    .map(item => ({ ts: toSafeIso(item.ts), action: toSafeText(item.action, 400) }))
+    .filter(item => item.action)
+    .slice(-250);
+}
+
+function sanitizeEmailLog(v) {
+  if(!Array.isArray(v)) return [];
+  return v
+    .filter(isObj)
+    .map(item => ({
+      ts: toSafeIso(item.ts),
+      key: toSafeText(item.key, 64),
+      label: toSafeText(item.label, 180),
+      to: toSafeText(item.to, 220),
+      cc: toSafeText(item.cc, 220),
+      subject: toSafeText(item.subject, 220),
+    }))
+    .slice(-250);
+}
+
+function sanitizeProc(proc, idx = 0) {
+  if(!isObj(proc)) return null;
+  const phaseNum = Number.isInteger(proc.currentPhase) ? proc.currentPhase : 1;
+  const currentPhase = Math.min(Math.max(phaseNum, 1), PHASES.length);
+  const phase = PHASES[currentPhase - 1];
+  const maxStep = Math.max(0, (phase?.steps?.length || 1) - 1);
+  const stepNum = Number.isInteger(proc.currentStep) ? proc.currentStep : 0;
+  const currentStep = Math.min(Math.max(stepNum, 0), maxStep);
+  const status = Object.prototype.hasOwnProperty.call(STATUS_CFG, proc.status) ? proc.status : "ok";
+
+  const clean = {
+    id: Number.isFinite(proc.id) ? proc.id : Date.now() + idx,
+    service: toSafeText(proc.service, 180),
+    costCenter: toSafeText(proc.costCenter, 120),
+    responsible: toSafeText(proc.responsible, 120),
+    coResponsible: toSafeText(proc.coResponsible, 120),
+    startDate: toSafeDate(proc.startDate) || new Date().toISOString().slice(0,10),
+    targetDate: toSafeDate(proc.targetDate),
+    currentPhase,
+    currentStep,
+    status,
+    notes: toSafeText(proc.notes, 4000),
+    emailLog: sanitizeEmailLog(proc.emailLog),
+    history: sanitizeHistory(proc.history),
+    createdAt: toSafeIso(proc.createdAt),
+  };
+  if(clean.history.length === 0) {
+    clean.history = [{ ts: new Date().toISOString(), action: "Processo carregado" }];
+  }
+  return clean;
+}
+
+function sanitizeProcs(raw) {
+  if(!Array.isArray(raw)) return [];
+  return raw.map((p, i) => sanitizeProc(p, i)).filter(Boolean);
+}
+
+function createStorageEnvelope(list) {
+  return { version: STORAGE_VERSION, updatedAt: new Date().toISOString(), data: list };
+}
+
+// Load from a File object (user picked via <input type=file>)
+async function loadFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        const raw = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.data) ? parsed.data : null);
+        if (!raw) { reject("Formato inválido."); return; }
+        resolve({ procs: sanitizeProcs(raw), meta: isObj(parsed) ? parsed : {} });
+      } catch { reject("Ficheiro JSON inválido ou corrompido."); }
+    };
+    reader.onerror = () => reject("Erro ao ler o ficheiro.");
+    reader.readAsText(file);
+  });
+}
+
+// Export current data — asks user to pick save location (Chrome/Edge)
+// Falls back to normal download on unsupported browsers
+async function exportToFile(list) {
+  const envelope = createStorageEnvelope(sanitizeProcs(list));
+  const json = JSON.stringify(envelope, null, 2);
+
+  // File System Access API — lets user choose folder (Chrome/Edge)
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: BACKUP_FILENAME,
+        types: [{ description: "Ficheiro JSON", accept: { "application/json": [".json"] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(json);
+      await writable.close();
+      return; // success — no fallback needed
+    } catch (e) {
+      if (e.name === "AbortError") return; // user cancelled — do nothing
+      // Other error — fall through to download fallback
+    }
+  }
+
+  // Fallback: normal download (Firefox, Safari, older browsers)
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = BACKUP_FILENAME;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
+function canUnlockEditor(pin) {
+  const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
+  return pins.length > 0 && pins.includes(pin.trim());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function daysUntil(d) { if(!d) return null; return Math.round((new Date(d)-new Date())/86400000); }
+function fmtDate(iso) { if(!iso) return "—"; return new Date(iso).toLocaleDateString("pt-PT",{day:"2-digit",month:"short",year:"numeric"}); }
+function fmtDateTime(iso) { if(!iso) return "—"; return new Date(iso).toLocaleDateString("pt-PT",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
+
+function totalSteps() { return PHASES.reduce((a,p)=>a+p.steps.length,0); }
+function completedSteps(proc) {
+  const donePhaseSteps = PHASES.slice(0, proc.currentPhase-1).reduce((a,p)=>a+p.steps.length,0);
+  return donePhaseSteps + (proc.currentStep||0);
+}
+function totalPct(proc) { return Math.round((completedSteps(proc)/totalSteps())*100); }
+
+function EMPTY_PROC() {
+  return { id: Date.now(), service:"", costCenter:"", responsible:"", coResponsible:"",
+    startDate: new Date().toISOString().slice(0,10), targetDate:"",
+    currentPhase:1, currentStep:0, status:"ok", notes:"",
+    emailLog:[], history:[{ ts: new Date().toISOString(), action:"Processo criado" }],
+    createdAt: new Date().toISOString() };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SMALL UI COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+const IS = { background:"#0d1117", border:"1px solid #30363d", borderRadius:6, color:"#e6edf3",
+  padding:"8px 12px", fontSize:13, width:"100%", fontFamily:"inherit", outline:"none" };
+const LS = { fontSize:10, color:"#7d8590", fontFamily:"'IBM Plex Mono',monospace", marginBottom:4,
+  display:"block", letterSpacing:"0.06em", textTransform:"uppercase" };
+
+function RoleBadge({role}) {
+  const c = ROLE_COLORS[role]||"#7d8590";
+  return <span style={{background:c+"22",border:`1px solid ${c}55`,color:c,borderRadius:4,
+    padding:"1px 6px",fontSize:10,fontFamily:"monospace",fontWeight:700,marginRight:3}}>{role}</span>;
+}
+
+function ProgressBar({value,color,h=4}) {
+  return <div style={{background:"rgba(255,255,255,.07)",borderRadius:99,height:h,overflow:"hidden"}}>
+    <div style={{width:`${value}%`,height:"100%",borderRadius:99,background:color,transition:"width .4s"}} />
+  </div>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP DETAIL DRAWER (instructions + email template + mark done)
+// ─────────────────────────────────────────────────────────────────────────────
+function StepDrawer({ step, phaseColor, procService, onMarkDone, isDone, isCurrent, isEditor, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const email = step.emailKey ? EMAIL_TEMPLATES[step.emailKey] : null;
+
+  const copyEmail = () => {
+    if(!email) return;
+    const text = `Assunto: ${email.assunto}\n\nPara: ${email.para}\nCC: ${email.cc}\n\n${email.body}`;
+    navigator.clipboard.writeText(text).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),2200); });
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.7)", backdropFilter:"blur(5px)",
+      zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
+      onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ background:"#161b22", border:`1px solid ${phaseColor}44`, borderRadius:14,
+        width:"100%", maxWidth:640, maxHeight:"90vh", display:"flex", flexDirection:"column",
+        boxShadow:`0 0 60px ${phaseColor}22, 0 24px 60px rgba(0,0,0,.7)`,
+        animation:"fadeUp .18s ease" }}>
+
+        {/* Header */}
+        <div style={{ padding:"16px 20px", borderBottom:"1px solid #21262d",
+          display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexShrink:0 }}>
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+              <span style={{ fontFamily:"monospace", fontSize:11, color:phaseColor, fontWeight:700 }}>{step.id}</span>
+              {step.role?.map(r=><RoleBadge key={r} role={r}/>)}
+              <span style={{ fontFamily:"monospace", fontSize:10, color:"#555" }}>{step.time}</span>
+            </div>
+            <div style={{ fontSize:15, fontWeight:700, color:"#e6edf3", lineHeight:1.3 }}>{step.title}</div>
+          </div>
+          <button onClick={onClose} style={{ background:"#21262d", border:"1px solid #30363d",
+            color:"#7d8590", borderRadius:6, padding:"6px 10px", cursor:"pointer", flexShrink:0 }}>✕</button>
+        </div>
+
+        <div style={{ overflowY:"auto", flex:1, padding:"20px" }}>
+          {/* Instructions */}
+          <div style={{ fontSize:11, color:"#7d8590", fontFamily:"monospace", marginBottom:8 }}>INSTRUÇÕES</div>
+          <div style={{ background:"#0d1117", border:"1px solid #21262d", borderRadius:8,
+            padding:"14px 16px", fontSize:13, lineHeight:1.8, color:"#c9d1d9",
+            whiteSpace:"pre-wrap", marginBottom: email ? 20 : 0, fontFamily:"inherit" }}>
+            {step.instructions}
+          </div>
+
+          {/* Email template */}
+          {email && (
+            <div>
+              <div style={{ fontSize:11, color:"#7d8590", fontFamily:"monospace", marginBottom:10 }}>TEMPLATE DE E-MAIL</div>
+              <div style={{ background:"#0d1117", border:"1px solid #21262d", borderRadius:8, overflow:"hidden" }}>
+                <div style={{ padding:"10px 14px", borderBottom:"1px solid #21262d",
+                  display:"flex", flexDirection:"column", gap:4 }}>
+                  {[["De", email.rem],["Para", email.para],["CC", email.cc],["Assunto", email.assunto]].map(([l,v])=>(
+                    v && v !== "—" && <div key={l} style={{ display:"flex", gap:8, fontSize:11 }}>
+                      <span style={{ color:"#555", fontFamily:"monospace", minWidth:54 }}>{l}:</span>
+                      <span style={{ color:"#8b949e" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding:"14px 16px", fontSize:13, lineHeight:1.8, color:"#c9d1d9",
+                  whiteSpace:"pre-wrap", fontFamily:"inherit", maxHeight:220, overflowY:"auto" }}>
+                  {email.body}
+                </div>
+              </div>
+              <button onClick={copyEmail} style={{
+                marginTop:10, width:"100%", padding:"9px 0",
+                background: copied ? "rgba(45,140,78,.2)" : "rgba(29,125,210,.15)",
+                border: `1px solid ${copied ? "rgba(45,140,78,.5)" : "rgba(29,125,210,.4)"}`,
+                color: copied ? "#69db7c" : "#4dabf7",
+                borderRadius:8, fontSize:12, fontFamily:"monospace", cursor:"pointer", fontWeight:700,
+                transition:"all .2s",
+              }}>{copied ? "✓ Texto copiado!" : "📋 Copiar texto do e-mail"}</button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer action */}
+        <div style={{ padding:"14px 20px", borderTop:"1px solid #21262d", flexShrink:0 }}>
+          {isDone ? (
+            <div style={{ textAlign:"center", fontSize:13, color:"#38d9a9", fontFamily:"monospace", fontWeight:700 }}>
+              ✓ Passo concluído
+            </div>
+          ) : isCurrent && isEditor ? (
+            <button onClick={onMarkDone} style={{
+              width:"100%", padding:"11px 0",
+              background: phaseColor+"22", border:`1px solid ${phaseColor}66`,
+              color: phaseColor, borderRadius:8, fontSize:13, fontFamily:"monospace",
+              cursor:"pointer", fontWeight:700, transition:"all .2s",
+            }}>✓ Marcar como concluído e avançar</button>
+          ) : isCurrent ? (
+            <div style={{ textAlign:"center", fontSize:12, color:"#555", fontFamily:"monospace" }}>
+              🔒 Inicia sessão como editor para marcar este passo.
+            </div>
+          ) : (
+            <div style={{ textAlign:"center", fontSize:12, color:"#555", fontFamily:"monospace" }}>
+              Este passo ainda não está ativo no processo.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROCESS DETAIL PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
+  const [draft, setDraft] = useState(()=>JSON.parse(JSON.stringify(proc)));
+  const [tab, setTab] = useState("steps");
+  const [activeStep, setActiveStep] = useState(null);
+  const [newNote, setNewNote] = useState("");
+  const upd = (f,v) => setDraft(d=>({...d,[f]:v}));
+
+  const phase = PHASES[draft.currentPhase-1];
+  const pct = totalPct(draft);
+
+  const openStep = (phaseIdx, stepIdx) => {
+    setActiveStep({ phaseIdx, stepIdx });
+  };
+
+  const markDone = () => {
+    const ph = PHASES[draft.currentPhase-1];
+    const currentStepData = ph.steps[draft.currentStep];
+    let updated = { ...draft };
+    if (currentStepData?.emailKey) {
+      const tmpl = EMAIL_TEMPLATES[currentStepData.emailKey];
+      if (tmpl) {
+        updated.emailLog = [...(updated.emailLog||[]), {
+          ts: new Date().toISOString(),
+          key: currentStepData.emailKey,
+          label: tmpl.label,
+          to: tmpl.para,
+          cc: tmpl.cc !== "—" ? tmpl.cc : "",
+          subject: tmpl.assunto,
+        }];
+      }
+    }
+    if (draft.currentStep < ph.steps.length - 1) {
+      const nextStep = ph.steps[draft.currentStep + 1];
+      updated.currentStep = draft.currentStep + 1;
+      updated.history = [...(updated.history||[]), { ts: new Date().toISOString(),
+        action: `✓ Concluído: ${ph.steps[draft.currentStep].title} → Em curso: ${nextStep.title}` }];
+    } else if (draft.currentPhase < PHASES.length) {
+      const nextPhase = PHASES[draft.currentPhase];
+      updated.currentPhase = draft.currentPhase + 1;
+      updated.currentStep = 0;
+      updated.history = [...(updated.history||[]), { ts: new Date().toISOString(),
+        action: `✓ Concluída ${ph.code} — ${ph.label} → Iniciado ${nextPhase.code} — ${nextPhase.label}` }];
+    } else {
+      updated.status = "done";
+      updated.history = [...(updated.history||[]), { ts: new Date().toISOString(), action: "🏁 Processo concluído!" }];
+    }
+    setDraft(updated);
+    setActiveStep(null);
+    if(isEditor) onSave(updated);
+  };
+
+  const addNote = () => {
+    if(!newNote.trim()) return;
+    const updated = { ...draft, history: [...(draft.history||[]),
+      { ts: new Date().toISOString(), action: `📝 ${newNote.trim()}`, isNote:true }] };
+    setDraft(updated);
+    setNewNote("");
+    if(isEditor) onSave(updated);
+  };
+
+  const activeStepData = activeStep
+    ? { step: PHASES[activeStep.phaseIdx].steps[activeStep.stepIdx], phaseColor: PHASES[activeStep.phaseIdx].color }
+    : null;
+
+  const isStepDone = (phaseId, stepIdx) =>
+    phaseId < draft.currentPhase || (phaseId === draft.currentPhase && stepIdx < draft.currentStep);
+  const isStepCurrent = (phaseId, stepIdx) =>
+    phaseId === draft.currentPhase && stepIdx === draft.currentStep;
+
+  const days = daysUntil(draft.targetDate);
+  const cfg = STATUS_CFG[draft.status];
+
+  return (
+    <>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)",
+      zIndex:200, display:"flex", alignItems:"stretch", justifyContent:"flex-end" }}
+      onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ background:"#161b22", borderLeft:`3px solid ${phase.color}`,
+        width:"100%", maxWidth:720, display:"flex", flexDirection:"column",
+        boxShadow:"-16px 0 60px rgba(0,0,0,.6)", animation:"slideIn .2s ease",
+        overflowY:"hidden" }}>
+
+        {/* Header */}
+        <div style={{ padding:"20px 24px", borderBottom:"1px solid #21262d", flexShrink:0 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+                <span style={{ width:10, height:10, borderRadius:"50%", background:cfg.dot,
+                  boxShadow:`0 0 8px ${cfg.dot}`, flexShrink:0 }} />
+                <span style={{ fontSize:18, fontWeight:700, color:"#e6edf3" }}>
+                  {draft.service||"Serviço sem nome"}
+                </span>
+                <span style={{ padding:"2px 8px", background:phase.color+"22", border:`1px solid ${phase.color}44`,
+                  color:phase.color, borderRadius:4, fontSize:10, fontFamily:"monospace", fontWeight:700 }}>
+                  {phase.code}
+                </span>
+              </div>
+              <div style={{ display:"flex", gap:16, fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>
+                {draft.responsible && <span>👤 {draft.responsible}</span>}
+                {draft.targetDate && <span style={{ color: days===null?"#7d8590":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c" }}>
+                  📅 {days===null?"":days<0?`${Math.abs(days)}d atraso`:days===0?"hoje!":`${days}d`} · alvo: {fmtDate(draft.targetDate)}
+                </span>}
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+              {isEditor && <button onClick={()=>onDelete(draft.id)} style={{ background:"rgba(224,49,49,.12)",
+                border:"1px solid rgba(224,49,49,.3)", color:"#fa5252", borderRadius:6,
+                padding:"6px 10px", fontSize:11, cursor:"pointer", fontFamily:"monospace" }}>Eliminar</button>}
+              <button onClick={onClose} style={{ background:"#21262d", border:"1px solid #30363d",
+                color:"#7d8590", borderRadius:6, padding:"6px 12px", cursor:"pointer", fontSize:13 }}>✕</button>
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div style={{ marginTop:14 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+              <span style={{ fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>PROGRESSO GERAL</span>
+              <span style={{ fontSize:11, color:"#e6edf3", fontFamily:"monospace", fontWeight:700 }}>{pct}% · {completedSteps(draft)}/{totalSteps()} passos</span>
+            </div>
+            <ProgressBar value={pct} color={phase.color} h={6}/>
+          </div>
+
+          {/* Phase timeline mini */}
+          <div style={{ display:"flex", gap:3, marginTop:12, overflowX:"auto" }}>
+            {PHASES.map(ph=>{
+              const done = ph.id < draft.currentPhase;
+              const cur = ph.id === draft.currentPhase;
+              return <div key={ph.id} onClick={()=>setTab("steps")} title={ph.label}
+                style={{ flex:1, height:5, borderRadius:99, cursor:"pointer", minWidth:20,
+                  background: done ? ph.color : cur ? ph.color+"88" : "rgba(255,255,255,.07)",
+                  border: cur ? `1px solid ${ph.color}` : "1px solid transparent",
+                  transition:"all .2s" }} />;
+            })}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display:"flex", padding:"0 24px", borderBottom:"1px solid #21262d", flexShrink:0 }}>
+          {[["steps","📋 Passos"],["info","✏️ Detalhes"],["history","🕐 Histórico"]].map(([k,l])=>(
+            <button key={k} onClick={()=>setTab(k)} style={{ padding:"10px 16px", fontSize:12,
+              fontFamily:"monospace", cursor:"pointer", border:"none",
+              borderBottom:`2px solid ${tab===k?phase.color:"transparent"}`,
+              background:"transparent", color:tab===k?"#e6edf3":"#7d8590",
+              fontWeight:tab===k?700:400, transition:"all .15s" }}>{l}</button>
+          ))}
+        </div>
+
+        {/* Tab body */}
+        <div style={{ overflowY:"auto", flex:1, padding:"20px 24px" }}>
+
+          {/* ── STEPS ── */}
+          {tab==="steps" && (
+            <div>
+              {PHASES.map((ph, phIdx)=>{
+                const isCurrentPhase = ph.id === draft.currentPhase;
+                const isPastPhase = ph.id < draft.currentPhase;
+                const isFuturePhase = ph.id > draft.currentPhase;
+                return (
+                  <div key={ph.id} style={{ marginBottom:16 }}>
+                    {/* Phase header */}
+                    <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8,
+                      opacity: isFuturePhase ? .4 : 1 }}>
+                      <div style={{ width:22, height:22, borderRadius:"50%", flexShrink:0,
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        background: isPastPhase ? ph.color+"33" : isCurrentPhase ? ph.color+"22" : "rgba(255,255,255,.04)",
+                        border:`2px solid ${isPastPhase||isCurrentPhase ? ph.color : "rgba(255,255,255,.1)"}`,
+                        fontSize:9, fontWeight:700, color: isPastPhase||isCurrentPhase ? ph.color : "#555" }}>
+                        {isPastPhase ? "✓" : ph.id}
+                      </div>
+                      <span style={{ fontSize:12, fontWeight:700, color: isCurrentPhase?"#e6edf3":isPastPhase?"#7d8590":"#444" }}>
+                        {ph.code} · {ph.label}
+                      </span>
+                      <span style={{ fontSize:10, color:"#555", fontFamily:"monospace", marginLeft:"auto" }}>{ph.duration}</span>
+                    </div>
+
+                    {/* Steps */}
+                    <div style={{ paddingLeft:16, borderLeft:`2px solid ${isCurrentPhase?ph.color+"55":"rgba(255,255,255,.05)"}` }}>
+                      {ph.steps.map((step, sIdx)=>{
+                        const done = isStepDone(ph.id, sIdx);
+                        const cur = isStepCurrent(ph.id, sIdx);
+                        const future = !done && !cur;
+                        return (
+                          <div key={step.id}
+                            onClick={()=>openStep(phIdx, sIdx)}
+                            style={{ display:"flex", alignItems:"center", gap:10, padding:"7px 10px",
+                              borderRadius:7, marginBottom:3, cursor:"pointer", transition:"all .15s",
+                              background: cur ? ph.color+"14" : "transparent",
+                              border: cur ? `1px solid ${ph.color}33` : "1px solid transparent",
+                              opacity: future&&!isCurrentPhase&&!isPastPhase ? .35 : 1,
+                            }}
+                            onMouseEnter={e=>{ e.currentTarget.style.background=cur?ph.color+"1a":"rgba(255,255,255,.04)"; }}
+                            onMouseLeave={e=>{ e.currentTarget.style.background=cur?ph.color+"14":"transparent"; }}>
+                            {/* Status icon */}
+                            <div style={{ width:18, height:18, borderRadius:"50%", flexShrink:0,
+                              display:"flex", alignItems:"center", justifyContent:"center", fontSize:9,
+                              background: done?ph.color+"33":cur?ph.color+"22":"rgba(255,255,255,.05)",
+                              border:`1.5px solid ${done?ph.color:cur?ph.color+"88":"rgba(255,255,255,.08)"}`,
+                              color: done?ph.color:cur?"#e6edf3":"#444", fontWeight:700 }}>
+                              {done?"✓":sIdx+1}
+                            </div>
+                            <span style={{ fontSize:12, flex:1,
+                              color: done?"#555":cur?"#e6edf3":"#7d8590",
+                              textDecoration: done?"line-through":"none" }}>
+                              {step.title}
+                            </span>
+                            <div style={{ display:"flex", gap:3, alignItems:"center" }}>
+                              {step.emailKey && <span title="Tem template de e-mail" style={{ fontSize:11, opacity:.6 }}>✉</span>}
+                              {cur && <span style={{ fontSize:9, color:ph.color, fontFamily:"monospace", fontWeight:700, whiteSpace:"nowrap" }}>EM CURSO ›</span>}
+                              {!done && !cur && <span style={{ fontSize:10, color:"#333" }}>›</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── INFO ── */}
+          {tab==="info" && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+              {!isEditor && (
+                <div style={{ gridColumn:"1/-1", background:"rgba(125,133,144,.08)", border:"1px solid rgba(125,133,144,.25)",
+                  borderRadius:8, padding:"9px 14px", fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>
+                  🔒 Modo leitura — os campos não são editáveis
+                </div>
+              )}
+              {[["service","NOME DO SERVIÇO","text"],["costCenter","CENTRO DE CUSTO","text"]].map(([f,l,t])=>(
+                <div key={f}><label style={LS}>{l}</label>
+                  <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
+              ))}
+              {[["responsible","RESPONSÁVEL"],["coResponsible","CO-RESPONSÁVEL"]].map(([f,l])=>(
+                <div key={f}><label style={LS}>{l}</label>
+                  <select value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} disabled={!isEditor}
+                    style={{...IS,cursor:isEditor?"pointer":"default"}}>
+                    <option value="">— selecionar —</option>
+                    {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+                  </select></div>
+              ))}
+              {[["startDate","DATA DE INÍCIO","date"],["targetDate","DATA ALVO","date"]].map(([f,l,t])=>(
+                <div key={f}><label style={LS}>{l}</label>
+                  <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
+              ))}
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={LS}>ESTADO</label>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  {Object.entries(STATUS_CFG).map(([k,v])=>(
+                    <button key={k} onClick={()=>isEditor&&upd("status",k)} style={{
+                      padding:"5px 12px", borderRadius:20, cursor:isEditor?"pointer":"default",
+                      border:`1px solid ${draft.status===k?v.dot+"88":"rgba(255,255,255,.1)"}`,
+                      background:draft.status===k?v.bg:"transparent",
+                      color:draft.status===k?v.dot:"#7d8590", fontSize:11, fontFamily:"monospace", fontWeight:600,
+                    }}>{v.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={LS}>NOTAS</label>
+                <textarea value={draft.notes} onChange={e=>isEditor&&upd("notes",e.target.value)}
+                  readOnly={!isEditor} rows={3}
+                  placeholder="Observações, condicionantes, contexto específico…"
+                  style={{...IS,resize:"vertical",lineHeight:1.6}}/>
+              </div>
+              {isEditor && (
+                <div style={{gridColumn:"1/-1"}}>
+                  <button onClick={()=>onSave(draft)} style={{
+                    width:"100%", padding:"10px 0", background:"rgba(45,140,78,.2)",
+                    border:"1px solid rgba(45,140,78,.5)", color:"#69db7c",
+                    borderRadius:8, fontSize:13, fontFamily:"monospace", cursor:"pointer", fontWeight:700 }}>
+                    💾 Guardar alterações
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── HISTORY ── */}
+          {tab==="history" && (
+            <div>
+              <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+                <input value={newNote} onChange={e=>setNewNote(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&addNote()}
+                  placeholder="Adicionar nota ao histórico…"
+                  style={{...IS,flex:1}} disabled={!isEditor}/>
+                <button onClick={addNote} disabled={!isEditor} style={{
+                  background:"rgba(255,255,255,.06)", border:"1px solid #30363d",
+                  color:"#e6edf3", borderRadius:6, padding:"8px 14px",
+                  fontSize:12, cursor:isEditor?"pointer":"default", fontFamily:"monospace",
+                  opacity:isEditor?1:.4 }}>+ Nota</button>
+              </div>
+              {(draft.history||[]).length===0 ? (
+                <div style={{textAlign:"center",color:"#555",padding:32,fontSize:13}}>Histórico vazio.</div>
+              ) : (
+                <div style={{ position:"relative" }}>
+                  <div style={{ position:"absolute",left:8,top:0,bottom:0,width:1,background:"#21262d" }}/>
+                  {[...(draft.history||[])].reverse().map((h,i)=>(
+                    <div key={i} style={{ display:"flex", gap:14, marginBottom:12, paddingLeft:26, position:"relative" }}>
+                      <div style={{ position:"absolute",left:4,top:5,width:9,height:9,borderRadius:"50%",
+                        background:h.isNote?"#fcc419":"#4dabf7",border:"2px solid #161b22" }}/>
+                      <div>
+                        <div style={{ fontSize:12, color:"#c9d1d9" }}>{h.action}</div>
+                        <div style={{ fontSize:10, color:"#555", fontFamily:"monospace", marginTop:2 }}>{fmtDateTime(h.ts)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Step drawer */}
+    {activeStepData && (
+      <StepDrawer
+        step={activeStepData.step}
+        phaseColor={activeStepData.phaseColor}
+        procService={draft.service}
+        isDone={isStepDone(PHASES[activeStep.phaseIdx].id, activeStep.stepIdx)}
+        isCurrent={isStepCurrent(PHASES[activeStep.phaseIdx].id, activeStep.stepIdx)}
+        isEditor={isEditor}
+        onMarkDone={markDone}
+        onClose={()=>setActiveStep(null)}
+      />
+    )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROCESS CARD
+// ─────────────────────────────────────────────────────────────────────────────
+function ProcessCard({ proc, onClick }) {
+  const phase = PHASES[proc.currentPhase-1];
+  const pct = totalPct(proc);
+  const cfg = STATUS_CFG[proc.status];
+  const days = daysUntil(proc.targetDate);
+  const nextStep = phase?.steps[proc.currentStep];
+
+  return (
+    <div onClick={()=>onClick(proc)}
+      style={{ background:"#161b22", border:`1px solid ${cfg.border}`, borderRadius:10,
+        padding:"18px 20px", cursor:"pointer", transition:"all .2s", position:"relative", overflow:"hidden" }}
+      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 8px 24px rgba(0,0,0,.4)`;}}
+      onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
+      <div style={{ position:"absolute",left:0,top:0,bottom:0,width:3,background:phase?.color,borderRadius:"10px 0 0 10px" }}/>
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+        <div style={{ flex:1, paddingRight:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+            <span style={{ width:8,height:8,borderRadius:"50%",background:cfg.dot,
+              boxShadow:`0 0 6px ${cfg.dot}88`,flexShrink:0 }}/>
+            <span style={{ fontWeight:700, fontSize:14, color:"#e6edf3" }}>{proc.service||"Serviço sem nome"}</span>
+          </div>
+          <div style={{ fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>
+            {proc.costCenter&&`CC ${proc.costCenter} · `}{proc.responsible&&`👤 ${proc.responsible}`}
+          </div>
+        </div>
+        <div style={{ textAlign:"right" }}>
+          <div style={{ fontSize:20,fontWeight:700,fontFamily:"monospace",
+            color:pct===100?"#38d9a9":"#e6edf3",lineHeight:1 }}>
+            {pct}<span style={{fontSize:11,color:"#7d8590"}}>%</span>
+          </div>
+        </div>
+      </div>
+
+      <ProgressBar value={pct} color={phase?.color||"#333"} h={4}/>
+
+      <div style={{ display:"flex", justifyContent:"space-between", marginTop:10, gap:8, flexWrap:"wrap" }}>
+        <div>
+          <div style={{ fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:3 }}>FASE</div>
+          <span style={{ background:phase?.color+"22",border:`1px solid ${phase?.color}44`,
+            color:phase?.color,borderRadius:4,padding:"2px 8px",fontSize:10,fontFamily:"monospace",fontWeight:700 }}>
+            {phase?.code} · {phase?.label}
+          </span>
+        </div>
+        <div style={{ textAlign:"right" }}>
+          <div style={{ fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:3 }}>PRÓXIMO PASSO</div>
+          <div style={{ fontSize:11,color:"#8b949e",maxWidth:180,textAlign:"right",lineHeight:1.3 }}>{nextStep?.title||"Concluído"}</div>
+        </div>
+      </div>
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10 }}>
+        <div style={{ fontSize:10,color:"#555",fontFamily:"monospace" }}>{fmtDate(proc.startDate)}</div>
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          {proc.targetDate&&<span style={{ fontSize:10,fontFamily:"monospace",
+            color:days===null?"#555":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c" }}>
+            {days===null?"":days<0?`${Math.abs(days)}d atraso`:days===0?"hoje":days<=7?`${days}d`:""}
+          </span>}
+          <span style={{ fontSize:10,fontFamily:"monospace",padding:"2px 8px",borderRadius:99,
+            background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.dot }}>{cfg.label}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW PROCESS MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function NewProcessModal({ onClose, onCreate }) {
+  const [form, setForm] = useState({service:"",costCenter:"",responsible:"",targetDate:""});
+  const upd = (f,v) => setForm(d=>({...d,[f]:v}));
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.8)",backdropFilter:"blur(6px)",
+      zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}
+      onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ background:"#161b22",border:"1px solid #30363d",borderRadius:12,
+        padding:28,width:"100%",maxWidth:460,boxShadow:"0 24px 60px rgba(0,0,0,.7)",animation:"fadeUp .18s ease" }}>
+        <div style={{ fontSize:15,fontWeight:700,color:"#e6edf3",marginBottom:20 }}>Novo Processo de Revisão</div>
+        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          <div><label style={LS}>NOME DO SERVIÇO *</label>
+            <input value={form.service} onChange={e=>upd("service",e.target.value)}
+              placeholder="Ex: UCIP, Ortopedia, CE Oftalmo…" style={IS}
+              onKeyDown={e=>e.key==="Enter"&&form.service.trim()&&onCreate({...EMPTY_PROC(),...form,history:[{ts:new Date().toISOString(),action:"Processo criado"}]})} /></div>
+          <div><label style={LS}>CENTRO DE CUSTO</label>
+            <input value={form.costCenter} onChange={e=>upd("costCenter",e.target.value)} placeholder="Código CC" style={IS}/></div>
+          <div><label style={LS}>RESPONSÁVEL</label>
+            <select value={form.responsible} onChange={e=>upd("responsible",e.target.value)} style={{...IS,cursor:"pointer"}}>
+              <option value="">— selecionar —</option>
+              {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+            </select></div>
+          <div><label style={LS}>DATA ALVO DE CONCLUSÃO</label>
+            <input type="date" value={form.targetDate} onChange={e=>upd("targetDate",e.target.value)} style={IS}/></div>
+        </div>
+        <div style={{ display:"flex",gap:10,marginTop:20 }}>
+          <button onClick={()=>form.service.trim()&&onCreate({...EMPTY_PROC(),...form,history:[{ts:new Date().toISOString(),action:"Processo criado"}]})}
+            style={{ flex:1,background:"rgba(45,140,78,.2)",border:"1px solid rgba(45,140,78,.5)",
+              color:"#69db7c",borderRadius:8,padding:"10px 0",fontSize:13,fontFamily:"monospace",cursor:"pointer",fontWeight:700 }}>
+            Criar processo
+          </button>
+          <button onClick={onClose} style={{ background:"#21262d",border:"1px solid #30363d",
+            color:"#7d8590",borderRadius:8,padding:"10px 18px",fontSize:13,cursor:"pointer" }}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOAD SCREEN — mandatory JSON upload before app starts
+// ─────────────────────────────────────────────────────────────────────────────
+function LoadScreen({ onLoaded }) {
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const inputRef = React.useRef();
+
+  async function processFile(file) {
+    if (!file) return;
+    if (!file.name.endsWith(".json")) { setError("Seleciona um ficheiro .json válido."); return; }
+    setLoading(true); setError("");
+    try {
+      const result = await loadFromFile(file);
+      onLoaded(result.procs, file.name, result.meta);
+    } catch(e) { setError(typeof e === "string" ? e : "Erro ao carregar o ficheiro."); setLoading(false); }
+  }
+
+  function onFileInput(e) { processFile(e.target.files[0]); }
+  function onDrop(e) {
+    e.preventDefault(); setDragging(false);
+    processFile(e.dataTransfer.files[0]);
+  }
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#0d1117", display:"flex", alignItems:"center",
+      justifyContent:"center", fontFamily:"'IBM Plex Sans',sans-serif", padding:24 }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');`}</style>
+      <div style={{ width:"100%", maxWidth:560 }}>
+
+        {/* Header */}
+        <div style={{ textAlign:"center", marginBottom:36 }}>
+          <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, letterSpacing:".2em",
+            color:"#7d8590", marginBottom:12 }}>ULSM · GESTÃO DE SUPERMERCADOS</div>
+          <div style={{ fontSize:28, fontWeight:700, color:"#e6edf3", marginBottom:8 }}>
+            Tracking de Revisões
+          </div>
+        </div>
+
+        {/* TWO PATHS — equal prominence */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:16 }}>
+
+          {/* PATH A — Load backup */}
+          <div
+            onClick={() => inputRef.current.click()}
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            style={{
+              border: `2px dashed ${dragging ? "#4dabf7" : "#30363d"}`,
+              borderRadius: 14,
+              background: dragging ? "rgba(29,125,210,.08)" : "#161b22",
+              padding: "32px 20px",
+              textAlign: "center",
+              cursor: "pointer",
+              transition: "all .2s",
+            }}>
+            <div style={{ fontSize:36, marginBottom:12 }}>📂</div>
+            {loading ? (
+              <div style={{ color:"#4dabf7", fontFamily:"monospace", fontSize:13 }}>A carregar…</div>
+            ) : (
+              <>
+                <div style={{ fontSize:14, fontWeight:700, color:"#e6edf3", marginBottom:6 }}>
+                  Carregar backup
+                </div>
+                <div style={{ fontSize:11, color:"#7d8590", lineHeight:1.6 }}>
+                  Já existe um ficheiro<br/>
+                  <span style={{ fontFamily:"monospace", color:"#4dabf7" }}>{BACKUP_FILENAME}</span><br/>
+                  na pasta partilhada
+                </div>
+              </>
+            )}
+            <input ref={inputRef} type="file" accept=".json" onChange={onFileInput}
+              style={{ display:"none" }} />
+          </div>
+
+          {/* PATH B — First time */}
+          <div
+            onClick={() => onLoaded([], BACKUP_FILENAME, {})}
+            style={{
+              border: "2px dashed #2d8c4e",
+              borderRadius: 14,
+              background: "#161b22",
+              padding: "32px 20px",
+              textAlign: "center",
+              cursor: "pointer",
+              transition: "all .2s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.background="rgba(45,140,78,.08)"}
+            onMouseLeave={e => e.currentTarget.style.background="#161b22"}
+          >
+            <div style={{ fontSize:36, marginBottom:12 }}>🆕</div>
+            <div style={{ fontSize:14, fontWeight:700, color:"#69db7c", marginBottom:6 }}>
+              Primeiro arranque
+            </div>
+            <div style={{ fontSize:11, color:"#7d8590", lineHeight:1.6 }}>
+              Ainda não existe ficheiro.<br/>
+              Começar com lista vazia<br/>
+              e criar o primeiro backup.
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div style={{ background:"rgba(224,49,49,.15)", border:"1px solid rgba(224,49,49,.4)",
+            borderRadius:8, padding:"10px 16px", color:"#fa5252", fontSize:13,
+            fontFamily:"monospace", marginBottom:14 }}>
+            ⚠ {error}
+          </div>
+        )}
+
+        {/* Info box */}
+        <div style={{ background:"rgba(255,255,255,.03)", border:"1px solid #21262d",
+          borderRadius:10, padding:"14px 18px", fontSize:12, color:"#7d8590", lineHeight:1.9 }}>
+          <div style={{ color:"#8b949e", fontWeight:600, marginBottom:4, fontFamily:"monospace", fontSize:10, letterSpacing:".1em" }}>
+            📋 COMO FUNCIONA
+          </div>
+          <div><span style={{ color:"#4dabf7" }}>Uso normal:</span> carrega o JSON → trabalha → clica 💾 Guardar → substitui o ficheiro na pasta</div>
+          <div style={{ color:"#fa5252", marginTop:6, fontSize:11 }}>
+            ⚠ Não abrir em simultâneo com outra pessoa — o último a guardar sobrescreve.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORT CONFIRM MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function ExportModal({ procs, filename, onExport, onCancel }) {
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)",
+      zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+      <div style={{ background:"#161b22", border:"1px solid #30363d", borderRadius:14,
+        width:"100%", maxWidth:420, padding:28, fontFamily:"'IBM Plex Sans',sans-serif" }}>
+        <div style={{ fontSize:24, marginBottom:12 }}>💾</div>
+        <div style={{ fontSize:17, fontWeight:700, color:"#e6edf3", marginBottom:8 }}>
+          Guardar e Sair
+        </div>
+        <div style={{ fontSize:13, color:"#8b949e", lineHeight:1.7, marginBottom:20 }}>
+          Vai ser gerado o ficheiro <span style={{ color:"#4dabf7", fontFamily:"monospace" }}>{BACKUP_FILENAME}</span> com {procs.length} processo(s).<br/>
+          <strong style={{ color:"#fcc419" }}>Substitui o ficheiro na pasta partilhada</strong> para que a próxima pessoa tenha os dados atualizados.
+        </div>
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={onExport} style={{ flex:1, padding:"11px 0",
+            background:"rgba(45,140,78,.2)", border:"1px solid rgba(45,140,78,.5)",
+            color:"#69db7c", borderRadius:8, fontSize:13, fontFamily:"monospace",
+            fontWeight:700, cursor:"pointer" }}>
+            ⬇ Download backup
+          </button>
+          <button onClick={onCancel} style={{ padding:"11px 18px",
+            background:"transparent", border:"1px solid #30363d",
+            color:"#7d8590", borderRadius:8, fontSize:13, cursor:"pointer" }}>
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN APP
+// ─────────────────────────────────────────────────────────────────────────────
+function App() {
+  const session = window.__ULSM_SESSION;
+  const [procs, setProcs] = useState(session.procs || []);
+  const [loadedFilename] = useState(session.filename || BACKUP_FILENAME);
+  const [selected, setSelected] = useState(null);
+  const [showNew, setShowNew] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
+  const [pin, setPin] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [showExport, setShowExport] = useState(false);
+  const [unsaved, setUnsaved] = useState(false);
+
+  // Warn on browser close if unsaved
+  useEffect(() => {
+    const handler = e => { if (unsaved) { e.preventDefault(); e.returnValue = ""; } };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [unsaved]);
+
+  // (export handled inline in JSX below)
+
+  // Sync editor badge in global nav
+  useEffect(() => {
+    if (window.__onEditorModeChange) window.__onEditorModeChange(isEditor);
+  }, [isEditor]);
+
+  // Keep exit callback always fresh (avoids stale closure)
+  const setIsEditorRef = useRef(null);
+  const setPinRef = useRef(null);
+  const setAuthErrorRef = useRef(null);
+  setIsEditorRef.current = setIsEditor;
+  setPinRef.current = setPin;
+  setAuthErrorRef.current = setAuthError;
+  useEffect(() => {
+    window.__triggerEditorExit = () => {
+      setIsEditorRef.current(false);
+      setPinRef.current("");
+      setAuthErrorRef.current("");
+    };
+  }, []);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+
+
+  const persist = useCallback((list)=>{ setProcs(list); setUnsaved(true); },[]);
+
+  const handleSave = (updated) => {
+    const list = procs.map(p=>p.id===updated.id?updated:p);
+    persist(list);
+    setSelected(updated);
+  };
+  const handleCreate = (p) => { persist([...procs,p]); setShowNew(false); setSelected(p); };
+  const handleDelete = (id) => {
+    if(!confirm("Eliminar este processo?")) return;
+    persist(procs.filter(p=>p.id!==id));
+    setSelected(null);
+  };
+
+  const filtered = procs.filter(p=>{
+    if(filterStatus!=="all"&&p.status!==filterStatus) return false;
+    if(search&&!p.service.toLowerCase().includes(search.toLowerCase())&&
+       !(p.responsible||"").toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const stats = {
+    total: procs.length,
+    active: procs.filter(p=>p.status!=="done"&&p.status!=="paused").length,
+    late: procs.filter(p=>{ const d=daysUntil(p.targetDate); return d!==null&&d<0&&p.status!=="done"; }).length,
+    done: procs.filter(p=>p.status==="done"||totalPct(p)===100).length,
+  };
+
+  const handleEditorLogin = () => {
+    const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
+    if(pins.length === 0) { setAuthError("Nenhum PIN configurado."); return; }
+    if(canUnlockEditor(pin)) {
+      setIsEditor(true); setPin(""); setAuthError("");
+    } else {
+      setPin(""); setAuthError("PIN inválido.");
+    }
+  };
+
+  return (
+    <div style={{ background:"#0d1117", minHeight:"100vh", fontFamily:"'IBM Plex Sans',sans-serif", color:"#e6edf3" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+        @keyframes fadeUp { from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;} }
+        @keyframes slideIn { from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:none;} }
+        *{box-sizing:border-box;}
+        ::-webkit-scrollbar{width:5px;height:5px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:#30363d;border-radius:99px;}
+        select option{background:#1c2128;}
+        input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5);}
+      `}</style>
+
+      {/* ── TOP BAR ── */}
+      <div style={{ borderBottom:"1px solid #21262d", padding:"12px 28px",
+        display:"flex", justifyContent:"space-between", alignItems:"center",
+        background:"#161b22", position:"sticky", top:0, zIndex:100 }}>
+
+        {/* LEFT: title + file indicator */}
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <div>
+            <div style={{ fontSize:10,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:".15em",
+              color:"#7d8590",marginBottom:1 }}>ULSM · GESTÃO DE SUPERMERCADOS</div>
+            <div style={{ fontSize:15,fontWeight:700,letterSpacing:"-.02em" }}>Tracking de Revisões</div>
+          </div>
+          <span style={{ fontFamily:"monospace", fontSize:11, color:"#555",
+            background:"#0d1117", border:"1px solid #21262d", borderRadius:5,
+            padding:"3px 10px", maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            📄 {loadedFilename || BACKUP_FILENAME}
+          </span>
+          {unsaved && (
+            <span style={{ fontFamily:"monospace", fontSize:10, color:"#fcc419",
+              background:"rgba(245,159,0,.12)", border:"1px solid rgba(245,159,0,.3)",
+              borderRadius:5, padding:"3px 8px", whiteSpace:"nowrap" }}>
+              ● não guardado
+            </span>
+          )}
+        </div>
+
+        {/* RIGHT: actions */}
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+
+          {/* Editor mode: show new + backup */}
+          {isEditor ? (
+            <>
+              <button onClick={()=>setShowNew(true)} style={{ background:"rgba(45,140,78,.2)",
+                border:"1px solid rgba(45,140,78,.5)",color:"#69db7c",borderRadius:6,
+                padding:"7px 14px",fontSize:12,cursor:"pointer",fontFamily:"monospace",fontWeight:700 }}>
+                + Novo processo
+              </button>
+              <button onClick={()=>setShowExport(true)} style={{
+                background: unsaved ? "rgba(245,159,0,.18)" : "rgba(29,125,210,.12)",
+                border: unsaved ? "1px solid rgba(245,159,0,.5)" : "1px solid rgba(29,125,210,.3)",
+                color: unsaved ? "#fcc419" : "#4dabf7",
+                borderRadius:6, padding:"7px 14px", fontSize:12, cursor:"pointer",
+                fontFamily:"monospace", fontWeight:700, transition:"all .2s"
+              }}>
+                💾 {unsaved ? "Guardar backup*" : "Guardar backup"}
+              </button>
+              <button onClick={()=>{setIsEditor(false);setPin("");setAuthError("");}} style={{
+                background:"rgba(224,49,49,.1)", border:"1px solid rgba(224,49,49,.3)",
+                color:"#fa5252", borderRadius:6, padding:"7px 12px", fontSize:11,
+                cursor:"pointer", fontFamily:"monospace"
+              }}>Sair editor</button>
+            </>
+          ) : (
+            <>
+              {/* PIN login inline */}
+              <input
+                value={pin}
+                onChange={e=>setPin(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&handleEditorLogin()}
+                type="password"
+                placeholder="PIN editor…"
+                style={{ background:"#0d1117", border:"1px solid #30363d", borderRadius:6,
+                  color:"#e6edf3", padding:"7px 12px", fontSize:12, width:130,
+                  fontFamily:"monospace", outline:"none" }}
+              />
+              <button onClick={handleEditorLogin} style={{
+                background:"rgba(77,171,247,.12)", border:"1px solid rgba(77,171,247,.3)",
+                color:"#4dabf7", borderRadius:6, padding:"7px 12px", fontSize:12,
+                cursor:"pointer", fontFamily:"monospace", fontWeight:700
+              }}>🔓 Entrar</button>
+              {authError && <span style={{ fontSize:11, color:"#fa5252", fontFamily:"monospace" }}>{authError}</span>}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{ padding:"24px 28px", maxWidth:1200, margin:"0 auto" }}>
+
+        {/* ── KPIs ── */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:24 }}>
+          {[["TOTAL",stats.total,"#4dabf7"],["EM CURSO",stats.active,"#fcc419"],
+            ["ATRASADOS",stats.late,"#fa5252"],["CONCLUÍDOS",stats.done,"#38d9a9"]].map(([l,v,c])=>(
+            <div key={l} style={{ background:"#161b22",border:"1px solid #21262d",borderRadius:10,padding:"14px 18px" }}>
+              <div style={{ fontSize:9,color:"#7d8590",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>{l}</div>
+              <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:c,lineHeight:1 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── FILTERS ── */}
+        <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="🔍 Pesquisar serviço ou responsável…"
+            style={{ background:"#161b22",border:"1px solid #30363d",borderRadius:8,
+              color:"#e6edf3",padding:"8px 14px",fontSize:13,flex:1,minWidth:200,
+              outline:"none",fontFamily:"inherit" }}/>
+          <div style={{ display:"flex",gap:5,flexWrap:"wrap" }}>
+            {[["all","Todos","#4dabf7"],...Object.entries(STATUS_CFG).map(([k,v])=>[k,v.label,v.dot])].map(([k,l,c])=>(
+              <button key={k} onClick={()=>setFilterStatus(k)} style={{
+                padding:"5px 12px",borderRadius:20,cursor:"pointer",
+                border:`1px solid ${filterStatus===k?c+"88":"rgba(255,255,255,.08)"}`,
+                background:filterStatus===k?c+"22":"transparent",
+                color:filterStatus===k?c:"#7d8590",fontSize:11,fontFamily:"monospace",fontWeight:600,
+              }}>{l}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── CARDS ── */}
+        {filtered.length===0 ? (
+          <div style={{ textAlign:"center",padding:60 }}>
+            <div style={{ fontSize:36,marginBottom:12 }}>📋</div>
+            <div style={{ fontSize:13,color:"#7d8590" }}>
+              {procs.length===0
+                ? isEditor?"Sem processos. Clique em «+ Novo processo» para começar.":"Sem processos. Um editor deve criar o primeiro processo."
+                : "Nenhum processo corresponde aos filtros."}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(330px,1fr))", gap:14 }}>
+            {filtered.map(p=><ProcessCard key={p.id} proc={p} onClick={setSelected}/>)}
+          </div>
+        )}
+
+        {/* ── PHASE DISTRIBUTION BAR ── */}
+        {procs.length>0&&(
+          <div style={{ marginTop:28,background:"#161b22",border:"1px solid #21262d",borderRadius:10,padding:"14px 18px" }}>
+            <div style={{ fontSize:9,color:"#7d8590",fontFamily:"monospace",letterSpacing:".12em",marginBottom:10 }}>DISTRIBUIÇÃO POR FASE</div>
+            <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+              {PHASES.map(ph=>{
+                const count = procs.filter(p=>p.currentPhase===ph.id&&p.status!=="done").length;
+                return (
+                  <div key={ph.id} onClick={()=>setFilterStatus("all")}
+                    style={{ display:"flex",alignItems:"center",gap:7,padding:"5px 10px",
+                      borderRadius:6,cursor:"pointer",transition:"all .15s",
+                      background:count>0?ph.color+"15":"rgba(255,255,255,.02)",
+                      border:`1px solid ${count>0?ph.color+"44":"#21262d"}` }}>
+                    <span style={{ width:7,height:7,borderRadius:"50%",background:count>0?ph.color:"#333" }}/>
+                    <span style={{ fontSize:10,fontFamily:"monospace",color:count>0?"#c9d1d9":"#444" }}>{ph.code}</span>
+                    {count>0&&<span style={{ fontSize:11,fontWeight:700,color:ph.color,fontFamily:"monospace" }}>{count}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── MODALS ── */}
+      {selected&&<ProcessDetail proc={selected} onClose={()=>setSelected(null)}
+        onSave={handleSave} onDelete={handleDelete} isEditor={isEditor}/>}
+      {showNew&&<NewProcessModal onClose={()=>setShowNew(false)} onCreate={handleCreate}/>}
+      {showExport&&<ExportModal procs={procs} filename={BACKUP_FILENAME}
+        onExport={async()=>{ await exportToFile(procs); setShowExport(false); setUnsaved(false); }}
+        onCancel={()=>setShowExport(false)}/>}
+    </div>
+  );
+}
+// ── Boot: single root, shell switches between LoadScreen and App ─────────
+(function boot() {
+  // Mount LoadScreen in a separate overlay div — never touch tracking-root
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0d1117;';
+  document.body.appendChild(overlay);
+
+  const trackingRoot = ReactDOM.createRoot(document.getElementById('tracking-root'));
+
+  function onLoaded(procs, filename) {
+    window.__ULSM_SESSION.loaded = true;
+    window.__ULSM_SESSION.procs = procs;
+    window.__ULSM_SESSION.filename = filename;
+
+    // Mount App into tracking-root BEFORE removing overlay
+    trackingRoot.render(<App />);
+
+    // Small delay so App renders before overlay disappears
+    setTimeout(() => {
+      overlay.remove();
+      document.body.classList.add('view-tracking');
+      document.getElementById('tab-tracking').classList.add('active');
+      document.getElementById('tab-workflow').classList.remove('active');
+    }, 80);
+  }
+
+  ReactDOM.createRoot(overlay).render(<LoadScreen onLoaded={onLoaded} />);
+})();
+
+</script>
+</body>
+</html>
