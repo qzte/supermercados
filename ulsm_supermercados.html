@@ -103,12 +103,12 @@ body.view-tracking #view-workflow { display: none; }
   .pdf-pill-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;}
   .pdf-pill-open{background:rgba(77,171,247,.12);border:1px solid rgba(77,171,247,.3);color:#4dabf7;border-radius:5px;padding:3px 8px;font-size:12px;cursor:pointer;flex-shrink:0;}
   .pdf-pill-open:hover{background:rgba(77,171,247,.25);}
-  #pdfPopup{display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.85);backdrop-filter:blur(4px);flex-direction:column;}
+  #pdfPopup{display:none;position:fixed;inset:0;z-index:99998;background:#1a1a1a;flex-direction:column;}
   #pdfPopup.open{display:flex;}
   #pdfPopupBar{height:48px;background:#161b22;border-bottom:1px solid #21262d;display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;}
   #pdfPopupTitle{font-family:var(--mono);font-size:12px;color:#c9d1d9;}
   #pdfPopupClose{background:rgba(224,49,49,.12);border:1px solid rgba(224,49,49,.3);color:#fa5252;border-radius:6px;padding:5px 14px;font-family:var(--mono);font-size:11px;cursor:pointer;}
-  #pdfPopupEmbed{flex:1;width:100%;border:none;display:block;}
+  #pdfPopupEmbed{flex:1;width:100%;height:100%;border:none;display:block;background:#fff;}
   .step.open .step-arrow{transform:rotate(180deg);}
   .step-body{display:none;padding:12px 16px 14px 52px;font-size:12px;line-height:1.7;color:#8b949e;border-top:1px solid var(--border);}
   .step.open .step-body{display:block;}
@@ -212,7 +212,7 @@ body.view-tracking #view-workflow { display: none; }
     <span id="pdfPopupTitle">📄</span>
     <button id="pdfPopupClose" onclick="closePdfPopup()">✕ Fechar</button>
   </div>
-  <embed id="pdfPopupEmbed" type="application/pdf" src="">
+  <iframe id="pdfPopupEmbed" src="about:blank"></iframe>
 </div>
 
 <div id="view-tracking"><div id="tracking-root"></div></div>
@@ -1334,12 +1334,12 @@ function openEmail(key, event){
 
 function openPdfPopup(src, name){
   document.getElementById('pdfPopupEmbed').src = src;
-  document.getElementById('pdfPopupTitle').textContent = '📄 ' + name;
+  document.getElementById('pdfPopupTitle').textContent = '📄 ' + (name || src);
   document.getElementById('pdfPopup').classList.add('open');
 }
 function closePdfPopup(){
   document.getElementById('pdfPopup').classList.remove('open');
-  document.getElementById('pdfPopupEmbed').src = '';
+  document.getElementById('pdfPopupEmbed').src = 'about:blank';
 }
 
 function openPinModal(){
