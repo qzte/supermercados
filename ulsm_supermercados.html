@@ -917,8 +917,27 @@ body.view-tracking #view-workflow { display: none; }
 </div></div>
 
 <script>
-// ── PINs de editor — adicionar/remover à vontade ─────────────────────────────
-window.__ULSM_EDITOR_PINS = ["JOAQUIM", "MARTA", "MARIANA", "JESSICA", "ANA"];
+// ── Configuração de autenticação do editor ───────────────────────────────────
+// Defina `window.__ULSM_EDITOR_PIN_HASH` (SHA-256 em hex, minúsculas) antes deste script.
+// Exemplo de geração no browser: await crypto.subtle.digest("SHA-256", new TextEncoder().encode("SEU_PIN"))
+window.__ULSM_EDITOR_PINS = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
+window.__ULSM_EDITOR_PIN_HASH = (window.__ULSM_EDITOR_PIN_HASH || "").trim().toLowerCase();
+
+async function sha256Hex(value){
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(n => n.toString(16).padStart(2, "0")).join("");
+}
+
+async function isValidEditorPin(pin){
+  const normalized = (pin || "").trim();
+  if(!normalized) return false;
+  if(window.__ULSM_EDITOR_PIN_HASH){
+    const hash = await sha256Hex(normalized);
+    return hash === window.__ULSM_EDITOR_PIN_HASH;
+  }
+  return window.__ULSM_EDITOR_PINS.includes(normalized);
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 window.__onEditorModeChange = function(isEditor) {
@@ -941,11 +960,6 @@ function switchView(view) {
 <script>
 let editMode = false;
 let activeImageStep = null;
-
-function toggle(el){
-  if(editMode) return;
-  el.classList.toggle('open');
-}
 
 function toggle(el){
   if(editMode) return;
@@ -1175,14 +1189,33 @@ function createStepElement(stepData = {}){
   const step = document.createElement('div');
   step.className = 'step';
   step.setAttribute('onclick', 'toggle(this)');
-  step.innerHTML = `
-    <div class="step-header">
-      <span class="step-num">0.0</span>
-      <span class="step-title">${stepData.title || 'Novo passo'}</span>
-      <span class="step-time">${stepData.time || '5 min'}</span><span class="step-arrow">▾</span>
-    </div>
-    <div class="step-body">${stepData.body || 'Editar detalhes deste passo.'}</div>
-  `;
+
+  const header = document.createElement('div');
+  header.className = 'step-header';
+
+  const num = document.createElement('span');
+  num.className = 'step-num';
+  num.textContent = '0.0';
+
+  const title = document.createElement('span');
+  title.className = 'step-title';
+  title.textContent = stepData.title || 'Novo passo';
+
+  const time = document.createElement('span');
+  time.className = 'step-time';
+  time.textContent = stepData.time || '5 min';
+
+  const arrow = document.createElement('span');
+  arrow.className = 'step-arrow';
+  arrow.textContent = '▾';
+
+  header.append(num, title, time, arrow);
+
+  const body = document.createElement('div');
+  body.className = 'step-body';
+  body.textContent = stepData.body || 'Editar detalhes deste passo.';
+
+  step.append(header, body);
   attachStepControls(step);
   return step;
 }
@@ -1230,7 +1263,7 @@ function serializeWorkflow(){
       steps: [...phase.querySelectorAll('.step')].map(step => ({
         title: step.querySelector('.step-title')?.textContent || '',
         time: step.querySelector('.step-time')?.textContent || '',
-        body: step.querySelector('.step-body')?.innerHTML || ''
+        body: step.querySelector('.step-body')?.textContent || ''
       }))
     }))
   };
@@ -1354,11 +1387,10 @@ function closePinModal(){
   document.getElementById('modalPinInput').value = '';
   document.getElementById('modalPinError').textContent = '';
 }
-function confirmPinModal(){
+async function confirmPinModal(){
   const input = document.getElementById('modalPinInput');
   const errEl = document.getElementById('modalPinError');
-  const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
-  if(pins.length === 0 || !pins.includes(input.value.trim())) {
+  if(!(await isValidEditorPin(input.value.trim()))) {
     errEl.textContent = 'PIN invalido. Tente novamente.';
     input.value = '';
     input.focus();
@@ -1872,9 +1904,8 @@ async function exportToFile(list) {
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 
-function canUnlockEditor(pin) {
-  const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
-  return pins.length > 0 && pins.includes(pin.trim());
+async function canUnlockEditor(pin) {
+  return isValidEditorPin(pin);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2707,10 +2738,9 @@ function App() {
     done: procs.filter(p=>p.status==="done"||totalPct(p)===100).length,
   };
 
-  const handleEditorLogin = () => {
-    const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
-    if(pins.length === 0) { setAuthError("Nenhum PIN configurado."); return; }
-    if(canUnlockEditor(pin)) {
+  const handleEditorLogin = async () => {
+    if(!window.__ULSM_EDITOR_PIN_HASH && window.__ULSM_EDITOR_PINS.length === 0) { setAuthError("Nenhum PIN configurado."); return; }
+    if(await canUnlockEditor(pin)) {
       setIsEditor(true); setPin(""); setAuthError("");
     } else {
       setPin(""); setAuthError("PIN inválido.");
