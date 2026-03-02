@@ -361,7 +361,15 @@ async function saveData(list) {
   } catch(e) { console.error(e); }
 }
 
-const EDITOR_PIN_HASH = (window.__ULSM_EDITOR_PIN_HASH || "").trim().toLowerCase();
+const DEFAULT_EDITOR_PIN_HASHES = [
+  "a59811a393e998d741b4bf5549fd33fa3f63984c4ded50b5c3b0b8a609554b60",
+  "f96d9542bc75defe96f986e3f922a2337292fab23e1131497624594f0862bdeb",
+];
+const EDITOR_PIN_HASHES = Array.from(new Set([
+  ...DEFAULT_EDITOR_PIN_HASHES,
+  ...((window.__ULSM_EDITOR_PIN_HASHES || []).map(v => (v || "").trim().toLowerCase())),
+  (window.__ULSM_EDITOR_PIN_HASH || "").trim().toLowerCase(),
+].filter(Boolean)));
 
 async function sha256Hex(value) {
   const bytes = new TextEncoder().encode(value);
@@ -372,9 +380,9 @@ async function sha256Hex(value) {
 }
 
 async function canUnlockEditor(pin) {
-  if(!pin || !EDITOR_PIN_HASH) return false;
+  if(!pin || EDITOR_PIN_HASHES.length === 0) return false;
   const hash = await sha256Hex(pin);
-  return hash === EDITOR_PIN_HASH;
+  return EDITOR_PIN_HASHES.includes(hash);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -990,8 +998,8 @@ export default function App() {
   };
 
   const handleEditorLogin = async() => {
-    if(!EDITOR_PIN_HASH) {
-      setAuthError("Modo editor desativado: hash não configurado.");
+    if(EDITOR_PIN_HASHES.length === 0) {
+      setAuthError("Modo editor desativado: hashes não configurados.");
       return;
     }
     setAuthBusy(true);
@@ -1039,10 +1047,10 @@ export default function App() {
                 onKeyDown={e=>e.key==="Enter"&&!authBusy&&void handleEditorLogin()}
                 style={{ background:"#0d1117",border:"1px solid #30363d",borderRadius:6,
                   color:"#e6edf3",padding:"6px 10px",fontSize:12,width:120,outline:"none",fontFamily:"monospace" }}/>
-              <button onClick={handleEditorLogin} disabled={authBusy||!EDITOR_PIN_HASH}
+              <button onClick={handleEditorLogin} disabled={authBusy||EDITOR_PIN_HASHES.length===0}
                 style={{ background:"rgba(29,125,210,.2)",border:"1px solid rgba(29,125,210,.4)",
                   color:"#4dabf7",borderRadius:6,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"monospace",
-                  opacity: authBusy||!EDITOR_PIN_HASH ? .5 : 1 }}>
+                  opacity: authBusy||EDITOR_PIN_HASHES.length===0 ? .5 : 1 }}>
                 {authBusy ? "A validar…" : "Entrar"}
               </button>
               {authError && <span style={{ fontSize:11,color:"#fa5252",fontFamily:"monospace" }}>{authError}</span>}

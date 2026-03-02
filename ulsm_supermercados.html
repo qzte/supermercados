@@ -918,10 +918,16 @@ body.view-tracking #view-workflow { display: none; }
 
 <script>
 // ── Configuração de autenticação do editor ───────────────────────────────────
-// Defina `window.__ULSM_EDITOR_PIN_HASH` (SHA-256 em hex, minúsculas) antes deste script.
+// Pode definir `window.__ULSM_EDITOR_PIN_HASHES` (SHA-256 em hex, minúsculas) antes deste script.
 // Exemplo de geração no browser: await crypto.subtle.digest("SHA-256", new TextEncoder().encode("SEU_PIN"))
 window.__ULSM_EDITOR_PINS = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
 window.__ULSM_EDITOR_PIN_HASH = (window.__ULSM_EDITOR_PIN_HASH || "").trim().toLowerCase();
+window.__ULSM_EDITOR_PIN_HASHES = Array.from(new Set([
+  "a59811a393e998d741b4bf5549fd33fa3f63984c4ded50b5c3b0b8a609554b60",
+  "f96d9542bc75defe96f986e3f922a2337292fab23e1131497624594f0862bdeb",
+  ...(Array.isArray(window.__ULSM_EDITOR_PIN_HASHES) ? window.__ULSM_EDITOR_PIN_HASHES : []),
+  window.__ULSM_EDITOR_PIN_HASH,
+].map(v => (v || "").trim().toLowerCase()).filter(Boolean)));
 
 async function sha256Hex(value){
   const bytes = new TextEncoder().encode(value);
@@ -932,9 +938,9 @@ async function sha256Hex(value){
 async function isValidEditorPin(pin){
   const normalized = (pin || "").trim();
   if(!normalized) return false;
-  if(window.__ULSM_EDITOR_PIN_HASH){
+  if(window.__ULSM_EDITOR_PIN_HASHES.length){
     const hash = await sha256Hex(normalized);
-    return hash === window.__ULSM_EDITOR_PIN_HASH;
+    return window.__ULSM_EDITOR_PIN_HASHES.includes(hash);
   }
   return window.__ULSM_EDITOR_PINS.includes(normalized);
 }
@@ -2739,7 +2745,7 @@ function App() {
   };
 
   const handleEditorLogin = async () => {
-    if(!window.__ULSM_EDITOR_PIN_HASH && window.__ULSM_EDITOR_PINS.length === 0) { setAuthError("Nenhum PIN configurado."); return; }
+    if(window.__ULSM_EDITOR_PIN_HASHES.length === 0 && window.__ULSM_EDITOR_PINS.length === 0) { setAuthError("Nenhum PIN configurado."); return; }
     if(await canUnlockEditor(pin)) {
       setIsEditor(true); setPin(""); setAuthError("");
     } else {
