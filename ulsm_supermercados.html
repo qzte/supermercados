@@ -47,10 +47,10 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.5); }
 #nav-editor-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #69db7c; box-shadow: 0 0 6px #69db7c; }
 #nav-editor-exit { display: none; background: rgba(224,49,49,.12); border: 1px solid rgba(224,49,49,.3); color: #fa5252; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; }
 #view-tracking, #view-workflow { padding-top: var(--nav-h); min-height: 100vh; }
-#view-tracking { display: none; }
-#view-workflow { display: block; }
-body.view-tracking #view-tracking { display: block; }
-body.view-tracking #view-workflow { display: none; }
+#view-tracking { display: block; }
+#view-workflow { display: none; }
+body.view-workflow #view-tracking { display: none; }
+body.view-workflow #view-workflow { display: block; }
 #tracking-root { min-height: calc(100vh - var(--nav-h)); }
 .workflow-inner { padding: 40px 24px; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;} }
@@ -98,6 +98,20 @@ body.view-tracking #view-workflow { display: none; }
   body.edit-mode .editor-controls{display:flex;}
   body.edit-mode .step{cursor:default;}
   body.edit-mode .step-title,body.edit-mode .step-time,body.edit-mode .step-body{outline:1px dashed rgba(77,171,247,.4);outline-offset:2px;}
+  /* Controles de fase */
+  .phase-editor-controls{display:none;flex-direction:column;gap:4px;margin-top:8px;align-items:flex-end;}
+  body.edit-mode .phase-editor-controls{display:flex;}
+  .phase-editor-controls button{border:1px solid #30363d;background:#0d1117;color:#8b949e;border-radius:6px;padding:2px 8px;font-size:10px;font-family:var(--mono);cursor:pointer;white-space:nowrap;}
+  .phase-editor-controls button:hover{color:var(--text);border-color:#4dabf7;}
+  body.edit-mode .phase-title,body.edit-mode .phase-duration{outline:1px dashed rgba(77,171,247,.4);outline-offset:2px;cursor:text;}
+  /* Remover imagens/PDFs */
+  .step-image-wrap{position:relative;display:inline-block;margin-top:10px;}
+  .step-image-wrap .step-image{margin-top:0;}
+  .img-remove-btn{display:none;position:absolute;top:4px;right:4px;background:rgba(224,49,49,.85);border:none;color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;}
+  body.edit-mode .img-remove-btn{display:block;}
+  .pdf-pill-del{display:none;background:transparent;border:none;color:#555;font-size:11px;cursor:pointer;padding:2px 5px;flex-shrink:0;border-radius:4px;}
+  .pdf-pill-del:hover{color:#fa5252;}
+  body.edit-mode .pdf-pill-del{display:inline-block;}
   .step-image{max-width:100%;border-radius:8px;border:1px solid #30363d;margin-top:10px;display:block;}
   .step-pdf-pill{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:7px 12px;background:#161b22;border:1px solid #30363d;border-radius:8px;font-family:var(--mono);font-size:12px;color:#c9d1d9;max-width:100%;}
   .pdf-pill-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;}
@@ -183,8 +197,8 @@ body.view-tracking #view-workflow { display: none; }
     <span id="nav-editor-badge"><span class="dot"></span>EDITOR</span>
     <button id="nav-editor-exit" onclick="window.__triggerEditorExit&&window.__triggerEditorExit()">Sair do editor</button>
     <div class="nav-tabs">
-      <button class="nav-tab" id="tab-tracking" onclick="switchView('tracking')">📊 Tracking</button>
-      <button class="nav-tab active" id="tab-workflow" onclick="switchView('workflow')">🗺 Workflow</button>
+      <button class="nav-tab active" id="tab-tracking" onclick="switchView('tracking')">📊 Tracking</button>
+      <button class="nav-tab" id="tab-workflow" onclick="switchView('workflow')">🗺 Workflow</button>
     </div>
     <button id="nav-entrar-btn" onclick="openPinModal()" class="nav-tab">🔓 Entrar</button>
   </div>
@@ -213,6 +227,23 @@ body.view-tracking #view-workflow { display: none; }
     <button id="pdfPopupClose" onclick="closePdfPopup()">✕ Fechar</button>
   </div>
   <iframe id="pdfPopupEmbed" src="about:blank"></iframe>
+</div>
+
+<!-- Modal: caminho relativo do PDF -->
+<div id="pdfPathModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:28px;width:440px;font-family:var(--sans);">
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:#7d8590;margin-bottom:10px;">ADICIONAR PDF</div>
+    <div style="font-size:14px;font-weight:700;color:#e6edf3;margin-bottom:6px;">Caminho relativo do ficheiro PDF</div>
+    <div style="font-size:12px;color:#7d8590;margin-bottom:14px;">O PDF deve estar na mesma pasta que o HTML.<br>Exemplo: <code style="color:#4dabf7;font-family:var(--mono)">pdfs/tutorial.pdf</code></div>
+    <input id="pdfPathInput" type="text" placeholder="pdfs/nome_do_ficheiro.pdf"
+      style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;padding:10px 14px;font-size:13px;font-family:var(--mono);outline:none;margin-bottom:6px;"
+      onkeydown="if(event.key==='Enter')confirmPdfPath();if(event.key==='Escape')closePdfPathModal();">
+    <div id="pdfPathError" style="font-size:11px;color:#fa5252;font-family:var(--mono);min-height:16px;margin-bottom:12px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closePdfPathModal()" style="flex:1;padding:9px;border:1px solid #30363d;border-radius:8px;background:transparent;color:#8b949e;font-family:var(--mono);font-size:11px;cursor:pointer;">Cancelar</button>
+      <button onclick="confirmPdfPath()" style="flex:1;padding:9px;border:1px solid rgba(77,171,247,.4);border-radius:8px;background:rgba(77,171,247,.12);color:#4dabf7;font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;">Adicionar</button>
+    </div>
+  </div>
 </div>
 
 <div id="view-tracking"><div id="tracking-root"></div></div>
@@ -917,33 +948,8 @@ body.view-tracking #view-workflow { display: none; }
 </div></div>
 
 <script>
-// ── Configuração de autenticação do editor ───────────────────────────────────
-// Pode definir `window.__ULSM_EDITOR_PIN_HASHES` (SHA-256 em hex, minúsculas) antes deste script.
-// Exemplo de geração no browser: await crypto.subtle.digest("SHA-256", new TextEncoder().encode("SEU_PIN"))
-window.__ULSM_EDITOR_PINS = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
-window.__ULSM_EDITOR_PIN_HASH = (window.__ULSM_EDITOR_PIN_HASH || "").trim().toLowerCase();
-window.__ULSM_EDITOR_PIN_HASHES = Array.from(new Set([
-  "a59811a393e998d741b4bf5549fd33fa3f63984c4ded50b5c3b0b8a609554b60",
-  "f96d9542bc75defe96f986e3f922a2337292fab23e1131497624594f0862bdeb",
-  ...(Array.isArray(window.__ULSM_EDITOR_PIN_HASHES) ? window.__ULSM_EDITOR_PIN_HASHES : []),
-  window.__ULSM_EDITOR_PIN_HASH,
-].map(v => (v || "").trim().toLowerCase()).filter(Boolean)));
-
-async function sha256Hex(value){
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest)).map(n => n.toString(16).padStart(2, "0")).join("");
-}
-
-async function isValidEditorPin(pin){
-  const normalized = (pin || "").trim();
-  if(!normalized) return false;
-  if(window.__ULSM_EDITOR_PIN_HASHES.length){
-    const hash = await sha256Hex(normalized);
-    return window.__ULSM_EDITOR_PIN_HASHES.includes(hash);
-  }
-  return window.__ULSM_EDITOR_PINS.includes(normalized);
-}
+// ── PINs de editor — adicionar/remover à vontade ─────────────────────────────
+window.__ULSM_EDITOR_PINS = ["JOAQUIM", "MARTA", "MARIANA", "JESSICA", "ANA"];
 // ─────────────────────────────────────────────────────────────────────────────
 
 window.__onEditorModeChange = function(isEditor) {
@@ -956,8 +962,7 @@ window.__ULSM_SESSION = { loaded: false, procs: [], filename: "" };
 
 let _trackingMounted = false;
 function switchView(view) {
-  if (!window.__ULSM_SESSION.loaded) return;
-  document.body.classList.toggle('view-tracking', view === 'tracking');
+  document.body.classList.toggle('view-workflow', view === 'workflow');
   document.getElementById('tab-tracking').classList.toggle('active', view === 'tracking');
   document.getElementById('tab-workflow').classList.toggle('active', view === 'workflow');
 }
@@ -966,6 +971,11 @@ function switchView(view) {
 <script>
 let editMode = false;
 let activeImageStep = null;
+
+function toggle(el){
+  if(editMode) return;
+  el.classList.toggle('open');
+}
 
 function toggle(el){
   if(editMode) return;
@@ -1195,33 +1205,14 @@ function createStepElement(stepData = {}){
   const step = document.createElement('div');
   step.className = 'step';
   step.setAttribute('onclick', 'toggle(this)');
-
-  const header = document.createElement('div');
-  header.className = 'step-header';
-
-  const num = document.createElement('span');
-  num.className = 'step-num';
-  num.textContent = '0.0';
-
-  const title = document.createElement('span');
-  title.className = 'step-title';
-  title.textContent = stepData.title || 'Novo passo';
-
-  const time = document.createElement('span');
-  time.className = 'step-time';
-  time.textContent = stepData.time || '5 min';
-
-  const arrow = document.createElement('span');
-  arrow.className = 'step-arrow';
-  arrow.textContent = '▾';
-
-  header.append(num, title, time, arrow);
-
-  const body = document.createElement('div');
-  body.className = 'step-body';
-  body.textContent = stepData.body || 'Editar detalhes deste passo.';
-
-  step.append(header, body);
+  step.innerHTML = `
+    <div class="step-header">
+      <span class="step-num">0.0</span>
+      <span class="step-title">${stepData.title || 'Novo passo'}</span>
+      <span class="step-time">${stepData.time || '5 min'}</span><span class="step-arrow">▾</span>
+    </div>
+    <div class="step-body">${stepData.body || 'Editar detalhes deste passo.'}</div>
+  `;
   attachStepControls(step);
   return step;
 }
@@ -1266,78 +1257,222 @@ function serializeWorkflow(){
   return {
     emailTemplates: T,
     phases: [...document.querySelectorAll('.phase')].map(phase => ({
+      title:    phase.querySelector('.phase-title')?.innerHTML || '',
+      duration: phase.querySelector('.phase-duration')?.textContent || '',
       steps: [...phase.querySelectorAll('.step')].map(step => ({
         title: step.querySelector('.step-title')?.textContent || '',
-        time: step.querySelector('.step-time')?.textContent || '',
-        body: step.querySelector('.step-body')?.textContent || ''
+        time:  step.querySelector('.step-time')?.textContent || '',
+        body:  step.querySelector('.step-body')?.innerHTML || ''
       }))
     }))
   };
 }
 
 function applyTemplate(data){
-  if(data?.emailTemplates){
-    T = JSON.parse(JSON.stringify(data.emailTemplates));
-  }
+  if(data?.emailTemplates) T = JSON.parse(JSON.stringify(data.emailTemplates));
   if(!data?.phases) return;
   const phases = [...document.querySelectorAll('.phase')];
   data.phases.forEach((phaseData, idx) => {
     const phase = phases[idx];
-    if(!phase || !Array.isArray(phaseData.steps)) return;
+    if(!phase) return;
+    if(phaseData.title !== undefined){
+      const el = phase.querySelector('.phase-title');
+      if(el) el.innerHTML = phaseData.title;
+    }
+    if(phaseData.duration !== undefined){
+      const el = phase.querySelector('.phase-duration');
+      if(el) el.textContent = phaseData.duration;
+    }
+    if(!Array.isArray(phaseData.steps)) return;
     const content = phase.querySelector('.phase-content');
-    content.querySelectorAll('.step').forEach(step => step.remove());
+    content.querySelectorAll('.step').forEach(s => s.remove());
     phaseData.steps.forEach(stepData => content.appendChild(createStepElement(stepData)));
   });
   renumberAllPhases();
   setEditableState(editMode);
 }
 
+function attachRemoveButtons(body){
+  // Imagens — envolver em wrapper com botão ✕
+  body.querySelectorAll('.step-image').forEach(img => {
+    if(img.closest('.step-image-wrap')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'step-image-wrap';
+    img.replaceWith(wrap);
+    wrap.appendChild(img);
+    const btn = document.createElement('button');
+    btn.className = 'img-remove-btn';
+    btn.textContent = '✕';
+    btn.title = 'Remover imagem';
+    btn.addEventListener('click', e => { e.stopPropagation(); wrap.remove(); saveToLocalStorage(); });
+    wrap.appendChild(btn);
+  });
+  // PDFs — adicionar botão ✕ se ainda não tiver
+  body.querySelectorAll('.step-pdf-pill').forEach(pill => {
+    if(pill.querySelector('.pdf-pill-del')) return;
+    const btn = document.createElement('button');
+    btn.className = 'pdf-pill-del';
+    btn.textContent = '✕';
+    btn.title = 'Remover PDF';
+    btn.addEventListener('click', e => { e.stopPropagation(); pill.remove(); saveToLocalStorage(); });
+    pill.appendChild(btn);
+  });
+}
+
+function setEditableState(enabled){
+  document.querySelectorAll('.step-title,.step-time,.step-body').forEach(el =>
+    el.setAttribute('contenteditable', enabled ? 'true' : 'false'));
+  document.querySelectorAll('.phase-title,.phase-duration').forEach(el =>
+    el.setAttribute('contenteditable', enabled ? 'true' : 'false'));
+  if(enabled){
+    document.querySelectorAll('.step').forEach(s => s.classList.add('open'));
+    document.querySelectorAll('.phase').forEach(ph => attachPhaseControls(ph));
+    document.querySelectorAll('.step-body').forEach(b => attachRemoveButtons(b));
+  }
+}
+
+function attachPhaseControls(phase){
+  const label = phase.querySelector('.phase-label');
+  if(!label || label.querySelector('.phase-editor-controls')) return;
+  const controls = document.createElement('div');
+  controls.className = 'phase-editor-controls';
+
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '+ fase abaixo';
+  addBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const newPhase = createPhaseElement();
+    const connector = document.createElement('div');
+    connector.className = 'connector-line';
+    connector.innerHTML = '<div class="vline"></div><div></div>';
+    const nextSib = phase.nextElementSibling;
+    const anchor = (nextSib && nextSib.classList.contains('connector-line')) ? nextSib : phase;
+    anchor.insertAdjacentElement('afterend', connector);
+    connector.insertAdjacentElement('afterend', newPhase);
+    attachPhaseControls(newPhase);
+    newPhase.querySelectorAll('.step').forEach(s => attachStepControls(s));
+    renumberAllPhases();
+    renumberPhaseLabels();
+    setEditableState(true);
+    saveToLocalStorage();
+  });
+
+  const delBtn = document.createElement('button');
+  delBtn.textContent = '🗑 fase';
+  delBtn.style.color = '#fa5252';
+  delBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if(document.querySelectorAll('.phase').length <= 1){
+      alert('O workflow precisa de pelo menos 1 fase.'); return;
+    }
+    if(!confirm('Eliminar esta fase e todos os seus passos?')) return;
+    const prev = phase.previousElementSibling;
+    if(prev && prev.classList.contains('connector-line')) prev.remove();
+    else { const next = phase.nextElementSibling; if(next && next.classList.contains('connector-line')) next.remove(); }
+    phase.remove();
+    renumberAllPhases();
+    renumberPhaseLabels();
+    saveToLocalStorage();
+  });
+
+  controls.append(addBtn, delBtn);
+  label.appendChild(controls);
+}
+
+function createPhaseElement(){
+  const n = document.querySelectorAll('.phase').length + 1;
+  const phase = document.createElement('div');
+  phase.className = `phase p${n}`;
+  if(n > 7){
+    const hues = [140,210,270,40,0,165,300];
+    const h = hues[(n-1) % hues.length];
+    const s = document.createElement('style');
+    s.textContent = `.p${n} .phase-label{border-color:hsl(${h},60%,45%)}.p${n} .phase-label::after{background:hsl(${h},60%,45%)}.p${n} .phase-title{color:hsl(${h},60%,55%)}.p${n} .step-header{border-left:3px solid hsl(${h},60%,45%)}`;
+    document.head.appendChild(s);
+  }
+  phase.innerHTML = `
+    <div class="phase-label">
+      <div class="phase-number">FASE ${String(n).padStart(2,'0')}</div>
+      <div class="phase-title">Nova Fase</div>
+      <div class="phase-duration">⏱ ~1 dia</div>
+    </div>
+    <div class="phase-content">
+      <div class="step" onclick="toggle(this)">
+        <div class="step-header">
+          <span class="step-num">${n}.1</span>
+          <span class="step-title">Novo passo</span>
+          <span class="step-time">5 min</span>
+          <span class="step-arrow">▾</span>
+        </div>
+        <div class="step-body">Editar detalhes deste passo.</div>
+      </div>
+    </div>`;
+  return phase;
+}
+
+function renumberPhaseLabels(){
+  document.querySelectorAll('.phase').forEach((phase, i) => {
+    const numEl = phase.querySelector('.phase-number');
+    if(numEl) numEl.textContent = `FASE ${String(i+1).padStart(2,'0')}`;
+    phase.className = phase.className.replace(/\bp\d+\b/, `p${i+1}`);
+  });
+}
+
+function createStepElement(stepData = {}){
+  const step = document.createElement('div');
+  step.className = 'step';
+  step.setAttribute('onclick', 'toggle(this)');
+  step.innerHTML = `
+    <div class="step-header">
+      <span class="step-num">0.0</span>
+      <span class="step-title">${stepData.title || 'Novo passo'}</span>
+      <span class="step-time">${stepData.time || '5 min'}</span><span class="step-arrow">▾</span>
+    </div>
+    <div class="step-body">${stepData.body || 'Editar detalhes deste passo.'}</div>
+  `;
+  if(editMode) attachRemoveButtons(step.querySelector('.step-body'));
+  attachStepControls(step);
+  return step;
+}
+
 function attachStepControls(step){
   const header = step.querySelector('.step-header');
   if(!header || header.querySelector('.editor-controls')) return;
-
   const controls = document.createElement('div');
   controls.className = 'editor-controls';
 
   const addBtn = document.createElement('button');
-  addBtn.type = 'button';
-  addBtn.textContent = '+ passo';
-  addBtn.onclick = (event) => {
-    event.stopPropagation();
-    const phaseContent = step.closest('.phase-content');
+  addBtn.type = 'button'; addBtn.textContent = '+ passo';
+  addBtn.addEventListener('click', e => {
+    e.stopPropagation();
     const newStep = createStepElement();
     step.insertAdjacentElement('afterend', newStep);
-    renumberAllPhases();
-    setEditableState(editMode);
-    saveToLocalStorage();
-  };
+    renumberAllPhases(); setEditableState(editMode); saveToLocalStorage();
+  });
 
   const imageBtn = document.createElement('button');
-  imageBtn.type = 'button';
-  imageBtn.textContent = '🖼 imagem';
-  imageBtn.onclick = (event) => {
-    event.stopPropagation();
-    activeImageStep = step;
+  imageBtn.type = 'button'; imageBtn.textContent = '🖼 imagem';
+  imageBtn.addEventListener('click', e => {
+    e.stopPropagation(); activeImageStep = step;
     document.getElementById('imageInput').click();
-  };
+  });
+
+  const pdfBtn = document.createElement('button');
+  pdfBtn.type = 'button'; pdfBtn.textContent = '📄 PDF';
+  pdfBtn.addEventListener('click', e => {
+    e.stopPropagation(); activeImageStep = step; openPdfPathModal();
+  });
 
   const delBtn = document.createElement('button');
-  delBtn.type = 'button';
-  delBtn.textContent = '🗑';
-  delBtn.onclick = (event) => {
-    event.stopPropagation();
+  delBtn.type = 'button'; delBtn.textContent = '🗑 passo'; delBtn.style.color = '#fa5252';
+  delBtn.addEventListener('click', e => {
+    e.stopPropagation();
     const phase = step.closest('.phase');
-    const total = phase.querySelectorAll('.step').length;
-    if(total <= 1){
-      alert('Cada fase precisa de pelo menos 1 passo.');
-      return;
-    }
-    step.remove();
-    renumberAllPhases();
-    saveToLocalStorage();
-  };
+    if(phase.querySelectorAll('.step').length <= 1){ alert('Cada fase precisa de pelo menos 1 passo.'); return; }
+    step.remove(); renumberAllPhases(); saveToLocalStorage();
+  });
 
-  controls.append(addBtn, imageBtn, delBtn);
+  controls.append(addBtn, imageBtn, pdfBtn, delBtn);
   header.appendChild(controls);
 }
 
@@ -1348,33 +1483,51 @@ function openEmail(key, event){
     return;
   }
   const t = T[key]; if(!t) return;
-
   document.getElementById('modalTitle').textContent = t.title;
-
   const meta = document.getElementById('modalMeta');
-  meta.replaceChildren(
-    createMetaRow('De:', t.rem),
-    createMetaRow('Para:', t.para)
-  );
-  if (t.cc && t.cc !== '—') {
-    meta.appendChild(createMetaRow('CC:', t.cc));
-  }
-
+  meta.replaceChildren(createMetaRow('De:', t.rem), createMetaRow('Para:', t.para));
+  if(t.cc && t.cc !== '—') meta.appendChild(createMetaRow('CC:', t.cc));
   document.getElementById('modalSubjectLabel').textContent = 'Assunto: ' + t.assunto;
-
-  const modalBody = document.getElementById('modalBody');
-  modalBody.replaceChildren(renderEmailBody(t.body));
-
+  document.getElementById('modalBody').replaceChildren(renderEmailBody(t.body));
   const btn = document.getElementById('copyBtn');
-  btn.textContent = '📋 Copiar texto';
-  btn.classList.remove('copied');
+  btn.textContent = '📋 Copiar texto'; btn.classList.remove('copied');
   document.getElementById('emailModal').classList.add('active');
 }
 
+// ── PDF path modal ────────────────────────────────────────────────────────
+function openPdfPathModal(){
+  document.getElementById('pdfPathInput').value = '';
+  document.getElementById('pdfPathError').textContent = '';
+  document.getElementById('pdfPathModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('pdfPathInput').focus(), 50);
+}
+function closePdfPathModal(){
+  document.getElementById('pdfPathModal').style.display = 'none';
+}
+function confirmPdfPath(){
+  const input = document.getElementById('pdfPathInput');
+  const errEl = document.getElementById('pdfPathError');
+  const path = input.value.trim();
+  if(!path){ errEl.textContent = 'Introduza o caminho do ficheiro PDF.'; return; }
+  if(!path.toLowerCase().endsWith('.pdf')){ errEl.textContent = 'O caminho deve terminar em .pdf'; return; }
+  if(!activeImageStep){ closePdfPathModal(); return; }
+  const name = path.split('/').pop();
+  const body = activeImageStep.querySelector('.step-body');
+  const pill = document.createElement('div');
+  pill.className = 'step-pdf-pill';
+  pill.dataset.pdfPath = path;
+  pill.dataset.pdfName = name;
+  pill.innerHTML = `<span>📄</span><span class="pdf-pill-name">${name}</span><button class="pdf-pill-open" title="Abrir PDF">&#x2197;</button><button class="pdf-pill-del" title="Remover">✕</button>`;
+  pill.querySelector('.pdf-pill-open').addEventListener('click', e => { e.stopPropagation(); openPdfPopup(path, name); });
+  pill.querySelector('.pdf-pill-del').addEventListener('click', e => { e.stopPropagation(); pill.remove(); saveToLocalStorage(); });
+  body.appendChild(pill);
+  activeImageStep.classList.add('open');
+  saveToLocalStorage();
+  closePdfPathModal();
+}
+
 function openPdfPopup(src, name){
-  document.getElementById('pdfPopupEmbed').src = src;
-  document.getElementById('pdfPopupTitle').textContent = '📄 ' + (name || src);
-  document.getElementById('pdfPopup').classList.add('open');
+  window.open(src, '_blank');
 }
 function closePdfPopup(){
   document.getElementById('pdfPopup').classList.remove('open');
@@ -1393,10 +1546,11 @@ function closePinModal(){
   document.getElementById('modalPinInput').value = '';
   document.getElementById('modalPinError').textContent = '';
 }
-async function confirmPinModal(){
+function confirmPinModal(){
   const input = document.getElementById('modalPinInput');
   const errEl = document.getElementById('modalPinError');
-  if(!(await isValidEditorPin(input.value.trim()))) {
+  const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
+  if(pins.length === 0 || !pins.includes(input.value.trim())) {
     errEl.textContent = 'PIN invalido. Tente novamente.';
     input.value = '';
     input.focus();
@@ -1434,8 +1588,24 @@ function initEditorMode(){
 
   document.getElementById('exitWorkflowEditBtn').addEventListener('click', deactivateWorkflowEditor);
 
-  document.getElementById('saveTemplateBtn').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(serializeWorkflow(), null, 2)], { type: 'application/json' });
+  document.getElementById('saveTemplateBtn').addEventListener('click', async () => {
+    const json = JSON.stringify(serializeWorkflow(), null, 2);
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: 'workflow-template.json',
+          types: [{ description: 'Ficheiro JSON', accept: { 'application/json': ['.json'] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return; // user cancelled
+      }
+    }
+    // Fallback
+    const blob = new Blob([json], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'workflow-template.json';
@@ -1465,19 +1635,18 @@ function initEditorMode(){
     const reader = new FileReader();
     reader.onload = () => {
       const body = activeImageStep.querySelector('.step-body');
-      if(file.type === 'application/pdf') {
-        const pdfData = reader.result;
-        const pill = document.createElement('div');
-        pill.className = 'step-pdf-pill';
-        pill.innerHTML = `<span>📄</span><span class="pdf-pill-name">${file.name}</span><button class="pdf-pill-open" title="Abrir PDF">&#x2197;</button>`;
-        pill.querySelector('.pdf-pill-open').addEventListener('click', () => openPdfPopup(pdfData, file.name));
-        body.appendChild(pill);
-      } else {
-        const img = document.createElement('img');
-        img.src = reader.result;
-        img.className = 'step-image';
-        body.appendChild(img);
-      }
+      const wrap = document.createElement('div');
+      wrap.className = 'step-image-wrap';
+      const img = document.createElement('img');
+      img.src = reader.result;
+      img.className = 'step-image';
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'img-remove-btn';
+      removeBtn.textContent = '✕';
+      removeBtn.title = 'Remover imagem';
+      removeBtn.addEventListener('click', e => { e.stopPropagation(); wrap.remove(); saveToLocalStorage(); });
+      wrap.appendChild(img); wrap.appendChild(removeBtn);
+      body.appendChild(wrap);
       activeImageStep.classList.add('open');
       saveToLocalStorage();
     };
@@ -1486,9 +1655,7 @@ function initEditorMode(){
   });
 
   document.getElementById('editEmailsBtn').addEventListener('click', () => openTemplateEditor());
-
   document.getElementById('tplKey').addEventListener('change', (event) => loadTemplateFields(event.target.value));
-
   document.getElementById('resetTemplateBtn').addEventListener('click', () => {
     localStorage.removeItem('workflowTemplate');
     if(window.storage && typeof window.storage.delete === 'function'){
@@ -1499,7 +1666,7 @@ function initEditorMode(){
 
   document.addEventListener('input', (event) => {
     if(!editMode) return;
-    if(event.target.closest('.step-title, .step-time, .step-body')){
+    if(event.target.closest('.step-title,.step-time,.step-body,.phase-title,.phase-duration')){
       saveToLocalStorage();
     }
   });
@@ -1820,24 +1987,45 @@ function sanitizeEmailLog(v) {
 
 function sanitizeProc(proc, idx = 0) {
   if(!isObj(proc)) return null;
-  const phaseNum = Number.isInteger(proc.currentPhase) ? proc.currentPhase : 1;
-  const currentPhase = Math.min(Math.max(phaseNum, 1), PHASES.length);
-  const phase = PHASES[currentPhase - 1];
-  const maxStep = Math.max(0, (phase?.steps?.length || 1) - 1);
-  const stepNum = Number.isInteger(proc.currentStep) ? proc.currentStep : 0;
-  const currentStep = Math.min(Math.max(stepNum, 0), maxStep);
+
+  // Helper for a single tracking track (phase/step)
+  function sanitizeTrack(phaseVal, stepVal) {
+    const phaseNum = Number.isInteger(phaseVal) ? phaseVal : 1;
+    const currentPhase = Math.min(Math.max(phaseNum, 1), PHASES.length);
+    const phase = PHASES[currentPhase - 1];
+    const maxStep = Math.max(0, (phase?.steps?.length || 1) - 1);
+    const stepNum = Number.isInteger(stepVal) ? stepVal : 0;
+    const currentStep = Math.min(Math.max(stepNum, 0), maxStep);
+    return { currentPhase, currentStep };
+  }
+
   const status = Object.prototype.hasOwnProperty.call(STATUS_CFG, proc.status) ? proc.status : "ok";
+
+  // Support legacy "responsible/coResponsible/currentPhase/currentStep" fields
+  const legacyResponsible = toSafeText(proc.responsible, 120);
+  const legacyCoResponsible = toSafeText(proc.coResponsible, 120);
+  const legacyTrack = sanitizeTrack(proc.currentPhase, proc.currentStep);
+
+  const clinicoTrack = proc.clinicoPhase != null
+    ? sanitizeTrack(proc.clinicoPhase, proc.clinicoStep)
+    : legacyTrack;
+  const farmaciaTrack = proc.farmaciaPhase != null
+    ? sanitizeTrack(proc.farmaciaPhase, proc.farmaciaStep)
+    : legacyTrack;
 
   const clean = {
     id: Number.isFinite(proc.id) ? proc.id : Date.now() + idx,
     service: toSafeText(proc.service, 180),
     costCenter: toSafeText(proc.costCenter, 120),
-    responsible: toSafeText(proc.responsible, 120),
-    coResponsible: toSafeText(proc.coResponsible, 120),
+    // Dual tracking
+    responsavelClinico: toSafeText(proc.responsavelClinico || legacyResponsible, 120),
+    responsavelFarmacia: toSafeText(proc.responsavelFarmacia || legacyCoResponsible, 120),
+    clinicoPhase: clinicoTrack.currentPhase,
+    clinicoStep: clinicoTrack.currentStep,
+    farmaciaPhase: farmaciaTrack.currentPhase,
+    farmaciaStep: farmaciaTrack.currentStep,
     startDate: toSafeDate(proc.startDate) || new Date().toISOString().slice(0,10),
     targetDate: toSafeDate(proc.targetDate),
-    currentPhase,
-    currentStep,
     status,
     notes: toSafeText(proc.notes, 4000),
     emailLog: sanitizeEmailLog(proc.emailLog),
@@ -1910,8 +2098,9 @@ async function exportToFile(list) {
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 
-async function canUnlockEditor(pin) {
-  return isValidEditorPin(pin);
+function canUnlockEditor(pin) {
+  const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
+  return pins.length > 0 && pins.includes(pin.trim());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1922,16 +2111,24 @@ function fmtDate(iso) { if(!iso) return "—"; return new Date(iso).toLocaleDate
 function fmtDateTime(iso) { if(!iso) return "—"; return new Date(iso).toLocaleDateString("pt-PT",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
 
 function totalSteps() { return PHASES.reduce((a,p)=>a+p.steps.length,0); }
-function completedSteps(proc) {
-  const donePhaseSteps = PHASES.slice(0, proc.currentPhase-1).reduce((a,p)=>a+p.steps.length,0);
-  return donePhaseSteps + (proc.currentStep||0);
+function completedStepsForTrack(phase, step) {
+  const donePhaseSteps = PHASES.slice(0, phase-1).reduce((a,p)=>a+p.steps.length,0);
+  return donePhaseSteps + (step||0);
 }
+function completedSteps(proc) { return completedStepsForTrack(proc.currentPhase||proc.clinicoPhase||1, proc.currentStep||proc.clinicoStep||0); }
 function totalPct(proc) { return Math.round((completedSteps(proc)/totalSteps())*100); }
+function clinicoPct(proc) { return Math.round((completedStepsForTrack(proc.clinicoPhase||1, proc.clinicoStep||0)/totalSteps())*100); }
+function farmaciaPct(proc) { return Math.round((completedStepsForTrack(proc.farmaciaPhase||1, proc.farmaciaStep||0)/totalSteps())*100); }
 
 function EMPTY_PROC() {
-  return { id: Date.now(), service:"", costCenter:"", responsible:"", coResponsible:"",
+  return { id: Date.now(), service:"", costCenter:"",
+    // Dual tracking: Clínico (clinico) + Farmácia (farmacia)
+    responsavelClinico:"", responsavelFarmacia:"",
+    // Tracking independente por área
+    clinicoPhase:1, clinicoStep:0,
+    farmaciaPhase:1, farmaciaStep:0,
     startDate: new Date().toISOString().slice(0,10), targetDate:"",
-    currentPhase:1, currentStep:0, status:"ok", notes:"",
+    status:"ok", notes:"",
     emailLog:[], history:[{ ts: new Date().toISOString(), action:"Processo criado" }],
     createdAt: new Date().toISOString() };
 }
@@ -2067,20 +2264,28 @@ function StepDrawer({ step, phaseColor, procService, onMarkDone, isDone, isCurre
 function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
   const [draft, setDraft] = useState(()=>JSON.parse(JSON.stringify(proc)));
   const [tab, setTab] = useState("steps");
+  // activeTrack: "clinico" | "farmacia"
+  const [activeTrack, setActiveTrack] = useState("clinico");
   const [activeStep, setActiveStep] = useState(null);
   const [newNote, setNewNote] = useState("");
   const upd = (f,v) => setDraft(d=>({...d,[f]:v}));
 
-  const phase = PHASES[draft.currentPhase-1];
-  const pct = totalPct(draft);
+  const CLINICO_COLOR = "#4dabf7";
+  const FARMACIA_COLOR = "#da77f2";
+
+  const trackPhase = activeTrack === "clinico" ? (draft.clinicoPhase||1) : (draft.farmaciaPhase||1);
+  const trackStep  = activeTrack === "clinico" ? (draft.clinicoStep||0)  : (draft.farmaciaStep||0);
+  const phase = PHASES[trackPhase-1];
+  const cPct = clinicoPct(draft);
+  const fPct = farmaciaPct(draft);
 
   const openStep = (phaseIdx, stepIdx) => {
     setActiveStep({ phaseIdx, stepIdx });
   };
 
   const markDone = () => {
-    const ph = PHASES[draft.currentPhase-1];
-    const currentStepData = ph.steps[draft.currentStep];
+    const ph = PHASES[trackPhase-1];
+    const currentStepData = ph.steps[trackStep];
     let updated = { ...draft };
     if (currentStepData?.emailKey) {
       const tmpl = EMAIL_TEMPLATES[currentStepData.emailKey];
@@ -2095,20 +2300,24 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
         }];
       }
     }
-    if (draft.currentStep < ph.steps.length - 1) {
-      const nextStep = ph.steps[draft.currentStep + 1];
-      updated.currentStep = draft.currentStep + 1;
+    const trackLabel = activeTrack === "clinico" ? "Clínico" : "Farmácia";
+    if (trackStep < ph.steps.length - 1) {
+      const nextStep = ph.steps[trackStep + 1];
+      if (activeTrack === "clinico") { updated.clinicoStep = trackStep + 1; }
+      else { updated.farmaciaStep = trackStep + 1; }
       updated.history = [...(updated.history||[]), { ts: new Date().toISOString(),
-        action: `✓ Concluído: ${ph.steps[draft.currentStep].title} → Em curso: ${nextStep.title}` }];
-    } else if (draft.currentPhase < PHASES.length) {
-      const nextPhase = PHASES[draft.currentPhase];
-      updated.currentPhase = draft.currentPhase + 1;
-      updated.currentStep = 0;
+        action: `✓ [${trackLabel}] Concluído: ${ph.steps[trackStep].title} → Em curso: ${nextStep.title}` }];
+    } else if (trackPhase < PHASES.length) {
+      const nextPhase = PHASES[trackPhase];
+      if (activeTrack === "clinico") { updated.clinicoPhase = trackPhase + 1; updated.clinicoStep = 0; }
+      else { updated.farmaciaPhase = trackPhase + 1; updated.farmaciaStep = 0; }
       updated.history = [...(updated.history||[]), { ts: new Date().toISOString(),
-        action: `✓ Concluída ${ph.code} — ${ph.label} → Iniciado ${nextPhase.code} — ${nextPhase.label}` }];
+        action: `✓ [${trackLabel}] Concluída ${ph.code} — ${ph.label} → Iniciado ${nextPhase.code} — ${nextPhase.label}` }];
     } else {
-      updated.status = "done";
-      updated.history = [...(updated.history||[]), { ts: new Date().toISOString(), action: "🏁 Processo concluído!" }];
+      updated.history = [...(updated.history||[]), { ts: new Date().toISOString(), action: `🏁 [${trackLabel}] Processo concluído!` }];
+      // If both tracks done, mark overall status done
+      const otherPct = activeTrack === "clinico" ? farmaciaPct(updated) : clinicoPct(updated);
+      if (otherPct === 100) updated.status = "done";
     }
     setDraft(updated);
     setActiveStep(null);
@@ -2129,19 +2338,20 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
     : null;
 
   const isStepDone = (phaseId, stepIdx) =>
-    phaseId < draft.currentPhase || (phaseId === draft.currentPhase && stepIdx < draft.currentStep);
+    phaseId < trackPhase || (phaseId === trackPhase && stepIdx < trackStep);
   const isStepCurrent = (phaseId, stepIdx) =>
-    phaseId === draft.currentPhase && stepIdx === draft.currentStep;
+    phaseId === trackPhase && stepIdx === trackStep;
 
   const days = daysUntil(draft.targetDate);
   const cfg = STATUS_CFG[draft.status];
+  const trackColor = activeTrack === "clinico" ? CLINICO_COLOR : FARMACIA_COLOR;
 
   return (
     <>
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)",
       zIndex:200, display:"flex", alignItems:"stretch", justifyContent:"flex-end" }}
       onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{ background:"#161b22", borderLeft:`3px solid ${phase.color}`,
+      <div style={{ background:"#161b22", borderLeft:`3px solid ${trackColor}`,
         width:"100%", maxWidth:720, display:"flex", flexDirection:"column",
         boxShadow:"-16px 0 60px rgba(0,0,0,.6)", animation:"slideIn .2s ease",
         overflowY:"hidden" }}>
@@ -2150,20 +2360,26 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
         <div style={{ padding:"20px 24px", borderBottom:"1px solid #21262d", flexShrink:0 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
             <div style={{ flex:1 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
                 <span style={{ width:10, height:10, borderRadius:"50%", background:cfg.dot,
                   boxShadow:`0 0 8px ${cfg.dot}`, flexShrink:0 }} />
                 <span style={{ fontSize:18, fontWeight:700, color:"#e6edf3" }}>
                   {draft.service||"Serviço sem nome"}
                 </span>
-                <span style={{ padding:"2px 8px", background:phase.color+"22", border:`1px solid ${phase.color}44`,
-                  color:phase.color, borderRadius:4, fontSize:10, fontFamily:"monospace", fontWeight:700 }}>
-                  {phase.code}
-                </span>
               </div>
-              <div style={{ display:"flex", gap:16, fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>
-                {draft.responsible && <span>👤 {draft.responsible}</span>}
-                {draft.targetDate && <span style={{ color: days===null?"#7d8590":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c" }}>
+              {/* Dual responsáveis */}
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                <span style={{ fontSize:11, fontFamily:"monospace", background:"rgba(77,171,247,.1)",
+                  border:"1px solid rgba(77,171,247,.25)", color:CLINICO_COLOR, borderRadius:5, padding:"3px 10px" }}>
+                  🏥 Clínico: {draft.responsavelClinico||"—"}
+                </span>
+                <span style={{ fontSize:11, fontFamily:"monospace", background:"rgba(218,119,242,.1)",
+                  border:"1px solid rgba(218,119,242,.25)", color:FARMACIA_COLOR, borderRadius:5, padding:"3px 10px" }}>
+                  💊 Farmácia: {draft.responsavelFarmacia||"—"}
+                </span>
+                {draft.targetDate && <span style={{ fontSize:11, fontFamily:"monospace",
+                  color:days===null?"#7d8590":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c",
+                  padding:"3px 0" }}>
                   📅 {days===null?"":days<0?`${Math.abs(days)}d atraso`:days===0?"hoje!":`${days}d`} · alvo: {fmtDate(draft.targetDate)}
                 </span>}
               </div>
@@ -2177,20 +2393,50 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
             </div>
           </div>
 
-          {/* Progress */}
-          <div style={{ marginTop:14 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-              <span style={{ fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>PROGRESSO GERAL</span>
-              <span style={{ fontSize:11, color:"#e6edf3", fontFamily:"monospace", fontWeight:700 }}>{pct}% · {completedSteps(draft)}/{totalSteps()} passos</span>
+          {/* Dual progress bars */}
+          <div style={{ marginTop:14, display:"flex", flexDirection:"column", gap:8 }}>
+            {/* Clinico progress */}
+            <div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:10, color:CLINICO_COLOR, fontFamily:"monospace", fontWeight:700 }}>CLÍNICO · {completedStepsForTrack(draft.clinicoPhase||1, draft.clinicoStep||0)}/{totalSteps()} passos</span>
+                <span style={{ fontSize:11, color:CLINICO_COLOR, fontFamily:"monospace", fontWeight:700 }}>{cPct}%</span>
+              </div>
+              <ProgressBar value={cPct} color={CLINICO_COLOR} h={5}/>
             </div>
-            <ProgressBar value={pct} color={phase.color} h={6}/>
+            {/* Farmacia progress */}
+            <div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:10, color:FARMACIA_COLOR, fontFamily:"monospace", fontWeight:700 }}>FARMÁCIA · {completedStepsForTrack(draft.farmaciaPhase||1, draft.farmaciaStep||0)}/{totalSteps()} passos</span>
+                <span style={{ fontSize:11, color:FARMACIA_COLOR, fontFamily:"monospace", fontWeight:700 }}>{fPct}%</span>
+              </div>
+              <ProgressBar value={fPct} color={FARMACIA_COLOR} h={5}/>
+            </div>
           </div>
 
-          {/* Phase timeline mini */}
-          <div style={{ display:"flex", gap:3, marginTop:12, overflowX:"auto" }}>
+          {/* Track selector pills */}
+          <div style={{ display:"flex", gap:6, marginTop:12 }}>
+            <button onClick={()=>setActiveTrack("clinico")} style={{
+              padding:"5px 14px", borderRadius:20, cursor:"pointer", fontSize:11, fontFamily:"monospace", fontWeight:700,
+              border:`1px solid ${activeTrack==="clinico"?CLINICO_COLOR+"88":"rgba(255,255,255,.08)"}`,
+              background:activeTrack==="clinico"?CLINICO_COLOR+"22":"transparent",
+              color:activeTrack==="clinico"?CLINICO_COLOR:"#7d8590",
+            }}>🏥 Ver Clínico</button>
+            <button onClick={()=>setActiveTrack("farmacia")} style={{
+              padding:"5px 14px", borderRadius:20, cursor:"pointer", fontSize:11, fontFamily:"monospace", fontWeight:700,
+              border:`1px solid ${activeTrack==="farmacia"?FARMACIA_COLOR+"88":"rgba(255,255,255,.08)"}`,
+              background:activeTrack==="farmacia"?FARMACIA_COLOR+"22":"transparent",
+              color:activeTrack==="farmacia"?FARMACIA_COLOR:"#7d8590",
+            }}>💊 Ver Farmácia</button>
+            <span style={{ fontSize:10, color:"#555", fontFamily:"monospace", padding:"5px 0", marginLeft:4 }}>
+              {activeTrack==="clinico"?"A avançar tracking Clínico":"A avançar tracking Farmácia"}
+            </span>
+          </div>
+
+          {/* Phase timeline mini for active track */}
+          <div style={{ display:"flex", gap:3, marginTop:10, overflowX:"auto" }}>
             {PHASES.map(ph=>{
-              const done = ph.id < draft.currentPhase;
-              const cur = ph.id === draft.currentPhase;
+              const done = ph.id < trackPhase;
+              const cur = ph.id === trackPhase;
               return <div key={ph.id} onClick={()=>setTab("steps")} title={ph.label}
                 style={{ flex:1, height:5, borderRadius:99, cursor:"pointer", minWidth:20,
                   background: done ? ph.color : cur ? ph.color+"88" : "rgba(255,255,255,.07)",
@@ -2205,7 +2451,7 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
           {[["steps","📋 Passos"],["info","✏️ Detalhes"],["history","🕐 Histórico"]].map(([k,l])=>(
             <button key={k} onClick={()=>setTab(k)} style={{ padding:"10px 16px", fontSize:12,
               fontFamily:"monospace", cursor:"pointer", border:"none",
-              borderBottom:`2px solid ${tab===k?phase.color:"transparent"}`,
+              borderBottom:`2px solid ${tab===k?trackColor:"transparent"}`,
               background:"transparent", color:tab===k?"#e6edf3":"#7d8590",
               fontWeight:tab===k?700:400, transition:"all .15s" }}>{l}</button>
           ))}
@@ -2218,9 +2464,9 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
           {tab==="steps" && (
             <div>
               {PHASES.map((ph, phIdx)=>{
-                const isCurrentPhase = ph.id === draft.currentPhase;
-                const isPastPhase = ph.id < draft.currentPhase;
-                const isFuturePhase = ph.id > draft.currentPhase;
+                const isCurrentPhase = ph.id === trackPhase;
+                const isPastPhase = ph.id < trackPhase;
+                const isFuturePhase = ph.id > trackPhase;
                 return (
                   <div key={ph.id} style={{ marginBottom:16 }}>
                     {/* Phase header */}
@@ -2297,14 +2543,22 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
                 <div key={f}><label style={LS}>{l}</label>
                   <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
               ))}
-              {[["responsible","RESPONSÁVEL"],["coResponsible","CO-RESPONSÁVEL"]].map(([f,l])=>(
-                <div key={f}><label style={LS}>{l}</label>
-                  <select value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} disabled={!isEditor}
-                    style={{...IS,cursor:isEditor?"pointer":"default"}}>
-                    <option value="">— selecionar —</option>
-                    {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
-                  </select></div>
-              ))}
+              <div>
+                <label style={{...LS,color:"#4dabf7"}}>RESPONSÁVEL CLÍNICO</label>
+                <select value={draft.responsavelClinico||""} onChange={e=>isEditor&&upd("responsavelClinico",e.target.value)} disabled={!isEditor}
+                  style={{...IS,cursor:isEditor?"pointer":"default"}}>
+                  <option value="">— selecionar —</option>
+                  {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{...LS,color:"#da77f2"}}>RESPONSÁVEL FARMÁCIA</label>
+                <select value={draft.responsavelFarmacia||""} onChange={e=>isEditor&&upd("responsavelFarmacia",e.target.value)} disabled={!isEditor}
+                  style={{...IS,cursor:isEditor?"pointer":"default"}}>
+                  <option value="">— selecionar —</option>
+                  {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
               {[["startDate","DATA DE INÍCIO","date"],["targetDate","DATA ALVO","date"]].map(([f,l,t])=>(
                 <div key={f}><label style={LS}>{l}</label>
                   <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
@@ -2400,11 +2654,17 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
 // PROCESS CARD
 // ─────────────────────────────────────────────────────────────────────────────
 function ProcessCard({ proc, onClick }) {
-  const phase = PHASES[proc.currentPhase-1];
-  const pct = totalPct(proc);
+  const clinicoPhase = PHASES[(proc.clinicoPhase||1)-1];
+  const farmaciaPhase = PHASES[(proc.farmaciaPhase||1)-1];
+  const cPct = clinicoPct(proc);
+  const fPct = farmaciaPct(proc);
   const cfg = STATUS_CFG[proc.status];
   const days = daysUntil(proc.targetDate);
-  const nextStep = phase?.steps[proc.currentStep];
+  const clinicoNextStep = clinicoPhase?.steps[proc.clinicoStep||0];
+  const farmaciaNextStep = farmaciaPhase?.steps[proc.farmaciaStep||0];
+
+  const CLINICO_COLOR = "#4dabf7";
+  const FARMACIA_COLOR = "#da77f2";
 
   return (
     <div onClick={()=>onClick(proc)}
@@ -2412,53 +2672,90 @@ function ProcessCard({ proc, onClick }) {
         padding:"18px 20px", cursor:"pointer", transition:"all .2s", position:"relative", overflow:"hidden" }}
       onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 8px 24px rgba(0,0,0,.4)`;}}
       onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-      <div style={{ position:"absolute",left:0,top:0,bottom:0,width:3,background:phase?.color,borderRadius:"10px 0 0 10px" }}/>
 
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-        <div style={{ flex:1, paddingRight:12 }}>
+      {/* Left accent: split between clinico/farmacia colors */}
+      <div style={{ position:"absolute",left:0,top:0,bottom:"50%",width:3,background:CLINICO_COLOR,borderRadius:"10px 0 0 0" }}/>
+      <div style={{ position:"absolute",left:0,top:"50%",bottom:0,width:3,background:FARMACIA_COLOR,borderRadius:"0 0 0 10px" }}/>
+
+      {/* Service name + status dot */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
+        <div style={{ flex:1, paddingRight:10 }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
             <span style={{ width:8,height:8,borderRadius:"50%",background:cfg.dot,
               boxShadow:`0 0 6px ${cfg.dot}88`,flexShrink:0 }}/>
-            <span style={{ fontWeight:700, fontSize:14, color:"#e6edf3" }}>{proc.service||"Serviço sem nome"}</span>
+            <span style={{ fontWeight:700, fontSize:14, color:"#e6edf3", lineHeight:1.3 }}>{proc.service||"Serviço sem nome"}</span>
           </div>
-          <div style={{ fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>
-            {proc.costCenter&&`CC ${proc.costCenter} · `}{proc.responsible&&`👤 ${proc.responsible}`}
+          {proc.costCenter && <div style={{ fontSize:10, color:"#555", fontFamily:"monospace" }}>CC {proc.costCenter}</div>}
+        </div>
+        <span style={{ fontSize:10,fontFamily:"monospace",padding:"2px 8px",borderRadius:99,flexShrink:0,
+          background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.dot }}>{cfg.label}</span>
+      </div>
+
+      {/* Dual tracking rows */}
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+
+        {/* Clínico */}
+        <div style={{ background:"rgba(77,171,247,.05)", border:"1px solid rgba(77,171,247,.15)", borderRadius:7, padding:"8px 10px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontSize:9, fontFamily:"monospace", fontWeight:700, color:CLINICO_COLOR, letterSpacing:".1em" }}>CLÍNICO</span>
+              {proc.responsavelClinico && (
+                <span style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace" }}>· {proc.responsavelClinico}</span>
+              )}
+            </div>
+            <span style={{ fontSize:13, fontWeight:700, fontFamily:"monospace",
+              color:cPct===100?"#38d9a9":CLINICO_COLOR, lineHeight:1 }}>
+              {cPct}<span style={{fontSize:10,color:"#555"}}>%</span>
+            </span>
+          </div>
+          <ProgressBar value={cPct} color={CLINICO_COLOR} h={3}/>
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:5 }}>
+            <span style={{ background:clinicoPhase?.color+"22",border:`1px solid ${clinicoPhase?.color}44`,
+              color:clinicoPhase?.color,borderRadius:3,padding:"1px 6px",fontSize:9,fontFamily:"monospace",fontWeight:700 }}>
+              {clinicoPhase?.code}
+            </span>
+            <span style={{ fontSize:10,color:"#555",fontFamily:"monospace",maxWidth:160,textAlign:"right",
+              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+              {clinicoNextStep?.title||"Concluído"}
+            </span>
           </div>
         </div>
-        <div style={{ textAlign:"right" }}>
-          <div style={{ fontSize:20,fontWeight:700,fontFamily:"monospace",
-            color:pct===100?"#38d9a9":"#e6edf3",lineHeight:1 }}>
-            {pct}<span style={{fontSize:11,color:"#7d8590"}}>%</span>
+
+        {/* Farmácia */}
+        <div style={{ background:"rgba(218,119,242,.05)", border:"1px solid rgba(218,119,242,.15)", borderRadius:7, padding:"8px 10px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontSize:9, fontFamily:"monospace", fontWeight:700, color:FARMACIA_COLOR, letterSpacing:".1em" }}>FARMÁCIA</span>
+              {proc.responsavelFarmacia && (
+                <span style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace" }}>· {proc.responsavelFarmacia}</span>
+              )}
+            </div>
+            <span style={{ fontSize:13, fontWeight:700, fontFamily:"monospace",
+              color:fPct===100?"#38d9a9":FARMACIA_COLOR, lineHeight:1 }}>
+              {fPct}<span style={{fontSize:10,color:"#555"}}>%</span>
+            </span>
+          </div>
+          <ProgressBar value={fPct} color={FARMACIA_COLOR} h={3}/>
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:5 }}>
+            <span style={{ background:farmaciaPhase?.color+"22",border:`1px solid ${farmaciaPhase?.color}44`,
+              color:farmaciaPhase?.color,borderRadius:3,padding:"1px 6px",fontSize:9,fontFamily:"monospace",fontWeight:700 }}>
+              {farmaciaPhase?.code}
+            </span>
+            <span style={{ fontSize:10,color:"#555",fontFamily:"monospace",maxWidth:160,textAlign:"right",
+              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+              {farmaciaNextStep?.title||"Concluído"}
+            </span>
           </div>
         </div>
       </div>
 
-      <ProgressBar value={pct} color={phase?.color||"#333"} h={4}/>
-
-      <div style={{ display:"flex", justifyContent:"space-between", marginTop:10, gap:8, flexWrap:"wrap" }}>
-        <div>
-          <div style={{ fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:3 }}>FASE</div>
-          <span style={{ background:phase?.color+"22",border:`1px solid ${phase?.color}44`,
-            color:phase?.color,borderRadius:4,padding:"2px 8px",fontSize:10,fontFamily:"monospace",fontWeight:700 }}>
-            {phase?.code} · {phase?.label}
-          </span>
-        </div>
-        <div style={{ textAlign:"right" }}>
-          <div style={{ fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:3 }}>PRÓXIMO PASSO</div>
-          <div style={{ fontSize:11,color:"#8b949e",maxWidth:180,textAlign:"right",lineHeight:1.3 }}>{nextStep?.title||"Concluído"}</div>
-        </div>
-      </div>
-
+      {/* Footer: date */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10 }}>
         <div style={{ fontSize:10,color:"#555",fontFamily:"monospace" }}>{fmtDate(proc.startDate)}</div>
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          {proc.targetDate&&<span style={{ fontSize:10,fontFamily:"monospace",
-            color:days===null?"#555":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c" }}>
-            {days===null?"":days<0?`${Math.abs(days)}d atraso`:days===0?"hoje":days<=7?`${days}d`:""}
-          </span>}
-          <span style={{ fontSize:10,fontFamily:"monospace",padding:"2px 8px",borderRadius:99,
-            background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.dot }}>{cfg.label}</span>
-        </div>
+        {proc.targetDate && <span style={{ fontSize:10,fontFamily:"monospace",
+          color:days===null?"#555":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c" }}>
+          {days===null?"":days<0?`${Math.abs(days)}d atraso`:days===0?"hoje":days<=7?`${days}d`:"📅 "+fmtDate(proc.targetDate)}
+        </span>}
       </div>
     </div>
   );
@@ -2468,7 +2765,7 @@ function ProcessCard({ proc, onClick }) {
 // NEW PROCESS MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 function NewProcessModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({service:"",costCenter:"",responsible:"",targetDate:""});
+  const [form, setForm] = useState({service:"",costCenter:"",responsavelClinico:"",responsavelFarmacia:"",targetDate:""});
   const upd = (f,v) => setForm(d=>({...d,[f]:v}));
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.8)",backdropFilter:"blur(6px)",
@@ -2484,11 +2781,22 @@ function NewProcessModal({ onClose, onCreate }) {
               onKeyDown={e=>e.key==="Enter"&&form.service.trim()&&onCreate({...EMPTY_PROC(),...form,history:[{ts:new Date().toISOString(),action:"Processo criado"}]})} /></div>
           <div><label style={LS}>CENTRO DE CUSTO</label>
             <input value={form.costCenter} onChange={e=>upd("costCenter",e.target.value)} placeholder="Código CC" style={IS}/></div>
-          <div><label style={LS}>RESPONSÁVEL</label>
-            <select value={form.responsible} onChange={e=>upd("responsible",e.target.value)} style={{...IS,cursor:"pointer"}}>
-              <option value="">— selecionar —</option>
-              {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
-            </select></div>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+            <div>
+              <label style={{...LS,color:"#4dabf7"}}>RESPONSÁVEL CLÍNICO</label>
+              <select value={form.responsavelClinico} onChange={e=>upd("responsavelClinico",e.target.value)} style={{...IS,cursor:"pointer"}}>
+                <option value="">— selecionar —</option>
+                {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{...LS,color:"#da77f2"}}>RESPONSÁVEL FARMÁCIA</label>
+              <select value={form.responsavelFarmacia} onChange={e=>upd("responsavelFarmacia",e.target.value)} style={{...IS,cursor:"pointer"}}>
+                <option value="">— selecionar —</option>
+                {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
           <div><label style={LS}>DATA ALVO DE CONCLUSÃO</label>
             <input type="date" value={form.targetDate} onChange={e=>upd("targetDate",e.target.value)} style={IS}/></div>
         </div>
@@ -2624,13 +2932,7 @@ function LoadScreen({ onLoaded }) {
           <div style={{ color:"#8b949e", fontWeight:600, marginBottom:4, fontFamily:"monospace", fontSize:10, letterSpacing:".1em" }}>
             📋 COMO FUNCIONA
           </div>
-          <div><span style={{ color:"#4dabf7" }}>Flow da app:</span></div>
-          <div>1) Arrancar para o <strong style={{ color:"#c9d1d9" }}>Workflow</strong> e consultar o processo.</div>
-          <div>2) Mudar para a tab <strong style={{ color:"#c9d1d9" }}>Tracking</strong> para acompanhar o estado.</div>
-          <div>3) Para editar, clicar em <strong style={{ color:"#4dabf7" }}>🔓 Entrar</strong> e abrir o <strong style={{ color:"#69db7c" }}>Modo Editor</strong>.</div>
-          <div>4) Inserir o PIN e escolher <strong style={{ color:"#c9d1d9" }}>Carregar backup</strong> ou <strong style={{ color:"#c9d1d9" }}>Primeiro arranque</strong>.</div>
-          <div>5) Selecionar o backup, fazer a edição e no fim clicar em <strong style={{ color:"#4dabf7" }}>💾 Guardar backup</strong>.</div>
-          <div>6) Selecionar a pasta de destino do ficheiro e sair do modo editor.</div>
+          <div><span style={{ color:"#4dabf7" }}>Uso normal:</span> carrega o JSON → trabalha → clica 💾 Guardar → substitui o ficheiro na pasta</div>
           <div style={{ color:"#fa5252", marginTop:6, fontSize:11 }}>
             ⚠ Não abrir em simultâneo com outra pessoa — o último a guardar sobrescreve.
           </div>
@@ -2681,13 +2983,14 @@ function ExportModal({ procs, filename, onExport, onCancel }) {
 function App() {
   const session = window.__ULSM_SESSION;
   const [procs, setProcs] = useState(session.procs || []);
-  const [loadedFilename] = useState(session.filename || BACKUP_FILENAME);
+  const [loadedFilename, setLoadedFilename] = useState(null);
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState("");
   const [showExport, setShowExport] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
 
   // Warn on browser close if unsaved
@@ -2738,8 +3041,12 @@ function App() {
 
   const filtered = procs.filter(p=>{
     if(filterStatus!=="all"&&p.status!==filterStatus) return false;
-    if(search&&!p.service.toLowerCase().includes(search.toLowerCase())&&
-       !(p.responsible||"").toLowerCase().includes(search.toLowerCase())) return false;
+    if(search){
+      const q = search.toLowerCase();
+      if(!p.service.toLowerCase().includes(q)&&
+         !(p.responsavelClinico||"").toLowerCase().includes(q)&&
+         !(p.responsavelFarmacia||"").toLowerCase().includes(q)) return false;
+    }
     return true;
   });
 
@@ -2747,12 +3054,15 @@ function App() {
     total: procs.length,
     active: procs.filter(p=>p.status!=="done"&&p.status!=="paused").length,
     late: procs.filter(p=>{ const d=daysUntil(p.targetDate); return d!==null&&d<0&&p.status!=="done"; }).length,
-    done: procs.filter(p=>p.status==="done"||totalPct(p)===100).length,
+    done: procs.filter(p=>p.status==="done"||( clinicoPct(p)===100&&farmaciaPct(p)===100 )).length,
+    clinicoDone: procs.filter(p=>clinicoPct(p)===100).length,
+    farmaciaDone: procs.filter(p=>farmaciaPct(p)===100).length,
   };
 
-  const handleEditorLogin = async () => {
-    if(window.__ULSM_EDITOR_PIN_HASHES.length === 0 && window.__ULSM_EDITOR_PINS.length === 0) { setAuthError("Nenhum PIN configurado."); return; }
-    if(await canUnlockEditor(pin)) {
+  const handleEditorLogin = () => {
+    const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
+    if(pins.length === 0) { setAuthError("Nenhum PIN configurado."); return; }
+    if(canUnlockEditor(pin)) {
       setIsEditor(true); setPin(""); setAuthError("");
     } else {
       setPin(""); setAuthError("PIN inválido.");
@@ -2785,11 +3095,13 @@ function App() {
               color:"#7d8590",marginBottom:1 }}>ULSM · GESTÃO DE SUPERMERCADOS</div>
             <div style={{ fontSize:15,fontWeight:700,letterSpacing:"-.02em" }}>Tracking de Revisões</div>
           </div>
-          <span style={{ fontFamily:"monospace", fontSize:11, color:"#555",
-            background:"#0d1117", border:"1px solid #21262d", borderRadius:5,
-            padding:"3px 10px", maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-            📄 {loadedFilename || BACKUP_FILENAME}
-          </span>
+          {loadedFilename && (
+            <span style={{ fontFamily:"monospace", fontSize:11, color:"#555",
+              background:"#0d1117", border:"1px solid #21262d", borderRadius:5,
+              padding:"3px 10px", maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              📄 {loadedFilename}
+            </span>
+          )}
           {unsaved && (
             <span style={{ fontFamily:"monospace", fontSize:10, color:"#fcc419",
               background:"rgba(245,159,0,.12)", border:"1px solid rgba(245,159,0,.3)",
@@ -2809,6 +3121,13 @@ function App() {
                 border:"1px solid rgba(45,140,78,.5)",color:"#69db7c",borderRadius:6,
                 padding:"7px 14px",fontSize:12,cursor:"pointer",fontFamily:"monospace",fontWeight:700 }}>
                 + Novo processo
+              </button>
+              <button onClick={()=>setShowImport(true)} style={{
+                background:"rgba(77,171,247,.1)", border:"1px solid rgba(77,171,247,.3)",
+                color:"#4dabf7", borderRadius:6, padding:"7px 14px", fontSize:12,
+                cursor:"pointer", fontFamily:"monospace", fontWeight:700
+              }}>
+                📂 Carregar backup
               </button>
               <button onClick={()=>setShowExport(true)} style={{
                 background: unsaved ? "rgba(245,159,0,.18)" : "rgba(29,125,210,.12)",
@@ -2852,14 +3171,26 @@ function App() {
       <div style={{ padding:"24px 28px", maxWidth:1200, margin:"0 auto" }}>
 
         {/* ── KPIs ── */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:24 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:24 }}>
           {[["TOTAL",stats.total,"#4dabf7"],["EM CURSO",stats.active,"#fcc419"],
-            ["ATRASADOS",stats.late,"#fa5252"],["CONCLUÍDOS",stats.done,"#38d9a9"]].map(([l,v,c])=>(
+            ["ATRASADOS",stats.late,"#fa5252"]].map(([l,v,c])=>(
             <div key={l} style={{ background:"#161b22",border:"1px solid #21262d",borderRadius:10,padding:"14px 18px" }}>
               <div style={{ fontSize:9,color:"#7d8590",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>{l}</div>
               <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:c,lineHeight:1 }}>{v}</div>
             </div>
           ))}
+          <div style={{ background:"#161b22",border:"1px solid rgba(77,171,247,.25)",borderRadius:10,padding:"14px 18px" }}>
+            <div style={{ fontSize:9,color:"#4dabf7",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>CLÍNICO CONCLUÍDO</div>
+            <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:"#4dabf7",lineHeight:1 }}>{stats.clinicoDone}</div>
+          </div>
+          <div style={{ background:"#161b22",border:"1px solid rgba(218,119,242,.25)",borderRadius:10,padding:"14px 18px" }}>
+            <div style={{ fontSize:9,color:"#da77f2",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>FARMÁCIA CONCLUÍDO</div>
+            <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:"#da77f2",lineHeight:1 }}>{stats.farmaciaDone}</div>
+          </div>
+          <div style={{ background:"#161b22",border:"1px solid rgba(56,217,169,.25)",borderRadius:10,padding:"14px 18px" }}>
+            <div style={{ fontSize:9,color:"#38d9a9",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>CONCLUÍDOS</div>
+            <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:"#38d9a9",lineHeight:1 }}>{stats.done}</div>
+          </div>
         </div>
 
         {/* ── FILTERS ── */}
@@ -2925,38 +3256,86 @@ function App() {
       {selected&&<ProcessDetail proc={selected} onClose={()=>setSelected(null)}
         onSave={handleSave} onDelete={handleDelete} isEditor={isEditor}/>}
       {showNew&&<NewProcessModal onClose={()=>setShowNew(false)} onCreate={handleCreate}/>}
-      {showExport&&<ExportModal procs={procs} filename={BACKUP_FILENAME}
+      {showExport&&<ExportModal procs={procs} filename={loadedFilename||BACKUP_FILENAME}
         onExport={async()=>{ await exportToFile(procs); setShowExport(false); setUnsaved(false); }}
         onCancel={()=>setShowExport(false)}/>}
+      {showImport&&<ImportModal onClose={()=>setShowImport(false)} onLoaded={(loaded,fname)=>{
+        persist(loaded);
+        setLoadedFilename(fname);
+        window.__ULSM_SESSION.filename = fname;
+        setShowImport(false);
+        setUnsaved(false);
+      }}/>}
     </div>
   );
 }
-// ── Boot: single root, shell switches between LoadScreen and App ─────────
-(function boot() {
-  // Mount LoadScreen in a separate overlay div — never touch tracking-root
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0d1117;';
-  document.body.appendChild(overlay);
+// ─────────────────────────────────────────────────────────────────────────────
+// IMPORT MODAL — editor-only backup loader
+// ─────────────────────────────────────────────────────────────────────────────
+function ImportModal({ onClose, onLoaded }) {
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const inputRef = React.useRef();
 
-  const trackingRoot = ReactDOM.createRoot(document.getElementById('tracking-root'));
-
-  function onLoaded(procs, filename) {
-    window.__ULSM_SESSION.loaded = true;
-    window.__ULSM_SESSION.procs = procs;
-    window.__ULSM_SESSION.filename = filename;
-
-    // Mount App into tracking-root BEFORE removing overlay
-    trackingRoot.render(<App />);
-
-    // Small delay so App renders before overlay disappears
-    setTimeout(() => {
-      overlay.remove();
-      // Default landing view must be Workflow
-      switchView('workflow');
-    }, 80);
+  async function processFile(file) {
+    if (!file) return;
+    if (!file.name.endsWith(".json")) { setError("Seleciona um ficheiro .json válido."); return; }
+    setLoading(true); setError("");
+    try {
+      const result = await loadFromFile(file);
+      onLoaded(result.procs, file.name);
+    } catch(e) { setError(typeof e === "string" ? e : "Erro ao carregar o ficheiro."); setLoading(false); }
   }
 
-  ReactDOM.createRoot(overlay).render(<LoadScreen onLoaded={onLoaded} />);
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.8)",backdropFilter:"blur(6px)",
+      zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}
+      onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ background:"#161b22",border:"1px solid #30363d",borderRadius:14,
+        width:"100%",maxWidth:460,padding:32,boxShadow:"0 24px 60px rgba(0,0,0,.7)",animation:"fadeUp .18s ease" }}>
+        <div style={{ fontSize:15,fontWeight:700,color:"#e6edf3",marginBottom:6 }}>📂 Carregar Backup</div>
+        <div style={{ fontSize:12,color:"#7d8590",marginBottom:20 }}>
+          Carrega um ficheiro <span style={{fontFamily:"monospace",color:"#4dabf7"}}>{BACKUP_FILENAME}</span> existente.
+          Os dados atuais serão substituídos.
+        </div>
+        <div
+          onClick={()=>inputRef.current.click()}
+          onDragOver={e=>{e.preventDefault();setDragging(true);}}
+          onDragLeave={()=>setDragging(false)}
+          onDrop={e=>{e.preventDefault();setDragging(false);processFile(e.dataTransfer.files[0]);}}
+          style={{ border:`2px dashed ${dragging?"#4dabf7":"#30363d"}`,borderRadius:10,
+            background:dragging?"rgba(29,125,210,.08)":"#0d1117",padding:"32px 20px",
+            textAlign:"center",cursor:"pointer",transition:"all .2s",marginBottom:16 }}>
+          {loading
+            ? <div style={{color:"#4dabf7",fontFamily:"monospace",fontSize:13}}>A carregar…</div>
+            : <><div style={{fontSize:32,marginBottom:8}}>📁</div>
+               <div style={{fontSize:13,color:"#8b949e"}}>Clica ou arrasta o ficheiro aqui</div></>}
+          <input ref={inputRef} type="file" accept=".json" onChange={e=>processFile(e.target.files[0])} style={{display:"none"}}/>
+        </div>
+        {error && <div style={{ background:"rgba(224,49,49,.15)",border:"1px solid rgba(224,49,49,.4)",
+          borderRadius:8,padding:"10px 14px",color:"#fa5252",fontSize:12,fontFamily:"monospace",marginBottom:12 }}>⚠ {error}</div>}
+        <div style={{display:"flex",justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{ padding:"8px 18px",background:"transparent",
+            border:"1px solid #30363d",color:"#7d8590",borderRadius:8,fontSize:12,cursor:"pointer" }}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Boot: start app directly, no LoadScreen gate ─────────────────────────
+(function boot() {
+  // Start with empty procs — editor can load a backup later
+  window.__ULSM_SESSION.loaded = true;
+  window.__ULSM_SESSION.procs = [];
+  window.__ULSM_SESSION.filename = BACKUP_FILENAME;
+
+  const trackingRoot = ReactDOM.createRoot(document.getElementById('tracking-root'));
+  trackingRoot.render(<App />);
+
+  // Default view: workflow tab (already set in HTML)
+  // Tracking tab becomes active when user clicks it
 })();
 
 </script>
