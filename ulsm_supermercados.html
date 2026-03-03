@@ -2951,9 +2951,8 @@ function App() {
     // Small delay so App renders before overlay disappears
     setTimeout(() => {
       overlay.remove();
-      document.body.classList.add('view-tracking');
-      document.getElementById('tab-tracking').classList.add('active');
-      document.getElementById('tab-workflow').classList.remove('active');
+      // Default landing view must be Workflow
+      switchView('workflow');
     }, 80);
   }
 
