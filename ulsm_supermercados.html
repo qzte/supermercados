@@ -47,10 +47,10 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.5); }
 #nav-editor-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #69db7c; box-shadow: 0 0 6px #69db7c; }
 #nav-editor-exit { display: none; background: rgba(224,49,49,.12); border: 1px solid rgba(224,49,49,.3); color: #fa5252; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-family: var(--mono); cursor: pointer; }
 #view-tracking, #view-workflow { padding-top: var(--nav-h); min-height: 100vh; }
-#view-tracking { display: block; }
-#view-workflow { display: none; }
-body.view-workflow #view-tracking { display: none; }
-body.view-workflow #view-workflow { display: block; }
+#view-tracking { display: none; }
+#view-workflow { display: block; }
+body.view-tracking #view-tracking { display: block; }
+body.view-tracking #view-workflow { display: none; }
 #tracking-root { min-height: calc(100vh - var(--nav-h)); }
 .workflow-inner { padding: 40px 24px; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;} }
@@ -197,8 +197,8 @@ body.view-workflow #view-workflow { display: block; }
     <span id="nav-editor-badge"><span class="dot"></span>EDITOR</span>
     <button id="nav-editor-exit" onclick="window.__triggerEditorExit&&window.__triggerEditorExit()">Sair do editor</button>
     <div class="nav-tabs">
-      <button class="nav-tab active" id="tab-tracking" onclick="switchView('tracking')">📊 Tracking</button>
-      <button class="nav-tab" id="tab-workflow" onclick="switchView('workflow')">🗺 Workflow</button>
+      <button class="nav-tab" id="tab-tracking" onclick="switchView('tracking')">📊 Tracking</button>
+      <button class="nav-tab active" id="tab-workflow" onclick="switchView('workflow')">🗺 Workflow</button>
     </div>
     <button id="nav-entrar-btn" onclick="openPinModal()" class="nav-tab">🔓 Entrar</button>
   </div>
@@ -960,9 +960,9 @@ window.__onEditorModeChange = function(isEditor) {
 // ── JSON session state (shared across views) ──────────────────────────────
 window.__ULSM_SESSION = { loaded: false, procs: [], filename: "" };
 
-let _trackingMounted = false;
+// Simple view switcher — no loading logic here
 function switchView(view) {
-  document.body.classList.toggle('view-workflow', view === 'workflow');
+  document.body.classList.toggle('view-tracking', view === 'tracking');
   document.getElementById('tab-tracking').classList.toggle('active', view === 'tracking');
   document.getElementById('tab-workflow').classList.toggle('active', view === 'workflow');
 }
@@ -1527,7 +1527,9 @@ function confirmPdfPath(){
 }
 
 function openPdfPopup(src, name){
-  window.open(src, '_blank');
+  document.getElementById('pdfPopupEmbed').src = src;
+  document.getElementById('pdfPopupTitle').textContent = '📄 ' + (name || src);
+  document.getElementById('pdfPopup').classList.add('open');
 }
 function closePdfPopup(){
   document.getElementById('pdfPopup').classList.remove('open');
@@ -1556,7 +1558,16 @@ function confirmPinModal(){
     input.focus();
     return;
   }
+  const pinValue = input.value.trim();
   closePinModal();
+
+  // If we're in Tracking view, activate the React editor
+  if (document.body.classList.contains('view-tracking') && window.__triggerEditorLogin) {
+    window.__triggerEditorLogin(pinValue);
+    return;
+  }
+
+  // Otherwise activate the workflow HTML editor
   editMode = true;
   document.body.classList.add('edit-mode');
   const btn = document.getElementById('nav-entrar-btn');
@@ -1588,24 +1599,8 @@ function initEditorMode(){
 
   document.getElementById('exitWorkflowEditBtn').addEventListener('click', deactivateWorkflowEditor);
 
-  document.getElementById('saveTemplateBtn').addEventListener('click', async () => {
-    const json = JSON.stringify(serializeWorkflow(), null, 2);
-    if (window.showSaveFilePicker) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: 'workflow-template.json',
-          types: [{ description: 'Ficheiro JSON', accept: { 'application/json': ['.json'] } }],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(json);
-        await writable.close();
-        return;
-      } catch (e) {
-        if (e.name === 'AbortError') return; // user cancelled
-      }
-    }
-    // Fallback
-    const blob = new Blob([json], { type: 'application/json' });
+  document.getElementById('saveTemplateBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(serializeWorkflow(), null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'workflow-template.json';
@@ -1985,55 +1980,66 @@ function sanitizeEmailLog(v) {
     .slice(-250);
 }
 
+function sanitizeTracking(t, label) {
+  if(!isObj(t)) t = {};
+  const phaseNum = Number.isInteger(t.currentPhase) ? t.currentPhase : 1;
+  const currentPhase = Math.min(Math.max(phaseNum, 1), PHASES.length);
+  const phase = PHASES[currentPhase - 1];
+  const maxStep = Math.max(0, (phase?.steps?.length || 1) - 1);
+  const stepNum = Number.isInteger(t.currentStep) ? t.currentStep : 0;
+  const currentStep = Math.min(Math.max(stepNum, 0), maxStep);
+  return {
+    responsible: toSafeText(t.responsible, 120),
+    currentPhase,
+    currentStep,
+    status: Object.prototype.hasOwnProperty.call(STATUS_CFG, t.status) ? t.status : "ok",
+    notes: toSafeText(t.notes, 2000),
+    emailLog: sanitizeEmailLog(t.emailLog),
+    history: sanitizeHistory(t.history),
+  };
+}
+
 function sanitizeProc(proc, idx = 0) {
   if(!isObj(proc)) return null;
-
-  // Helper for a single tracking track (phase/step)
-  function sanitizeTrack(phaseVal, stepVal) {
-    const phaseNum = Number.isInteger(phaseVal) ? phaseVal : 1;
-    const currentPhase = Math.min(Math.max(phaseNum, 1), PHASES.length);
-    const phase = PHASES[currentPhase - 1];
-    const maxStep = Math.max(0, (phase?.steps?.length || 1) - 1);
-    const stepNum = Number.isInteger(stepVal) ? stepVal : 0;
-    const currentStep = Math.min(Math.max(stepNum, 0), maxStep);
-    return { currentPhase, currentStep };
-  }
-
   const status = Object.prototype.hasOwnProperty.call(STATUS_CFG, proc.status) ? proc.status : "ok";
 
-  // Support legacy "responsible/coResponsible/currentPhase/currentStep" fields
-  const legacyResponsible = toSafeText(proc.responsible, 120);
-  const legacyCoResponsible = toSafeText(proc.coResponsible, 120);
-  const legacyTrack = sanitizeTrack(proc.currentPhase, proc.currentStep);
-
-  const clinicoTrack = proc.clinicoPhase != null
-    ? sanitizeTrack(proc.clinicoPhase, proc.clinicoStep)
-    : legacyTrack;
-  const farmaciaTrack = proc.farmaciaPhase != null
-    ? sanitizeTrack(proc.farmaciaPhase, proc.farmaciaStep)
-    : legacyTrack;
+  // Support legacy format (single responsible/phase/step) → migrate to clinico
+  const hasDual = isObj(proc.clinico) || isObj(proc.farmacia);
+  const legacyCli = hasDual ? proc.clinico : {
+    responsible: proc.responsible || proc.coResponsible || "",
+    currentPhase: proc.currentPhase,
+    currentStep: proc.currentStep,
+    status: proc.status,
+    notes: proc.notes,
+    emailLog: proc.emailLog,
+    history: proc.history,
+  };
+  const legacyFar = hasDual ? proc.farmacia : {
+    responsible: "",
+    currentPhase: 1,
+    currentStep: 0,
+    status: "ok",
+    notes: "",
+    emailLog: [],
+    history: [],
+  };
 
   const clean = {
     id: Number.isFinite(proc.id) ? proc.id : Date.now() + idx,
     service: toSafeText(proc.service, 180),
     costCenter: toSafeText(proc.costCenter, 120),
-    // Dual tracking
-    responsavelClinico: toSafeText(proc.responsavelClinico || legacyResponsible, 120),
-    responsavelFarmacia: toSafeText(proc.responsavelFarmacia || legacyCoResponsible, 120),
-    clinicoPhase: clinicoTrack.currentPhase,
-    clinicoStep: clinicoTrack.currentStep,
-    farmaciaPhase: farmaciaTrack.currentPhase,
-    farmaciaStep: farmaciaTrack.currentStep,
     startDate: toSafeDate(proc.startDate) || new Date().toISOString().slice(0,10),
     targetDate: toSafeDate(proc.targetDate),
     status,
-    notes: toSafeText(proc.notes, 4000),
-    emailLog: sanitizeEmailLog(proc.emailLog),
-    history: sanitizeHistory(proc.history),
     createdAt: toSafeIso(proc.createdAt),
+    clinico: sanitizeTracking(legacyCli, "clinico"),
+    farmacia: sanitizeTracking(legacyFar, "farmacia"),
   };
-  if(clean.history.length === 0) {
-    clean.history = [{ ts: new Date().toISOString(), action: "Processo carregado" }];
+  if(clean.clinico.history.length === 0) {
+    clean.clinico.history = [{ ts: new Date().toISOString(), action: "Processo carregado" }];
+  }
+  if(clean.farmacia.history.length === 0) {
+    clean.farmacia.history = [{ ts: new Date().toISOString(), action: "Processo carregado" }];
   }
   return clean;
 }
@@ -2111,26 +2117,38 @@ function fmtDate(iso) { if(!iso) return "—"; return new Date(iso).toLocaleDate
 function fmtDateTime(iso) { if(!iso) return "—"; return new Date(iso).toLocaleDateString("pt-PT",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
 
 function totalSteps() { return PHASES.reduce((a,p)=>a+p.steps.length,0); }
-function completedStepsForTrack(phase, step) {
-  const donePhaseSteps = PHASES.slice(0, phase-1).reduce((a,p)=>a+p.steps.length,0);
-  return donePhaseSteps + (step||0);
+function completedSteps(trk) {
+  const donePhaseSteps = PHASES.slice(0, trk.currentPhase-1).reduce((a,p)=>a+p.steps.length,0);
+  return donePhaseSteps + (trk.currentStep||0);
 }
-function completedSteps(proc) { return completedStepsForTrack(proc.currentPhase||proc.clinicoPhase||1, proc.currentStep||proc.clinicoStep||0); }
-function totalPct(proc) { return Math.round((completedSteps(proc)/totalSteps())*100); }
-function clinicoPct(proc) { return Math.round((completedStepsForTrack(proc.clinicoPhase||1, proc.clinicoStep||0)/totalSteps())*100); }
-function farmaciaPct(proc) { return Math.round((completedStepsForTrack(proc.farmaciaPhase||1, proc.farmaciaStep||0)/totalSteps())*100); }
+function totalPct(trk) { return Math.round((completedSteps(trk)/totalSteps())*100); }
+function procOverallPct(proc) {
+  // Average of both trackings
+  return Math.round((totalPct(proc.clinico) + totalPct(proc.farmacia)) / 2);
+}
+
+function EMPTY_TRACKING() {
+  return {
+    responsible: "",
+    currentPhase: 1,
+    currentStep: 0,
+    status: "ok",
+    notes: "",
+    emailLog: [],
+    history: [{ ts: new Date().toISOString(), action: "Processo criado" }],
+  };
+}
 
 function EMPTY_PROC() {
-  return { id: Date.now(), service:"", costCenter:"",
-    // Dual tracking: Clínico (clinico) + Farmácia (farmacia)
-    responsavelClinico:"", responsavelFarmacia:"",
-    // Tracking independente por área
-    clinicoPhase:1, clinicoStep:0,
-    farmaciaPhase:1, farmaciaStep:0,
-    startDate: new Date().toISOString().slice(0,10), targetDate:"",
-    status:"ok", notes:"",
-    emailLog:[], history:[{ ts: new Date().toISOString(), action:"Processo criado" }],
-    createdAt: new Date().toISOString() };
+  return {
+    id: Date.now(),
+    service: "", costCenter: "",
+    startDate: new Date().toISOString().slice(0,10), targetDate: "",
+    status: "ok",
+    createdAt: new Date().toISOString(),
+    clinico: EMPTY_TRACKING(),
+    farmacia: EMPTY_TRACKING(),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2264,33 +2282,26 @@ function StepDrawer({ step, phaseColor, procService, onMarkDone, isDone, isCurre
 function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
   const [draft, setDraft] = useState(()=>JSON.parse(JSON.stringify(proc)));
   const [tab, setTab] = useState("steps");
-  // activeTrack: "clinico" | "farmacia"
-  const [activeTrack, setActiveTrack] = useState("clinico");
+  const [trkMode, setTrkMode] = useState("clinico"); // "clinico" | "farmacia"
   const [activeStep, setActiveStep] = useState(null);
   const [newNote, setNewNote] = useState("");
   const upd = (f,v) => setDraft(d=>({...d,[f]:v}));
+  const updTrk = (mode,f,v) => setDraft(d=>({...d,[mode]:{...d[mode],[f]:v}}));
 
-  const CLINICO_COLOR = "#4dabf7";
-  const FARMACIA_COLOR = "#da77f2";
+  const trk = draft[trkMode];
+  const phase = PHASES[trk.currentPhase-1];
+  const pct = totalPct(trk);
 
-  const trackPhase = activeTrack === "clinico" ? (draft.clinicoPhase||1) : (draft.farmaciaPhase||1);
-  const trackStep  = activeTrack === "clinico" ? (draft.clinicoStep||0)  : (draft.farmaciaStep||0);
-  const phase = PHASES[trackPhase-1];
-  const cPct = clinicoPct(draft);
-  const fPct = farmaciaPct(draft);
-
-  const openStep = (phaseIdx, stepIdx) => {
-    setActiveStep({ phaseIdx, stepIdx });
-  };
+  const openStep = (phaseIdx, stepIdx) => setActiveStep({ phaseIdx, stepIdx });
 
   const markDone = () => {
-    const ph = PHASES[trackPhase-1];
-    const currentStepData = ph.steps[trackStep];
-    let updated = { ...draft };
+    const ph = PHASES[trk.currentPhase-1];
+    const currentStepData = ph.steps[trk.currentStep];
+    let updatedTrk = { ...trk };
     if (currentStepData?.emailKey) {
       const tmpl = EMAIL_TEMPLATES[currentStepData.emailKey];
       if (tmpl) {
-        updated.emailLog = [...(updated.emailLog||[]), {
+        updatedTrk.emailLog = [...(updatedTrk.emailLog||[]), {
           ts: new Date().toISOString(),
           key: currentStepData.emailKey,
           label: tmpl.label,
@@ -2300,25 +2311,22 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
         }];
       }
     }
-    const trackLabel = activeTrack === "clinico" ? "Clínico" : "Farmácia";
-    if (trackStep < ph.steps.length - 1) {
-      const nextStep = ph.steps[trackStep + 1];
-      if (activeTrack === "clinico") { updated.clinicoStep = trackStep + 1; }
-      else { updated.farmaciaStep = trackStep + 1; }
-      updated.history = [...(updated.history||[]), { ts: new Date().toISOString(),
-        action: `✓ [${trackLabel}] Concluído: ${ph.steps[trackStep].title} → Em curso: ${nextStep.title}` }];
-    } else if (trackPhase < PHASES.length) {
-      const nextPhase = PHASES[trackPhase];
-      if (activeTrack === "clinico") { updated.clinicoPhase = trackPhase + 1; updated.clinicoStep = 0; }
-      else { updated.farmaciaPhase = trackPhase + 1; updated.farmaciaStep = 0; }
-      updated.history = [...(updated.history||[]), { ts: new Date().toISOString(),
-        action: `✓ [${trackLabel}] Concluída ${ph.code} — ${ph.label} → Iniciado ${nextPhase.code} — ${nextPhase.label}` }];
+    if (updatedTrk.currentStep < ph.steps.length - 1) {
+      const nextStep = ph.steps[updatedTrk.currentStep + 1];
+      updatedTrk.currentStep = updatedTrk.currentStep + 1;
+      updatedTrk.history = [...(updatedTrk.history||[]), { ts: new Date().toISOString(),
+        action: `✓ Concluído: ${ph.steps[trk.currentStep].title} → Em curso: ${nextStep.title}` }];
+    } else if (updatedTrk.currentPhase < PHASES.length) {
+      const nextPhase = PHASES[updatedTrk.currentPhase];
+      updatedTrk.currentPhase = updatedTrk.currentPhase + 1;
+      updatedTrk.currentStep = 0;
+      updatedTrk.history = [...(updatedTrk.history||[]), { ts: new Date().toISOString(),
+        action: `✓ Concluída ${ph.code} — ${ph.label} → Iniciado ${nextPhase.code} — ${nextPhase.label}` }];
     } else {
-      updated.history = [...(updated.history||[]), { ts: new Date().toISOString(), action: `🏁 [${trackLabel}] Processo concluído!` }];
-      // If both tracks done, mark overall status done
-      const otherPct = activeTrack === "clinico" ? farmaciaPct(updated) : clinicoPct(updated);
-      if (otherPct === 100) updated.status = "done";
+      updatedTrk.status = "done";
+      updatedTrk.history = [...(updatedTrk.history||[]), { ts: new Date().toISOString(), action: "🏁 Processo concluído!" }];
     }
+    const updated = { ...draft, [trkMode]: updatedTrk };
     setDraft(updated);
     setActiveStep(null);
     if(isEditor) onSave(updated);
@@ -2326,8 +2334,9 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
 
   const addNote = () => {
     if(!newNote.trim()) return;
-    const updated = { ...draft, history: [...(draft.history||[]),
+    const updatedTrk = { ...trk, history: [...(trk.history||[]),
       { ts: new Date().toISOString(), action: `📝 ${newNote.trim()}`, isNote:true }] };
+    const updated = { ...draft, [trkMode]: updatedTrk };
     setDraft(updated);
     setNewNote("");
     if(isEditor) onSave(updated);
@@ -2338,20 +2347,21 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
     : null;
 
   const isStepDone = (phaseId, stepIdx) =>
-    phaseId < trackPhase || (phaseId === trackPhase && stepIdx < trackStep);
+    phaseId < trk.currentPhase || (phaseId === trk.currentPhase && stepIdx < trk.currentStep);
   const isStepCurrent = (phaseId, stepIdx) =>
-    phaseId === trackPhase && stepIdx === trackStep;
+    phaseId === trk.currentPhase && stepIdx === trk.currentStep;
 
   const days = daysUntil(draft.targetDate);
-  const cfg = STATUS_CFG[draft.status];
-  const trackColor = activeTrack === "clinico" ? CLINICO_COLOR : FARMACIA_COLOR;
+  const cfg = STATUS_CFG[trk.status];
+
+  const trkColor = trkMode === "clinico" ? "#fcc419" : "#4dabf7";
 
   return (
     <>
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)",
       zIndex:200, display:"flex", alignItems:"stretch", justifyContent:"flex-end" }}
       onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{ background:"#161b22", borderLeft:`3px solid ${trackColor}`,
+      <div style={{ background:"#161b22", borderLeft:`3px solid ${phase.color}`,
         width:"100%", maxWidth:720, display:"flex", flexDirection:"column",
         boxShadow:"-16px 0 60px rgba(0,0,0,.6)", animation:"slideIn .2s ease",
         overflowY:"hidden" }}>
@@ -2360,26 +2370,20 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
         <div style={{ padding:"20px 24px", borderBottom:"1px solid #21262d", flexShrink:0 }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
             <div style={{ flex:1 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
                 <span style={{ width:10, height:10, borderRadius:"50%", background:cfg.dot,
                   boxShadow:`0 0 8px ${cfg.dot}`, flexShrink:0 }} />
                 <span style={{ fontSize:18, fontWeight:700, color:"#e6edf3" }}>
                   {draft.service||"Serviço sem nome"}
                 </span>
+                <span style={{ padding:"2px 8px", background:phase.color+"22", border:`1px solid ${phase.color}44`,
+                  color:phase.color, borderRadius:4, fontSize:10, fontFamily:"monospace", fontWeight:700 }}>
+                  {phase.code}
+                </span>
               </div>
-              {/* Dual responsáveis */}
-              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-                <span style={{ fontSize:11, fontFamily:"monospace", background:"rgba(77,171,247,.1)",
-                  border:"1px solid rgba(77,171,247,.25)", color:CLINICO_COLOR, borderRadius:5, padding:"3px 10px" }}>
-                  🏥 Clínico: {draft.responsavelClinico||"—"}
-                </span>
-                <span style={{ fontSize:11, fontFamily:"monospace", background:"rgba(218,119,242,.1)",
-                  border:"1px solid rgba(218,119,242,.25)", color:FARMACIA_COLOR, borderRadius:5, padding:"3px 10px" }}>
-                  💊 Farmácia: {draft.responsavelFarmacia||"—"}
-                </span>
-                {draft.targetDate && <span style={{ fontSize:11, fontFamily:"monospace",
-                  color:days===null?"#7d8590":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c",
-                  padding:"3px 0" }}>
+              <div style={{ display:"flex", gap:16, fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>
+                {trk.responsible && <span>👤 {trk.responsible}</span>}
+                {draft.targetDate && <span style={{ color: days===null?"#7d8590":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c" }}>
                   📅 {days===null?"":days<0?`${Math.abs(days)}d atraso`:days===0?"hoje!":`${days}d`} · alvo: {fmtDate(draft.targetDate)}
                 </span>}
               </div>
@@ -2393,50 +2397,47 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
             </div>
           </div>
 
-          {/* Dual progress bars */}
-          <div style={{ marginTop:14, display:"flex", flexDirection:"column", gap:8 }}>
-            {/* Clinico progress */}
-            <div>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ fontSize:10, color:CLINICO_COLOR, fontFamily:"monospace", fontWeight:700 }}>CLÍNICO · {completedStepsForTrack(draft.clinicoPhase||1, draft.clinicoStep||0)}/{totalSteps()} passos</span>
-                <span style={{ fontSize:11, color:CLINICO_COLOR, fontFamily:"monospace", fontWeight:700 }}>{cPct}%</span>
+          {/* Tracking mode selector */}
+          <div style={{ display:"flex", gap:6, marginTop:14, marginBottom:10 }}>
+            {[["clinico","🏥 Clínico","#fcc419"],["farmacia","💊 Farmácia","#4dabf7"]].map(([k,l,c])=>(
+              <button key={k} onClick={()=>setTrkMode(k)} style={{
+                padding:"6px 16px", borderRadius:20, cursor:"pointer", fontSize:11,
+                fontFamily:"monospace", fontWeight:700, transition:"all .15s",
+                border:`1px solid ${trkMode===k?c+"88":"rgba(255,255,255,.1)"}`,
+                background:trkMode===k?c+"22":"transparent",
+                color:trkMode===k?c:"#7d8590",
+              }}>{l}</button>
+            ))}
+            {/* Dual pct mini display */}
+            <div style={{ marginLeft:"auto", display:"flex", gap:10, alignItems:"center" }}>
+              <div style={{ textAlign:"center" }}>
+                <div style={{ fontSize:9,color:"#fcc419",fontFamily:"monospace",letterSpacing:".08em" }}>CLÍNICO</div>
+                <div style={{ fontSize:14,fontWeight:700,fontFamily:"monospace",color:"#fcc419" }}>{totalPct(draft.clinico)}%</div>
               </div>
-              <ProgressBar value={cPct} color={CLINICO_COLOR} h={5}/>
-            </div>
-            {/* Farmacia progress */}
-            <div>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ fontSize:10, color:FARMACIA_COLOR, fontFamily:"monospace", fontWeight:700 }}>FARMÁCIA · {completedStepsForTrack(draft.farmaciaPhase||1, draft.farmaciaStep||0)}/{totalSteps()} passos</span>
-                <span style={{ fontSize:11, color:FARMACIA_COLOR, fontFamily:"monospace", fontWeight:700 }}>{fPct}%</span>
+              <div style={{ fontSize:18,color:"#30363d" }}>·</div>
+              <div style={{ textAlign:"center" }}>
+                <div style={{ fontSize:9,color:"#4dabf7",fontFamily:"monospace",letterSpacing:".08em" }}>FARMÁCIA</div>
+                <div style={{ fontSize:14,fontWeight:700,fontFamily:"monospace",color:"#4dabf7" }}>{totalPct(draft.farmacia)}%</div>
               </div>
-              <ProgressBar value={fPct} color={FARMACIA_COLOR} h={5}/>
             </div>
           </div>
 
-          {/* Track selector pills */}
-          <div style={{ display:"flex", gap:6, marginTop:12 }}>
-            <button onClick={()=>setActiveTrack("clinico")} style={{
-              padding:"5px 14px", borderRadius:20, cursor:"pointer", fontSize:11, fontFamily:"monospace", fontWeight:700,
-              border:`1px solid ${activeTrack==="clinico"?CLINICO_COLOR+"88":"rgba(255,255,255,.08)"}`,
-              background:activeTrack==="clinico"?CLINICO_COLOR+"22":"transparent",
-              color:activeTrack==="clinico"?CLINICO_COLOR:"#7d8590",
-            }}>🏥 Ver Clínico</button>
-            <button onClick={()=>setActiveTrack("farmacia")} style={{
-              padding:"5px 14px", borderRadius:20, cursor:"pointer", fontSize:11, fontFamily:"monospace", fontWeight:700,
-              border:`1px solid ${activeTrack==="farmacia"?FARMACIA_COLOR+"88":"rgba(255,255,255,.08)"}`,
-              background:activeTrack==="farmacia"?FARMACIA_COLOR+"22":"transparent",
-              color:activeTrack==="farmacia"?FARMACIA_COLOR:"#7d8590",
-            }}>💊 Ver Farmácia</button>
-            <span style={{ fontSize:10, color:"#555", fontFamily:"monospace", padding:"5px 0", marginLeft:4 }}>
-              {activeTrack==="clinico"?"A avançar tracking Clínico":"A avançar tracking Farmácia"}
-            </span>
+          {/* Progress for selected tracking */}
+          <div>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+              <span style={{ fontSize:11, color:trkColor, fontFamily:"monospace", fontWeight:700 }}>
+                {trkMode==="clinico"?"CLÍNICO":"FARMÁCIA"} — PROGRESSO
+              </span>
+              <span style={{ fontSize:11, color:"#e6edf3", fontFamily:"monospace", fontWeight:700 }}>{pct}% · {completedSteps(trk)}/{totalSteps()} passos</span>
+            </div>
+            <ProgressBar value={pct} color={phase.color} h={6}/>
           </div>
 
-          {/* Phase timeline mini for active track */}
-          <div style={{ display:"flex", gap:3, marginTop:10, overflowX:"auto" }}>
+          {/* Phase timeline mini */}
+          <div style={{ display:"flex", gap:3, marginTop:12, overflowX:"auto" }}>
             {PHASES.map(ph=>{
-              const done = ph.id < trackPhase;
-              const cur = ph.id === trackPhase;
+              const done = ph.id < trk.currentPhase;
+              const cur = ph.id === trk.currentPhase;
               return <div key={ph.id} onClick={()=>setTab("steps")} title={ph.label}
                 style={{ flex:1, height:5, borderRadius:99, cursor:"pointer", minWidth:20,
                   background: done ? ph.color : cur ? ph.color+"88" : "rgba(255,255,255,.07)",
@@ -2451,7 +2452,7 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
           {[["steps","📋 Passos"],["info","✏️ Detalhes"],["history","🕐 Histórico"]].map(([k,l])=>(
             <button key={k} onClick={()=>setTab(k)} style={{ padding:"10px 16px", fontSize:12,
               fontFamily:"monospace", cursor:"pointer", border:"none",
-              borderBottom:`2px solid ${tab===k?trackColor:"transparent"}`,
+              borderBottom:`2px solid ${tab===k?phase.color:"transparent"}`,
               background:"transparent", color:tab===k?"#e6edf3":"#7d8590",
               fontWeight:tab===k?700:400, transition:"all .15s" }}>{l}</button>
           ))}
@@ -2464,9 +2465,9 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
           {tab==="steps" && (
             <div>
               {PHASES.map((ph, phIdx)=>{
-                const isCurrentPhase = ph.id === trackPhase;
-                const isPastPhase = ph.id < trackPhase;
-                const isFuturePhase = ph.id > trackPhase;
+                const isCurrentPhase = ph.id === trk.currentPhase;
+                const isPastPhase = ph.id < trk.currentPhase;
+                const isFuturePhase = ph.id > trk.currentPhase;
                 return (
                   <div key={ph.id} style={{ marginBottom:16 }}>
                     {/* Phase header */}
@@ -2532,66 +2533,79 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
 
           {/* ── INFO ── */}
           {tab==="info" && (
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
               {!isEditor && (
-                <div style={{ gridColumn:"1/-1", background:"rgba(125,133,144,.08)", border:"1px solid rgba(125,133,144,.25)",
+                <div style={{ background:"rgba(125,133,144,.08)", border:"1px solid rgba(125,133,144,.25)",
                   borderRadius:8, padding:"9px 14px", fontSize:11, color:"#7d8590", fontFamily:"monospace" }}>
                   🔒 Modo leitura — os campos não são editáveis
                 </div>
               )}
-              {[["service","NOME DO SERVIÇO","text"],["costCenter","CENTRO DE CUSTO","text"]].map(([f,l,t])=>(
-                <div key={f}><label style={LS}>{l}</label>
-                  <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
-              ))}
-              <div>
-                <label style={{...LS,color:"#4dabf7"}}>RESPONSÁVEL CLÍNICO</label>
-                <select value={draft.responsavelClinico||""} onChange={e=>isEditor&&upd("responsavelClinico",e.target.value)} disabled={!isEditor}
-                  style={{...IS,cursor:isEditor?"pointer":"default"}}>
-                  <option value="">— selecionar —</option>
-                  {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                {[["service","NOME DO SERVIÇO","text"],["costCenter","CENTRO DE CUSTO","text"]].map(([f,l,t])=>(
+                  <div key={f}><label style={LS}>{l}</label>
+                    <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
+                ))}
+                {[["startDate","DATA DE INÍCIO","date"],["targetDate","DATA ALVO","date"]].map(([f,l,t])=>(
+                  <div key={f}><label style={LS}>{l}</label>
+                    <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
+                ))}
               </div>
-              <div>
-                <label style={{...LS,color:"#da77f2"}}>RESPONSÁVEL FARMÁCIA</label>
-                <select value={draft.responsavelFarmacia||""} onChange={e=>isEditor&&upd("responsavelFarmacia",e.target.value)} disabled={!isEditor}
-                  style={{...IS,cursor:isEditor?"pointer":"default"}}>
-                  <option value="">— selecionar —</option>
-                  {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              {[["startDate","DATA DE INÍCIO","date"],["targetDate","DATA ALVO","date"]].map(([f,l,t])=>(
-                <div key={f}><label style={LS}>{l}</label>
-                  <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
-              ))}
-              <div style={{gridColumn:"1/-1"}}>
-                <label style={LS}>ESTADO</label>
-                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                  {Object.entries(STATUS_CFG).map(([k,v])=>(
-                    <button key={k} onClick={()=>isEditor&&upd("status",k)} style={{
-                      padding:"5px 12px", borderRadius:20, cursor:isEditor?"pointer":"default",
-                      border:`1px solid ${draft.status===k?v.dot+"88":"rgba(255,255,255,.1)"}`,
-                      background:draft.status===k?v.bg:"transparent",
-                      color:draft.status===k?v.dot:"#7d8590", fontSize:11, fontFamily:"monospace", fontWeight:600,
-                    }}>{v.label}</button>
+
+              {/* Dual responsible selects */}
+              <div style={{ background:"rgba(255,255,255,.02)", border:"1px solid #21262d", borderRadius:10, padding:"14px 16px" }}>
+                <div style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace", letterSpacing:".1em", marginBottom:12 }}>RESPONSÁVEIS</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                  {[["clinico","🏥 Clínico","#fcc419"],["farmacia","💊 Farmácia","#4dabf7"]].map(([mode,l,c])=>(
+                    <div key={mode}>
+                      <label style={{...LS, color:c}}>{l}</label>
+                      <select value={draft[mode].responsible} onChange={e=>isEditor&&updTrk(mode,"responsible",e.target.value)}
+                        disabled={!isEditor} style={{...IS,cursor:isEditor?"pointer":"default"}}>
+                        <option value="">— selecionar —</option>
+                        {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
                   ))}
                 </div>
               </div>
-              <div style={{gridColumn:"1/-1"}}>
-                <label style={LS}>NOTAS</label>
-                <textarea value={draft.notes} onChange={e=>isEditor&&upd("notes",e.target.value)}
+
+              {/* Status per tracking */}
+              <div style={{ background:"rgba(255,255,255,.02)", border:"1px solid #21262d", borderRadius:10, padding:"14px 16px" }}>
+                <div style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace", letterSpacing:".1em", marginBottom:12 }}>ESTADO</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                  {[["clinico","🏥 Clínico","#fcc419"],["farmacia","💊 Farmácia","#4dabf7"]].map(([mode,l,c])=>(
+                    <div key={mode}>
+                      <label style={{...LS,color:c}}>{l}</label>
+                      <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                        {Object.entries(STATUS_CFG).map(([k,v])=>(
+                          <button key={k} onClick={()=>isEditor&&updTrk(mode,"status",k)} style={{
+                            padding:"4px 10px", borderRadius:20, cursor:isEditor?"pointer":"default",
+                            border:`1px solid ${draft[mode].status===k?v.dot+"88":"rgba(255,255,255,.1)"}`,
+                            background:draft[mode].status===k?v.bg:"transparent",
+                            color:draft[mode].status===k?v.dot:"#7d8590", fontSize:10, fontFamily:"monospace", fontWeight:600,
+                          }}>{v.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes per tracking */}
+              <div style={{ background:"rgba(255,255,255,.02)", border:"1px solid #21262d", borderRadius:10, padding:"14px 16px" }}>
+                <div style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace", letterSpacing:".1em", marginBottom:12 }}>NOTAS — {trkMode==="clinico"?"CLÍNICO":"FARMÁCIA"}</div>
+                <textarea value={trk.notes} onChange={e=>isEditor&&updTrk(trkMode,"notes",e.target.value)}
                   readOnly={!isEditor} rows={3}
                   placeholder="Observações, condicionantes, contexto específico…"
                   style={{...IS,resize:"vertical",lineHeight:1.6}}/>
               </div>
+
               {isEditor && (
-                <div style={{gridColumn:"1/-1"}}>
-                  <button onClick={()=>onSave(draft)} style={{
-                    width:"100%", padding:"10px 0", background:"rgba(45,140,78,.2)",
-                    border:"1px solid rgba(45,140,78,.5)", color:"#69db7c",
-                    borderRadius:8, fontSize:13, fontFamily:"monospace", cursor:"pointer", fontWeight:700 }}>
-                    💾 Guardar alterações
-                  </button>
-                </div>
+                <button onClick={()=>onSave(draft)} style={{
+                  width:"100%", padding:"10px 0", background:"rgba(45,140,78,.2)",
+                  border:"1px solid rgba(45,140,78,.5)", color:"#69db7c",
+                  borderRadius:8, fontSize:13, fontFamily:"monospace", cursor:"pointer", fontWeight:700 }}>
+                  💾 Guardar alterações
+                </button>
               )}
             </div>
           )}
@@ -2599,6 +2613,9 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
           {/* ── HISTORY ── */}
           {tab==="history" && (
             <div>
+              <div style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace", letterSpacing:".1em", marginBottom:12 }}>
+                HISTÓRICO — <span style={{ color:trkMode==="clinico"?"#fcc419":"#4dabf7" }}>{trkMode==="clinico"?"CLÍNICO":"FARMÁCIA"}</span>
+              </div>
               <div style={{ display:"flex", gap:8, marginBottom:20 }}>
                 <input value={newNote} onChange={e=>setNewNote(e.target.value)}
                   onKeyDown={e=>e.key==="Enter"&&addNote()}
@@ -2610,12 +2627,12 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
                   fontSize:12, cursor:isEditor?"pointer":"default", fontFamily:"monospace",
                   opacity:isEditor?1:.4 }}>+ Nota</button>
               </div>
-              {(draft.history||[]).length===0 ? (
+              {(trk.history||[]).length===0 ? (
                 <div style={{textAlign:"center",color:"#555",padding:32,fontSize:13}}>Histórico vazio.</div>
               ) : (
                 <div style={{ position:"relative" }}>
                   <div style={{ position:"absolute",left:8,top:0,bottom:0,width:1,background:"#21262d" }}/>
-                  {[...(draft.history||[])].reverse().map((h,i)=>(
+                  {[...(trk.history||[])].reverse().map((h,i)=>(
                     <div key={i} style={{ display:"flex", gap:14, marginBottom:12, paddingLeft:26, position:"relative" }}>
                       <div style={{ position:"absolute",left:4,top:5,width:9,height:9,borderRadius:"50%",
                         background:h.isNote?"#fcc419":"#4dabf7",border:"2px solid #161b22" }}/>
@@ -2654,17 +2671,19 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
 // PROCESS CARD
 // ─────────────────────────────────────────────────────────────────────────────
 function ProcessCard({ proc, onClick }) {
-  const clinicoPhase = PHASES[(proc.clinicoPhase||1)-1];
-  const farmaciaPhase = PHASES[(proc.farmaciaPhase||1)-1];
-  const cPct = clinicoPct(proc);
-  const fPct = farmaciaPct(proc);
-  const cfg = STATUS_CFG[proc.status];
+  const cli = proc.clinico;
+  const far = proc.farmacia;
+  const cliPct = totalPct(cli);
+  const farPct = totalPct(far);
+  const overallPct = procOverallPct(proc);
+  const cliPhase = PHASES[cli.currentPhase-1];
+  const farPhase = PHASES[far.currentPhase-1];
   const days = daysUntil(proc.targetDate);
-  const clinicoNextStep = clinicoPhase?.steps[proc.clinicoStep||0];
-  const farmaciaNextStep = farmaciaPhase?.steps[proc.farmaciaStep||0];
 
-  const CLINICO_COLOR = "#4dabf7";
-  const FARMACIA_COLOR = "#da77f2";
+  // Overall status: worst of both
+  const statusPriority = { late:0, warning:1, paused:2, ok:3, done:4 };
+  const overallStatus = [cli.status, far.status].sort((a,b)=>statusPriority[a]-statusPriority[b])[0];
+  const cfg = STATUS_CFG[overallStatus] || STATUS_CFG.ok;
 
   return (
     <div onClick={()=>onClick(proc)}
@@ -2673,89 +2692,82 @@ function ProcessCard({ proc, onClick }) {
       onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 8px 24px rgba(0,0,0,.4)`;}}
       onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
 
-      {/* Left accent: split between clinico/farmacia colors */}
-      <div style={{ position:"absolute",left:0,top:0,bottom:"50%",width:3,background:CLINICO_COLOR,borderRadius:"10px 0 0 0" }}/>
-      <div style={{ position:"absolute",left:0,top:"50%",bottom:0,width:3,background:FARMACIA_COLOR,borderRadius:"0 0 0 10px" }}/>
+      {/* Left accent: gradient of both phase colors */}
+      <div style={{ position:"absolute",left:0,top:0,bottom:0,width:3,
+        background:`linear-gradient(to bottom, ${cliPhase?.color||"#333"}, ${farPhase?.color||"#333"})`,
+        borderRadius:"10px 0 0 10px" }}/>
 
       {/* Service name + status dot */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
-        <div style={{ flex:1, paddingRight:10 }}>
+        <div style={{ flex:1, paddingRight:12 }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
             <span style={{ width:8,height:8,borderRadius:"50%",background:cfg.dot,
               boxShadow:`0 0 6px ${cfg.dot}88`,flexShrink:0 }}/>
-            <span style={{ fontWeight:700, fontSize:14, color:"#e6edf3", lineHeight:1.3 }}>{proc.service||"Serviço sem nome"}</span>
+            <span style={{ fontWeight:700, fontSize:14, color:"#e6edf3" }}>{proc.service||"Serviço sem nome"}</span>
           </div>
           {proc.costCenter && <div style={{ fontSize:10, color:"#555", fontFamily:"monospace" }}>CC {proc.costCenter}</div>}
         </div>
-        <span style={{ fontSize:10,fontFamily:"monospace",padding:"2px 8px",borderRadius:99,flexShrink:0,
-          background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.dot }}>{cfg.label}</span>
+        <div style={{ textAlign:"right" }}>
+          <div style={{ fontSize:9,color:"#555",fontFamily:"monospace",marginBottom:2 }}>GERAL</div>
+          <div style={{ fontSize:20,fontWeight:700,fontFamily:"monospace",
+            color:overallPct===100?"#38d9a9":"#e6edf3",lineHeight:1 }}>
+            {overallPct}<span style={{fontSize:11,color:"#7d8590"}}>%</span>
+          </div>
+        </div>
       </div>
 
       {/* Dual tracking rows */}
-      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-
+      <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:10 }}>
         {/* Clínico */}
-        <div style={{ background:"rgba(77,171,247,.05)", border:"1px solid rgba(77,171,247,.15)", borderRadius:7, padding:"8px 10px" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <span style={{ fontSize:9, fontFamily:"monospace", fontWeight:700, color:CLINICO_COLOR, letterSpacing:".1em" }}>CLÍNICO</span>
-              {proc.responsavelClinico && (
-                <span style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace" }}>· {proc.responsavelClinico}</span>
-              )}
+              <span style={{ fontSize:9,fontFamily:"monospace",letterSpacing:".08em",
+                color:"#fcc419",fontWeight:700 }}>CLÍNICO</span>
+              {cli.responsible && <span style={{ fontSize:10,color:"#8b949e",fontFamily:"monospace" }}>· {cli.responsible}</span>}
             </div>
-            <span style={{ fontSize:13, fontWeight:700, fontFamily:"monospace",
-              color:cPct===100?"#38d9a9":CLINICO_COLOR, lineHeight:1 }}>
-              {cPct}<span style={{fontSize:10,color:"#555"}}>%</span>
-            </span>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontSize:9,background:cliPhase?.color+"22",border:`1px solid ${cliPhase?.color}44`,
+                color:cliPhase?.color,borderRadius:3,padding:"1px 6px",fontFamily:"monospace",fontWeight:700 }}>
+                {cliPhase?.code}
+              </span>
+              <span style={{ fontSize:11,fontWeight:700,fontFamily:"monospace",color:"#e6edf3" }}>{cliPct}%</span>
+            </div>
           </div>
-          <ProgressBar value={cPct} color={CLINICO_COLOR} h={3}/>
-          <div style={{ display:"flex", justifyContent:"space-between", marginTop:5 }}>
-            <span style={{ background:clinicoPhase?.color+"22",border:`1px solid ${clinicoPhase?.color}44`,
-              color:clinicoPhase?.color,borderRadius:3,padding:"1px 6px",fontSize:9,fontFamily:"monospace",fontWeight:700 }}>
-              {clinicoPhase?.code}
-            </span>
-            <span style={{ fontSize:10,color:"#555",fontFamily:"monospace",maxWidth:160,textAlign:"right",
-              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-              {clinicoNextStep?.title||"Concluído"}
-            </span>
-          </div>
+          <ProgressBar value={cliPct} color={cliPhase?.color||"#fcc419"} h={3}/>
         </div>
 
         {/* Farmácia */}
-        <div style={{ background:"rgba(218,119,242,.05)", border:"1px solid rgba(218,119,242,.15)", borderRadius:7, padding:"8px 10px" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <span style={{ fontSize:9, fontFamily:"monospace", fontWeight:700, color:FARMACIA_COLOR, letterSpacing:".1em" }}>FARMÁCIA</span>
-              {proc.responsavelFarmacia && (
-                <span style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace" }}>· {proc.responsavelFarmacia}</span>
-              )}
+              <span style={{ fontSize:9,fontFamily:"monospace",letterSpacing:".08em",
+                color:"#4dabf7",fontWeight:700 }}>FARMÁCIA</span>
+              {far.responsible && <span style={{ fontSize:10,color:"#8b949e",fontFamily:"monospace" }}>· {far.responsible}</span>}
             </div>
-            <span style={{ fontSize:13, fontWeight:700, fontFamily:"monospace",
-              color:fPct===100?"#38d9a9":FARMACIA_COLOR, lineHeight:1 }}>
-              {fPct}<span style={{fontSize:10,color:"#555"}}>%</span>
-            </span>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <span style={{ fontSize:9,background:farPhase?.color+"22",border:`1px solid ${farPhase?.color}44`,
+                color:farPhase?.color,borderRadius:3,padding:"1px 6px",fontFamily:"monospace",fontWeight:700 }}>
+                {farPhase?.code}
+              </span>
+              <span style={{ fontSize:11,fontWeight:700,fontFamily:"monospace",color:"#e6edf3" }}>{farPct}%</span>
+            </div>
           </div>
-          <ProgressBar value={fPct} color={FARMACIA_COLOR} h={3}/>
-          <div style={{ display:"flex", justifyContent:"space-between", marginTop:5 }}>
-            <span style={{ background:farmaciaPhase?.color+"22",border:`1px solid ${farmaciaPhase?.color}44`,
-              color:farmaciaPhase?.color,borderRadius:3,padding:"1px 6px",fontSize:9,fontFamily:"monospace",fontWeight:700 }}>
-              {farmaciaPhase?.code}
-            </span>
-            <span style={{ fontSize:10,color:"#555",fontFamily:"monospace",maxWidth:160,textAlign:"right",
-              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-              {farmaciaNextStep?.title||"Concluído"}
-            </span>
-          </div>
+          <ProgressBar value={farPct} color={farPhase?.color||"#4dabf7"} h={3}/>
         </div>
       </div>
 
-      {/* Footer: date */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10 }}>
+      {/* Footer */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:8 }}>
         <div style={{ fontSize:10,color:"#555",fontFamily:"monospace" }}>{fmtDate(proc.startDate)}</div>
-        {proc.targetDate && <span style={{ fontSize:10,fontFamily:"monospace",
-          color:days===null?"#555":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c" }}>
-          {days===null?"":days<0?`${Math.abs(days)}d atraso`:days===0?"hoje":days<=7?`${days}d`:"📅 "+fmtDate(proc.targetDate)}
-        </span>}
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          {proc.targetDate&&<span style={{ fontSize:10,fontFamily:"monospace",
+            color:days===null?"#555":days<0?"#fa5252":days<=7?"#fcc419":"#69db7c" }}>
+            {days===null?"":days<0?`${Math.abs(days)}d atraso`:days===0?"hoje":days<=7?`${days}d`:""}
+          </span>}
+          <span style={{ fontSize:10,fontFamily:"monospace",padding:"2px 8px",borderRadius:99,
+            background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.dot }}>{cfg.label}</span>
+        </div>
       </div>
     </div>
   );
@@ -2767,41 +2779,58 @@ function ProcessCard({ proc, onClick }) {
 function NewProcessModal({ onClose, onCreate }) {
   const [form, setForm] = useState({service:"",costCenter:"",responsavelClinico:"",responsavelFarmacia:"",targetDate:""});
   const upd = (f,v) => setForm(d=>({...d,[f]:v}));
+
+  const doCreate = () => {
+    if(!form.service.trim()) return;
+    const base = EMPTY_PROC();
+    base.service = form.service;
+    base.costCenter = form.costCenter;
+    base.targetDate = form.targetDate;
+    base.clinico.responsible = form.responsavelClinico;
+    base.farmacia.responsible = form.responsavelFarmacia;
+    base.clinico.history = [{ ts: new Date().toISOString(), action: "Processo criado" }];
+    base.farmacia.history = [{ ts: new Date().toISOString(), action: "Processo criado" }];
+    onCreate(base);
+  };
+
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.8)",backdropFilter:"blur(6px)",
       zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}
       onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{ background:"#161b22",border:"1px solid #30363d",borderRadius:12,
-        padding:28,width:"100%",maxWidth:460,boxShadow:"0 24px 60px rgba(0,0,0,.7)",animation:"fadeUp .18s ease" }}>
+        padding:28,width:"100%",maxWidth:480,boxShadow:"0 24px 60px rgba(0,0,0,.7)",animation:"fadeUp .18s ease" }}>
         <div style={{ fontSize:15,fontWeight:700,color:"#e6edf3",marginBottom:20 }}>Novo Processo de Revisão</div>
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
           <div><label style={LS}>NOME DO SERVIÇO *</label>
             <input value={form.service} onChange={e=>upd("service",e.target.value)}
               placeholder="Ex: UCIP, Ortopedia, CE Oftalmo…" style={IS}
-              onKeyDown={e=>e.key==="Enter"&&form.service.trim()&&onCreate({...EMPTY_PROC(),...form,history:[{ts:new Date().toISOString(),action:"Processo criado"}]})} /></div>
+              onKeyDown={e=>e.key==="Enter"&&doCreate()} /></div>
           <div><label style={LS}>CENTRO DE CUSTO</label>
             <input value={form.costCenter} onChange={e=>upd("costCenter",e.target.value)} placeholder="Código CC" style={IS}/></div>
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
-            <div>
-              <label style={{...LS,color:"#4dabf7"}}>RESPONSÁVEL CLÍNICO</label>
-              <select value={form.responsavelClinico} onChange={e=>upd("responsavelClinico",e.target.value)} style={{...IS,cursor:"pointer"}}>
-                <option value="">— selecionar —</option>
-                {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{...LS,color:"#da77f2"}}>RESPONSÁVEL FARMÁCIA</label>
-              <select value={form.responsavelFarmacia} onChange={e=>upd("responsavelFarmacia",e.target.value)} style={{...IS,cursor:"pointer"}}>
-                <option value="">— selecionar —</option>
-                {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
-              </select>
+          <div style={{ background:"rgba(255,255,255,.02)", border:"1px solid #21262d", borderRadius:8, padding:"12px 14px" }}>
+            <div style={{ fontSize:10, color:"#7d8590", fontFamily:"monospace", letterSpacing:".1em", marginBottom:10 }}>RESPONSÁVEIS</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <div>
+                <label style={{...LS,color:"#fcc419"}}>🏥 CLÍNICO</label>
+                <select value={form.responsavelClinico} onChange={e=>upd("responsavelClinico",e.target.value)} style={{...IS,cursor:"pointer"}}>
+                  <option value="">— selecionar —</option>
+                  {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{...LS,color:"#4dabf7"}}>💊 FARMÁCIA</label>
+                <select value={form.responsavelFarmacia} onChange={e=>upd("responsavelFarmacia",e.target.value)} style={{...IS,cursor:"pointer"}}>
+                  <option value="">— selecionar —</option>
+                  {TEAM.map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
             </div>
           </div>
           <div><label style={LS}>DATA ALVO DE CONCLUSÃO</label>
             <input type="date" value={form.targetDate} onChange={e=>upd("targetDate",e.target.value)} style={IS}/></div>
         </div>
         <div style={{ display:"flex",gap:10,marginTop:20 }}>
-          <button onClick={()=>form.service.trim()&&onCreate({...EMPTY_PROC(),...form,history:[{ts:new Date().toISOString(),action:"Processo criado"}]})}
+          <button onClick={doCreate}
             style={{ flex:1,background:"rgba(45,140,78,.2)",border:"1px solid rgba(45,140,78,.5)",
               color:"#69db7c",borderRadius:8,padding:"10px 0",fontSize:13,fontFamily:"monospace",cursor:"pointer",fontWeight:700 }}>
             Criar processo
@@ -2983,15 +3012,15 @@ function ExportModal({ procs, filename, onExport, onCancel }) {
 function App() {
   const session = window.__ULSM_SESSION;
   const [procs, setProcs] = useState(session.procs || []);
-  const [loadedFilename, setLoadedFilename] = useState(null);
+  const [loadedFilename] = useState(session.filename || BACKUP_FILENAME);
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState("");
   const [showExport, setShowExport] = useState(false);
-  const [showImport, setShowImport] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
+  const backupInputRef = useRef(null);
 
   // Warn on browser close if unsaved
   useEffect(() => {
@@ -3001,6 +3030,21 @@ function App() {
   }, [unsaved]);
 
   // (export handled inline in JSX below)
+
+  // Load backup handler (replaces current session data)
+  function onLoadBackupFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    loadFromFile(file).then(result => {
+      window.__ULSM_SESSION.procs = result.procs;
+      window.__ULSM_SESSION.filename = file.name;
+      setProcs(result.procs);
+      setUnsaved(false);
+      if (backupInputRef.current) backupInputRef.current.value = "";
+    }).catch(err => {
+      alert("Erro ao carregar backup: " + err);
+    });
+  }
 
   // Sync editor badge in global nav
   useEffect(() => {
@@ -3019,6 +3063,17 @@ function App() {
       setIsEditorRef.current(false);
       setPinRef.current("");
       setAuthErrorRef.current("");
+    };
+    // Expose PIN login so global nav Entrar button can trigger it
+    window.__triggerEditorLogin = (pinValue) => {
+      const pins = Array.isArray(window.__ULSM_EDITOR_PINS) ? window.__ULSM_EDITOR_PINS : [];
+      if (pins.includes((pinValue||"").trim())) {
+        setIsEditorRef.current(true);
+        setPinRef.current("");
+        setAuthErrorRef.current("");
+        return true;
+      }
+      return false;
     };
   }, []);
   const [search, setSearch] = useState("");
@@ -3040,23 +3095,24 @@ function App() {
   };
 
   const filtered = procs.filter(p=>{
-    if(filterStatus!=="all"&&p.status!==filterStatus) return false;
-    if(search){
-      const q = search.toLowerCase();
-      if(!p.service.toLowerCase().includes(q)&&
-         !(p.responsavelClinico||"").toLowerCase().includes(q)&&
-         !(p.responsavelFarmacia||"").toLowerCase().includes(q)) return false;
+    if(filterStatus!=="all") {
+      // Filter if either tracking matches
+      if(p.clinico.status!==filterStatus && p.farmacia.status!==filterStatus) return false;
     }
+    if(search&&!p.service.toLowerCase().includes(search.toLowerCase())&&
+       !(p.clinico.responsible||"").toLowerCase().includes(search.toLowerCase())&&
+       !(p.farmacia.responsible||"").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
+  const isDone = (p) => p.clinico.status==="done" && p.farmacia.status==="done";
+  const isLate = (p) => { const d=daysUntil(p.targetDate); return d!==null&&d<0&&!isDone(p); };
+
   const stats = {
     total: procs.length,
-    active: procs.filter(p=>p.status!=="done"&&p.status!=="paused").length,
-    late: procs.filter(p=>{ const d=daysUntil(p.targetDate); return d!==null&&d<0&&p.status!=="done"; }).length,
-    done: procs.filter(p=>p.status==="done"||( clinicoPct(p)===100&&farmaciaPct(p)===100 )).length,
-    clinicoDone: procs.filter(p=>clinicoPct(p)===100).length,
-    farmaciaDone: procs.filter(p=>farmaciaPct(p)===100).length,
+    active: procs.filter(p=>!isDone(p) && p.clinico.status!=="paused" && p.farmacia.status!=="paused").length,
+    late: procs.filter(isLate).length,
+    done: procs.filter(isDone).length,
   };
 
   const handleEditorLogin = () => {
@@ -3095,13 +3151,11 @@ function App() {
               color:"#7d8590",marginBottom:1 }}>ULSM · GESTÃO DE SUPERMERCADOS</div>
             <div style={{ fontSize:15,fontWeight:700,letterSpacing:"-.02em" }}>Tracking de Revisões</div>
           </div>
-          {loadedFilename && (
-            <span style={{ fontFamily:"monospace", fontSize:11, color:"#555",
-              background:"#0d1117", border:"1px solid #21262d", borderRadius:5,
-              padding:"3px 10px", maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-              📄 {loadedFilename}
-            </span>
-          )}
+          <span style={{ fontFamily:"monospace", fontSize:11, color:"#555",
+            background:"#0d1117", border:"1px solid #21262d", borderRadius:5,
+            padding:"3px 10px", maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            📄 {loadedFilename || BACKUP_FILENAME}
+          </span>
           {unsaved && (
             <span style={{ fontFamily:"monospace", fontSize:10, color:"#fcc419",
               background:"rgba(245,159,0,.12)", border:"1px solid rgba(245,159,0,.3)",
@@ -3122,13 +3176,6 @@ function App() {
                 padding:"7px 14px",fontSize:12,cursor:"pointer",fontFamily:"monospace",fontWeight:700 }}>
                 + Novo processo
               </button>
-              <button onClick={()=>setShowImport(true)} style={{
-                background:"rgba(77,171,247,.1)", border:"1px solid rgba(77,171,247,.3)",
-                color:"#4dabf7", borderRadius:6, padding:"7px 14px", fontSize:12,
-                cursor:"pointer", fontFamily:"monospace", fontWeight:700
-              }}>
-                📂 Carregar backup
-              </button>
               <button onClick={()=>setShowExport(true)} style={{
                 background: unsaved ? "rgba(245,159,0,.18)" : "rgba(29,125,210,.12)",
                 border: unsaved ? "1px solid rgba(245,159,0,.5)" : "1px solid rgba(29,125,210,.3)",
@@ -3138,59 +3185,28 @@ function App() {
               }}>
                 💾 {unsaved ? "Guardar backup*" : "Guardar backup"}
               </button>
-              <button onClick={()=>{setIsEditor(false);setPin("");setAuthError("");}} style={{
-                background:"rgba(224,49,49,.1)", border:"1px solid rgba(224,49,49,.3)",
-                color:"#fa5252", borderRadius:6, padding:"7px 12px", fontSize:11,
+              <button onClick={()=>backupInputRef.current && backupInputRef.current.click()} style={{
+                background:"rgba(29,125,210,.12)", border:"1px solid rgba(29,125,210,.3)",
+                color:"#4dabf7", borderRadius:6, padding:"7px 12px", fontSize:11,
                 cursor:"pointer", fontFamily:"monospace"
-              }}>Sair editor</button>
+              }}>📂 Carregar Backup</button>
+              <input ref={backupInputRef} type="file" accept=".json" onChange={onLoadBackupFile} style={{display:"none"}} />
             </>
-          ) : (
-            <>
-              {/* PIN login inline */}
-              <input
-                value={pin}
-                onChange={e=>setPin(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&handleEditorLogin()}
-                type="password"
-                placeholder="PIN editor…"
-                style={{ background:"#0d1117", border:"1px solid #30363d", borderRadius:6,
-                  color:"#e6edf3", padding:"7px 12px", fontSize:12, width:130,
-                  fontFamily:"monospace", outline:"none" }}
-              />
-              <button onClick={handleEditorLogin} style={{
-                background:"rgba(77,171,247,.12)", border:"1px solid rgba(77,171,247,.3)",
-                color:"#4dabf7", borderRadius:6, padding:"7px 12px", fontSize:12,
-                cursor:"pointer", fontFamily:"monospace", fontWeight:700
-              }}>🔓 Entrar</button>
-              {authError && <span style={{ fontSize:11, color:"#fa5252", fontFamily:"monospace" }}>{authError}</span>}
-            </>
-          )}
+          ) : null}
         </div>
       </div>
 
       <div style={{ padding:"24px 28px", maxWidth:1200, margin:"0 auto" }}>
 
         {/* ── KPIs ── */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:24 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:24 }}>
           {[["TOTAL",stats.total,"#4dabf7"],["EM CURSO",stats.active,"#fcc419"],
-            ["ATRASADOS",stats.late,"#fa5252"]].map(([l,v,c])=>(
+            ["ATRASADOS",stats.late,"#fa5252"],["CONCLUÍDOS",stats.done,"#38d9a9"]].map(([l,v,c])=>(
             <div key={l} style={{ background:"#161b22",border:"1px solid #21262d",borderRadius:10,padding:"14px 18px" }}>
               <div style={{ fontSize:9,color:"#7d8590",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>{l}</div>
               <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:c,lineHeight:1 }}>{v}</div>
             </div>
           ))}
-          <div style={{ background:"#161b22",border:"1px solid rgba(77,171,247,.25)",borderRadius:10,padding:"14px 18px" }}>
-            <div style={{ fontSize:9,color:"#4dabf7",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>CLÍNICO CONCLUÍDO</div>
-            <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:"#4dabf7",lineHeight:1 }}>{stats.clinicoDone}</div>
-          </div>
-          <div style={{ background:"#161b22",border:"1px solid rgba(218,119,242,.25)",borderRadius:10,padding:"14px 18px" }}>
-            <div style={{ fontSize:9,color:"#da77f2",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>FARMÁCIA CONCLUÍDO</div>
-            <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:"#da77f2",lineHeight:1 }}>{stats.farmaciaDone}</div>
-          </div>
-          <div style={{ background:"#161b22",border:"1px solid rgba(56,217,169,.25)",borderRadius:10,padding:"14px 18px" }}>
-            <div style={{ fontSize:9,color:"#38d9a9",fontFamily:"monospace",letterSpacing:".12em",marginBottom:6 }}>CONCLUÍDOS</div>
-            <div style={{ fontSize:26,fontWeight:700,fontFamily:"monospace",color:"#38d9a9",lineHeight:1 }}>{stats.done}</div>
-          </div>
         </div>
 
         {/* ── FILTERS ── */}
@@ -3234,7 +3250,10 @@ function App() {
             <div style={{ fontSize:9,color:"#7d8590",fontFamily:"monospace",letterSpacing:".12em",marginBottom:10 }}>DISTRIBUIÇÃO POR FASE</div>
             <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
               {PHASES.map(ph=>{
-                const count = procs.filter(p=>p.currentPhase===ph.id&&p.status!=="done").length;
+                const count = procs.filter(p=>
+                  (p.clinico.currentPhase===ph.id && p.clinico.status!=="done") ||
+                  (p.farmacia.currentPhase===ph.id && p.farmacia.status!=="done")
+                ).length;
                 return (
                   <div key={ph.id} onClick={()=>setFilterStatus("all")}
                     style={{ display:"flex",alignItems:"center",gap:7,padding:"5px 10px",
@@ -3256,86 +3275,53 @@ function App() {
       {selected&&<ProcessDetail proc={selected} onClose={()=>setSelected(null)}
         onSave={handleSave} onDelete={handleDelete} isEditor={isEditor}/>}
       {showNew&&<NewProcessModal onClose={()=>setShowNew(false)} onCreate={handleCreate}/>}
-      {showExport&&<ExportModal procs={procs} filename={loadedFilename||BACKUP_FILENAME}
+      {showExport&&<ExportModal procs={procs} filename={BACKUP_FILENAME}
         onExport={async()=>{ await exportToFile(procs); setShowExport(false); setUnsaved(false); }}
         onCancel={()=>setShowExport(false)}/>}
-      {showImport&&<ImportModal onClose={()=>setShowImport(false)} onLoaded={(loaded,fname)=>{
-        persist(loaded);
-        setLoadedFilename(fname);
-        window.__ULSM_SESSION.filename = fname;
-        setShowImport(false);
-        setUnsaved(false);
-      }}/>}
     </div>
   );
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// IMPORT MODAL — editor-only backup loader
-// ─────────────────────────────────────────────────────────────────────────────
-function ImportModal({ onClose, onLoaded }) {
-  const [dragging, setDragging] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const inputRef = React.useRef();
-
-  async function processFile(file) {
-    if (!file) return;
-    if (!file.name.endsWith(".json")) { setError("Seleciona um ficheiro .json válido."); return; }
-    setLoading(true); setError("");
-    try {
-      const result = await loadFromFile(file);
-      onLoaded(result.procs, file.name);
-    } catch(e) { setError(typeof e === "string" ? e : "Erro ao carregar o ficheiro."); setLoading(false); }
-  }
-
-  return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.8)",backdropFilter:"blur(6px)",
-      zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}
-      onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{ background:"#161b22",border:"1px solid #30363d",borderRadius:14,
-        width:"100%",maxWidth:460,padding:32,boxShadow:"0 24px 60px rgba(0,0,0,.7)",animation:"fadeUp .18s ease" }}>
-        <div style={{ fontSize:15,fontWeight:700,color:"#e6edf3",marginBottom:6 }}>📂 Carregar Backup</div>
-        <div style={{ fontSize:12,color:"#7d8590",marginBottom:20 }}>
-          Carrega um ficheiro <span style={{fontFamily:"monospace",color:"#4dabf7"}}>{BACKUP_FILENAME}</span> existente.
-          Os dados atuais serão substituídos.
-        </div>
-        <div
-          onClick={()=>inputRef.current.click()}
-          onDragOver={e=>{e.preventDefault();setDragging(true);}}
-          onDragLeave={()=>setDragging(false)}
-          onDrop={e=>{e.preventDefault();setDragging(false);processFile(e.dataTransfer.files[0]);}}
-          style={{ border:`2px dashed ${dragging?"#4dabf7":"#30363d"}`,borderRadius:10,
-            background:dragging?"rgba(29,125,210,.08)":"#0d1117",padding:"32px 20px",
-            textAlign:"center",cursor:"pointer",transition:"all .2s",marginBottom:16 }}>
-          {loading
-            ? <div style={{color:"#4dabf7",fontFamily:"monospace",fontSize:13}}>A carregar…</div>
-            : <><div style={{fontSize:32,marginBottom:8}}>📁</div>
-               <div style={{fontSize:13,color:"#8b949e"}}>Clica ou arrasta o ficheiro aqui</div></>}
-          <input ref={inputRef} type="file" accept=".json" onChange={e=>processFile(e.target.files[0])} style={{display:"none"}}/>
-        </div>
-        {error && <div style={{ background:"rgba(224,49,49,.15)",border:"1px solid rgba(224,49,49,.4)",
-          borderRadius:8,padding:"10px 14px",color:"#fa5252",fontSize:12,fontFamily:"monospace",marginBottom:12 }}>⚠ {error}</div>}
-        <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <button onClick={onClose} style={{ padding:"8px 18px",background:"transparent",
-            border:"1px solid #30363d",color:"#7d8590",borderRadius:8,fontSize:12,cursor:"pointer" }}>Cancelar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Boot: start app directly, no LoadScreen gate ─────────────────────────
+// ── Boot ─────────────────────────────────────────────────────────────────────
 (function boot() {
-  // Start with empty procs — editor can load a backup later
-  window.__ULSM_SESSION.loaded = true;
-  window.__ULSM_SESSION.procs = [];
-  window.__ULSM_SESSION.filename = BACKUP_FILENAME;
-
   const trackingRoot = ReactDOM.createRoot(document.getElementById('tracking-root'));
+
+  // Mount App immediately (empty state) so Tracking tab is usable from the start
   trackingRoot.render(<App />);
 
-  // Default view: workflow tab (already set in HTML)
-  // Tracking tab becomes active when user clicks it
+  // Called after LoadScreen completes — re-render App with data, switch to Tracking
+  function onLoaded(procs, filename) {
+    window.__ULSM_SESSION.loaded = true;
+    window.__ULSM_SESSION.procs = procs;
+    window.__ULSM_SESSION.filename = filename;
+
+    const overlay = document.getElementById('load-screen-overlay');
+    trackingRoot.render(<App />);
+
+    setTimeout(() => {
+      if (overlay) overlay.remove();
+      switchView('tracking');
+    }, 80);
+  }
+
+  // "Entrar" button flow:
+  //   Tracking view + not loaded → LoadScreen → after load → PIN modal
+  //   Tracking view + loaded     → PIN modal directly
+  //   Workflow view              → PIN modal (workflow editor)
+  window.__openEntrar = function() {
+    const isTracking = document.body.classList.contains('view-tracking');
+    if (isTracking && !window.__ULSM_SESSION.loaded) {
+      const overlay = document.createElement('div');
+      overlay.id = 'load-screen-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#0d1117;';
+      document.body.appendChild(overlay);
+      ReactDOM.createRoot(overlay).render(<LoadScreen onLoaded={onLoaded} />);
+    } else {
+      openPinModal();
+    }
+  };
+
+  // Wire Entrar button
+  document.getElementById('nav-entrar-btn').onclick = window.__openEntrar;
 })();
 
 </script>
