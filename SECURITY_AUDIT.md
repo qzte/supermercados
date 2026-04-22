@@ -1,105 +1,157 @@
 # Auditoria de Segurança — `supermercados`
 
-Data: 2026-03-01
-
-## Escopo auditado
-- `ulsm_supermercados.html`
-- `ulsm_supermercados.jsx`
+Data da auditoria: **2026-04-22**  
+Escopo: `ulsm_supermercados.html`, `ulsm_supermercados.jsx`
 
 ## Resumo executivo
-A revisão do estado atual do código identificou **5 riscos principais**:
+Foram identificados **7 riscos relevantes**. Os dois riscos mais críticos são:
 
-1. **Credenciais de editor hardcoded no cliente** (Alta).
-2. **XSS persistente via conteúdo HTML não sanitizado** (Alta).
-3. **Cadeia de supply chain externa sem SRI (CDN + fontes)** (Média/Alta).
-4. **Arquitetura exclusivamente client-side para permissões e persistência** (Média).
-5. **Ausência de CSP explícita no HTML atual** (Média).
+1. **Autenticação fraca com PINs hardcoded no cliente**.
+2. **Injeção de HTML/JS (XSS) por uso extensivo de `innerHTML` e `dangerouslySetInnerHTML` com dados editáveis/importáveis**.
+
+A aplicação está funcionalmente madura, mas a arquitetura atual é orientada a conveniência local (single-file, sem backend), o que deixa lacunas sérias para um contexto com dados operacionais sensíveis.
+
+---
+
+## Metodologia rápida
+- Revisão estática do front-end e fluxo de persistência local.
+- Procura de padrões de risco (`innerHTML`, `dangerouslySetInnerHTML`, `eval`, dependências CDN, PINs client-side, ausência de CSP).
+- Validação manual de pontos de entrada de dados e pontos de execução/renderização.
 
 ---
 
 ## Achados detalhados
 
-### 1) Credenciais de editor hardcoded no cliente (**Severidade: Alta**)
-**Evidência técnica**
-- O ficheiro HTML define diretamente os PINs de editor em `window.__ULSM_EDITOR_PINS`.
-- A verificação de permissões ocorre apenas no browser (`pins.includes(input.value.trim())`).
+### 1) PINs de editor hardcoded e validação só no cliente  
+**Severidade: Alta**
 
-**Risco**
-- Qualquer utilizador com acesso ao código-fonte consegue ler ou alterar os PINs.
-- Não há autenticação forte nem trilho de auditoria centralizado.
+**Evidência**
+- PINs expostos diretamente em `window.__ULSM_EDITOR_PINS`.
+- Vários pontos do código validam acesso comparando input com o array local de PINs.
+
+**Impacto**
+- Qualquer utilizador com acesso ao ficheiro consegue ler/alterar credenciais.
+- Sem autenticação forte, sem rotação central de credenciais e sem trilho de auditoria robusto.
 
 **Recomendação**
-- Remover segredos do front-end.
-- Implementar autenticação/autorização server-side (SSO/OIDC + RBAC).
+- Migrar para autenticação server-side (SSO/OIDC + RBAC).
+- Remover segredos do bundle front-end.
 
 ---
 
-### 2) XSS persistente por `innerHTML` com dados editáveis/importados (**Severidade: Alta**)
-**Evidência técnica**
-- A construção de passos usa `step.innerHTML` com `stepData.title` e `stepData.body` (dados vindos de template/localStorage).
-- A serialização guarda HTML bruto (`.innerHTML`) em armazenamento local.
-- O carregamento reaplica o conteúdo sem sanitização (`applyTemplate` + `createStepElement`).
+### 2) XSS persistente por `innerHTML` e serialização de HTML não sanitizado  
+**Severidade: Alta**
 
-**Risco**
-- Um JSON malicioso ou conteúdo adulterado em `localStorage` pode injetar script/event handlers.
-- O ataque persiste entre sessões enquanto os dados estiverem guardados.
+**Evidência**
+- Criação de elementos com `innerHTML` em várias áreas do workflow/editor/reporting.
+- Guardar/carregar template com `innerHTML` em `localStorage`.
+- Reaplicação de dados editáveis sem sanitização forte.
+
+**Impacto**
+- Um payload malicioso em backup JSON, template ou `localStorage` pode ser executado quando renderizado.
+- Persistência do ataque entre sessões (XSS persistente).
 
 **Recomendação**
-- Substituir inserção HTML por APIs seguras (`textContent`, `createElement`).
-- Sanitizar rigorosamente conteúdo permitido (allowlist).
-- Validar e normalizar templates no momento de importação.
+- Substituir `innerHTML` por `textContent` e criação de nós explícita.
+- Quando HTML for estritamente necessário, aplicar sanitização allowlist (ex.: DOMPurify com política restrita).
+- Validar/importar JSON com schema estrito.
 
 ---
 
-### 3) Dependências externas críticas sem Subresource Integrity (**Severidade: Média/Alta**)
-**Evidência técnica**
-- React, ReactDOM e Babel são carregados de CDN sem atributos `integrity`.
-- Fontes Google são carregadas de terceiros.
+### 3) Uso de `dangerouslySetInnerHTML` no React com conteúdo dinâmico  
+**Severidade: Alta**
 
-**Risco**
-- Maior exposição a ataques de supply chain ou alteração indevida de assets externos.
-- Dependência de disponibilidade e política de terceiros.
+**Evidência**
+- Componentes React utilizam `dangerouslySetInnerHTML` para apresentar labels/instruções.
+
+**Impacto**
+- Qualquer dado que entre nesse fluxo sem limpeza pode executar payload no DOM.
 
 **Recomendação**
-- Fixar versões com `integrity` + `crossorigin` adequado.
-- Preferir self-host de bibliotecas e fontes para ambientes críticos.
+- Evitar `dangerouslySetInnerHTML` por defeito.
+- Se inevitável, aplicar sanitização de HTML estrita antes da renderização.
 
 ---
 
-### 4) Integridade e autorização limitadas por arquitetura client-side (**Severidade: Média**)
-**Evidência técnica**
-- O estado de workflow é gravado em `localStorage` (`workflowTemplate`) e pode ser manipulado localmente.
-- O fallback de `window.storage` também grava em `localStorage` sem autoridade externa.
+### 4) Execução dinâmica com `eval()` em iframe/reporting  
+**Severidade: Alta**
 
-**Risco**
-- Não há não-repúdio, controlo de versões confiável nem proteção forte contra adulteração local.
+**Evidência**
+- O código executa `iframeWin.eval(...)` para preencher relatórios de forma síncrona.
+
+**Impacto**
+- Aumenta muito a superfície para execução arbitrária em caso de dados/funções comprometidas.
+- Incompatível com hardening moderno (CSP forte tende a bloquear `eval`).
 
 **Recomendação**
-- Migrar persistência crítica para backend autenticado com registo de auditoria.
-- Aplicar controlo de acesso por perfil e histórico imutável.
+- Remover `eval`; usar funções pré-definidas e comunicação controlada (`postMessage`, chamadas diretas validadas).
 
 ---
 
-### 5) CSP ausente no HTML atual (**Severidade: Média**)
-**Evidência técnica**
-- Não há meta tag nem header CSP definido no documento auditado.
-- Existem múltiplos handlers inline (`onclick`), o que dificulta hardening sem refatoração.
+### 5) Dependências CDN sem SRI e carregamento dinâmico de bibliotecas externas  
+**Severidade: Média/Alta**
 
-**Risco**
-- Superfície de ataque XSS maior do que o necessário.
+**Evidência**
+- React/ReactDOM/Babel e libs de exportação são carregadas via CDN.
+- Não há `integrity` nos scripts principais observados.
+
+**Impacto**
+- Maior risco de supply-chain (compromisso de terceiros, alteração inesperada, indisponibilidade).
 
 **Recomendação**
-- Introduzir CSP por header HTTP (preferencial) e refatorar inline handlers.
-- Evoluir para `script-src` com nonce/hash e sem `unsafe-inline`.
+- Self-host de dependências críticas ou uso obrigatório de SRI + pin de versão.
+- Definir processo de atualização e verificação de integridade.
 
 ---
 
-## Priorização sugerida
-1. **P0**: eliminar credenciais hardcoded e mover autenticação/autorização para backend.
-2. **P0**: bloquear vetor de XSS persistente (remover `innerHTML` não sanitizado).
-3. **P1**: implementar CSP robusta e remover handlers inline.
-4. **P1**: reforçar supply chain (`integrity`/self-host).
-5. **P2**: migrar persistência crítica para backend com auditoria.
+### 6) Ausência de Content Security Policy robusta + muitos handlers inline  
+**Severidade: Média**
 
-## Conclusão
-O principal risco atual não é apenas “falta de backend”, mas a combinação de **segredos expostos no cliente + HTML não sanitizado + dependências externas sem validação de integridade**. Estes pontos devem ser tratados antes de considerar o sistema apto para dados/processos críticos.
+**Evidência**
+- Não foi identificado header/meta CSP efetivo.
+- Há diversos `onclick="..."` inline no HTML.
+
+**Impacto**
+- Dificulta mitigação de XSS por políticas do browser.
+
+**Recomendação**
+- Introduzir CSP por header HTTP.
+- Refatorar handlers inline para `addEventListener`.
+- Evoluir para política sem `unsafe-inline`/`unsafe-eval`.
+
+---
+
+### 7) Persistência local sem garantias de integridade, auditoria e controlo concorrente  
+**Severidade: Média**
+
+**Evidência**
+- Persistência principal em `localStorage`/ficheiro JSON local.
+- Sem assinatura, sem controlo transacional e sem mecanismo robusto de concorrência.
+
+**Impacto**
+- Risco de adulteração local, perda de dados e overwrite silencioso entre operadores.
+
+**Recomendação**
+- Backend com controlo de versão/locking otimista.
+- Assinatura de backups e trilho de auditoria imutável para operações críticas.
+
+---
+
+## Priorização recomendada
+
+### P0 (imediato)
+1. Remover PINs hardcoded e migrar autenticação para backend.
+2. Eliminar vetores XSS: remover `innerHTML`/`dangerouslySetInnerHTML` sem sanitização.
+3. Remover `eval` do fluxo de relatórios.
+
+### P1 (curto prazo)
+4. Implementar CSP robusta e remover handlers inline.
+5. Endurecer cadeia de dependências (SRI/self-host + pinning).
+
+### P2 (médio prazo)
+6. Migrar persistência crítica para serviço central com auditoria e controlo de concorrência.
+
+---
+
+## Nota final
+A aplicação pode continuar útil para operação local, mas **não deve ser considerada segura para contexto crítico** sem tratar os pontos P0. A combinação de credenciais no cliente + injeção HTML + `eval` torna a exploração plausível com esforço moderado.
