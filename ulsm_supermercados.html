@@ -5466,7 +5466,8 @@ function KpisPanel() {
   const [vista, setVista] = React.useState('operacional'); // 'operacional' | 'executivo'
   const [procs, setProcs] = React.useState(() => sanitizeProcs(window.__ULSM_SESSION.procs || []));
   const [plan, setPlan] = React.useState(() => sanitizePlan(window.__ULSM_SESSION.annualPlan || {}));
-  const [exportMsg, setExportMsg] = React.useState('');
+  const [exportState, setExportState] = React.useState({ type:'idle', text:'' });
+  const [isExporting, setIsExporting] = React.useState(false);
 
   // Refresh when view is activated or data changes
   React.useEffect(() => {
@@ -5644,6 +5645,21 @@ function KpisPanel() {
       .replace(/^./, c => c.toUpperCase());
   }
 
+  function buildStampForFilename() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mi = String(d.getMinutes()).padStart(2,'0');
+    return `${yyyy}${mm}${dd}_${hh}${mi}`;
+  }
+
+  function setExportFeedback(type, text, timeoutMs = 4500) {
+    setExportState({ type, text });
+    if (timeoutMs > 0) setTimeout(() => setExportState({ type:'idle', text:'' }), timeoutMs);
+  }
+
   function buildMonthlyData() {
     const fasesComAtraso = phaseStats.filter(s => s.desvio !== null && s.desvio > 0).length;
     const respostasAtraso = procs.filter(p => {
@@ -5792,7 +5808,9 @@ function KpisPanel() {
   }
 
   async function exportPdf() {
-    setExportMsg('A gerar PDF…');
+    if (isExporting) return;
+    setIsExporting(true);
+    setExportFeedback('loading', 'A gerar PDF…', 0);
     try {
       await loadLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',        () => !!window.jspdf);
       await loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', () => !!window.html2canvas);
@@ -5801,7 +5819,7 @@ function KpisPanel() {
       const monthlyHtml = window.__ULSM_TEMPLATE_MENSAL;
       const annualHtml  = window.__ULSM_TEMPLATE_ANUAL;
       if (!monthlyHtml || !annualHtml) {
-        setExportMsg('Erro: templates não carregados. Recarrega a página.'); return;
+        setExportFeedback('error', 'Erro: templates não carregados. Recarrega a página.'); return;
       }
       // Extract fill function source from the embedded templates
       const extractFn = (html, fnName) => {
@@ -5812,22 +5830,43 @@ function KpisPanel() {
       const fillAnualSrc  = extractFn(annualHtml,  'ULSM_fillAnnualReport');
       await renderTemplateToPdfPage(monthlyHtml, fillMensalSrc, buildMonthlyData(), pdf, true);
       await renderTemplateToPdfPage(annualHtml,  fillAnualSrc,  buildAnnualData(),  pdf, false);
-      const mm = String(new Date().getMonth()+1).padStart(2,'0');
-      pdf.save(`ulsm_relatorio_kpis_${currentYear}_${mm}.pdf`);
-      setExportMsg('✓ PDF exportado (2 páginas)!');
+      const stamp = buildStampForFilename();
+      pdf.save(`ulsm_relatorio_kpis_${currentYear}_${stamp}.pdf`);
+      setExportFeedback('success', '✓ PDF exportado (2 páginas)!');
     } catch(e) {
-      setExportMsg('Erro ao exportar PDF: ' + e.message);
+      setExportFeedback('error', 'Erro ao exportar PDF: ' + e.message);
       console.error(e);
     } finally {
-      setTimeout(() => setExportMsg(''), 4000);
+      setIsExporting(false);
     }
   }
 
   async function exportExcel() {
-    setExportMsg('A gerar Excel…');
+    if (isExporting) return;
+    setIsExporting(true);
+    setExportFeedback('loading', 'A gerar Excel…', 0);
     try {
       await loadLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', () => !!window.XLSX);
       const wb = window.XLSX.utils.book_new();
+      const summaryRows = [
+        ['Relatório', 'KPIs Supermercados ULSM'],
+        ['Período', buildPeriod()],
+        ['Gerado em', buildGeneratedAt()],
+        [],
+        ['Indicador', 'Valor'],
+        ['Processos ativos (operacional)', activeProcs.length],
+        ['Fases com atraso', fasesComAtraso],
+        ['Respostas em atraso', respostasAtraso],
+        ['Média ciclo completo (dias)', mediaCiclo ?? ''],
+        ['Total planeado (executivo)', kpiTotal],
+        ['Concluídos (executivo)', kpiDone],
+        ['Em curso (executivo)', kpiActive],
+        ['Por iniciar (executivo)', kpiPorIniciar],
+        ['Taxa execução (%)', kpiTaxa],
+      ];
+      const ws0 = window.XLSX.utils.aoa_to_sheet(summaryRows);
+      ws0['!cols'] = [{wch:36},{wch:28}];
+      window.XLSX.utils.book_append_sheet(wb, ws0, 'Resumo');
       const opRows = [['Fase','Código','Cor','Processos Ativos','Estimativa (dias)','Real Médio (dias)','Desvio (dias)','N Amostras']];
       phaseStats.forEach(s => {
         opRows.push([
@@ -5857,14 +5896,74 @@ function KpisPanel() {
       const ws3 = window.XLSX.utils.aoa_to_sheet(evRows);
       ws3['!cols'] = [{wch:10},{wch:22}];
       window.XLSX.utils.book_append_sheet(wb, ws3, 'Evolução Mensal');
-      const mm = String(new Date().getMonth()+1).padStart(2,'0');
-      window.XLSX.writeFile(wb, `ulsm_kpis_${currentYear}_${mm}.xlsx`);
-      setExportMsg('✓ Excel exportado (3 folhas)!');
+      const stamp = buildStampForFilename();
+      window.XLSX.writeFile(wb, `ulsm_kpis_${currentYear}_${stamp}.xlsx`);
+      setExportFeedback('success', '✓ Excel exportado (4 folhas, com resumo)!');
     } catch(e) {
-      setExportMsg('Erro ao exportar Excel.');
+      setExportFeedback('error', 'Erro ao exportar Excel.');
       console.error(e);
     } finally {
-      setTimeout(() => setExportMsg(''), 3000);
+      setIsExporting(false);
+    }
+  }
+
+  function toCsvCell(value) {
+    if (value == null) return '';
+    const str = String(value).replace(/"/g, '""');
+    return /[;"\n\r]/.test(str) ? `"${str}"` : str;
+  }
+
+  function downloadCsv(filename, headers, rows) {
+    const csvLines = [headers, ...rows].map(row => row.map(toCsvCell).join(';'));
+    const blob = new Blob(["\ufeff" + csvLines.join('\n')], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportCsv() {
+    if (isExporting) return;
+    try {
+      setExportFeedback('loading', 'A gerar CSV…', 0);
+      const stamp = buildStampForFilename();
+      downloadCsv(
+        `ulsm_kpis_operacional_${currentYear}_${stamp}.csv`,
+        ['Fase','Código','Processos Ativos','Estimativa (dias)','Real Médio (dias)','Desvio (dias)','N Amostras'],
+        phaseStats.map(s => [
+          (s.ph.label||'').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&'),
+          s.ph.code,
+          s.activeInPhase,
+          s.estDays ?? '',
+          s.avgReal ?? '',
+          s.desvio ?? '',
+          s.n,
+        ])
+      );
+      downloadCsv(
+        `ulsm_kpis_executivo_${currentYear}_${stamp}.csv`,
+        ['Serviço','CC','Início Previsto','Início Real','Δ Início (dias)','Fim Previsto','Fim Real','Δ Fim (dias)','Estado','Progresso (%)'],
+        desviosData.map(({ entry, linked, realStart, realEnd, desvioInicio, desvioFim, status }) => [
+          entry.service,
+          entry.costCenter,
+          entry.plannedStartDate || '',
+          realStart || '',
+          desvioInicio ?? '',
+          entry.plannedEndDate || '',
+          realEnd || '',
+          desvioFim ?? '',
+          execStatusLabel[status] || status,
+          linked ? procOverallPct(linked) : '',
+        ])
+      );
+      setExportFeedback('success', '✓ CSV exportado (operacional + executivo)!');
+    } catch(e) {
+      setExportFeedback('error', 'Erro ao exportar CSV.');
+      console.error(e);
     }
   }
 
@@ -5890,15 +5989,26 @@ function KpisPanel() {
           ))}
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          {exportMsg && <span style={{ fontSize:11, fontFamily:'monospace', color:'#69db7c' }}>{exportMsg}</span>}
-          <button onClick={exportExcel} style={{ padding:'6px 14px', borderRadius:6, fontSize:11,
+          {exportState.text && <span style={{
+            fontSize:11, fontFamily:'monospace',
+            color: exportState.type === 'error' ? '#fa5252' : exportState.type === 'loading' ? '#fcc419' : '#69db7c',
+          }}>{exportState.text}</span>}
+          <button onClick={exportCsv} disabled={isExporting} style={{ padding:'6px 14px', borderRadius:6, fontSize:11,
+            fontFamily:'monospace', cursor:isExporting?'not-allowed':'pointer', fontWeight:600,
+            border:'1px solid rgba(245,159,0,.4)', background:'rgba(245,159,0,.12)', color:'#fcc419',
+            opacity:isExporting ? .65 : 1 }}>
+            ⬇ CSV
+          </button>
+          <button onClick={exportExcel} disabled={isExporting} style={{ padding:'6px 14px', borderRadius:6, fontSize:11,
             fontFamily:'monospace', cursor:'pointer', fontWeight:600,
-            border:'1px solid rgba(45,140,78,.4)', background:'rgba(45,140,78,.12)', color:'#69db7c' }}>
+            border:'1px solid rgba(45,140,78,.4)', background:'rgba(45,140,78,.12)', color:'#69db7c',
+            opacity:isExporting ? .65 : 1, cursor:isExporting?'not-allowed':'pointer' }}>
             ⬇ Excel
           </button>
-          <button onClick={exportPdf} style={{ padding:'6px 14px', borderRadius:6, fontSize:11,
-            fontFamily:'monospace', cursor:'pointer', fontWeight:600,
-            border:'1px solid rgba(77,171,247,.4)', background:'rgba(77,171,247,.12)', color:'#4dabf7' }}>
+          <button onClick={exportPdf} disabled={isExporting} style={{ padding:'6px 14px', borderRadius:6, fontSize:11,
+            fontFamily:'monospace', cursor:isExporting?'not-allowed':'pointer', fontWeight:600,
+            border:'1px solid rgba(77,171,247,.4)', background:'rgba(77,171,247,.12)', color:'#4dabf7',
+            opacity:isExporting ? .65 : 1 }}>
             ⬇ PDF
           </button>
         </div>
