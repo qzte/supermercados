@@ -252,7 +252,7 @@
         {
           "title": "Impressão definitiva de kanbans, costas, frentes, posições e identificações",
           "time": "5 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Impressão a cores. Plastificar → Fita dupla face → Colocar nas respetivas caixas"
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Impressão a cores. Plastificar → Cortar (guilhotina laser) → Fita dupla face → Inserir nas caixas ou colar.\n      "
         },
         {
           "title": "Colocação de etiquetas nas caixas (normas de colagem)",
@@ -272,7 +272,7 @@
         {
           "title": "Impressão de tags RFID em lote e saída pelo pórtico",
           "time": "10 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Impressão Etiquetas → Caixa → Selecionar Supermercado → Localização → Selecionar todos → Imprimir Etiquetas.<br>\n        <em>Nota: só após validação do stock e posições no serviço, imprimir por posição sequencial</em>"
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Impressão Etiquetas → Caixa → selecionar supermercado → Localização → Selecionar todos → Imprimir Etiquetas.<br>\n        <em>Nota: só após validação do stock e posições no serviço.</em>\n      "
         },
         {
           "title": "Colagem de tags RFID e validação pelo responsável",
@@ -324,7 +324,13 @@
           "title": "E-mail com resultados finais (excesso de stock e validades)",
           "time": "1 min",
           "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Partilhar dados de devoluções por excesso e prazos expirados. Reforçar responsabilidades do SC na gestão de validades e armazenamento.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('resultadosfinais', event)\">✉ Ver template de e-mail</button>\n      "
+        },
+       {
+          "title": "E-mail com questionário)",
+          "time": "1 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Solicitar o preenchimento do questionário de satisfação.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('resultadosfinais', event)\">✉ Ver template de e-mail</button>\n      "
         }
+
       ]
     },
     {
