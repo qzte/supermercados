@@ -1,0 +1,353 @@
+{
+  "emailTemplates": {
+    "abertura": {
+      "title": "Comunicação de Abertura do Processo",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "assunto": "Revisão Supermercado — [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio informar que o supermercado referente ao serviço <FILL>[Nome do Serviço]</FILL> vai ser alvo de revisão.\n\nNecessitamos de agendar reunião com a seguinte ordem de trabalhos:\n\n1. Explicar como funciona um supermercado e que artigos podem constar (alta rotatividade e produtos emergentes);\n   1.1 Como ler o ficheiro de revisão de supermercado e como deve responder.\n2. Verificar localização dos supermercados de material farmacêutico e clínico;\n3. Verificar necessidade de adquirir prateleiras para armários (se aplicável);\n4. Verificar centros de custo;\n5. Estabelecer cronograma (explicação de etapas);\n6. Informar como irá decorrer o processo;\n7. Verificar agrupamento de artigos — arrumação por grupo funcional — para organização espacial;\n8. Enfermeiro substituto;\n9. Plano de higienização pré-montagem e manutenção do supermercado;\n10. Responsabilização de verificação de prazos de validade;\n11. Controlo de temperatura e humidade do supermercado.\n\nMais se informa que em anexo enviamos o cronograma previsto, bem como as responsabilidades.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+    },
+    "ata": {
+      "title": "Ata da Reunião com Cronograma",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Ata Reunião — Revisão Stock Dupla Caixa [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio enviar o cronograma de revisão do stock de dupla caixa acordado em reunião, com a Enfermeira(o) gestora(o). Alertamos para a necessidade de cumprir as datas estabelecidas, sob penalização de a revisão ser adiada para o próximo ciclo de revisões.\n\nFicaram estabelecidos os seguintes temas:\n\n- Enfermeiro substituto: <FILL>_______________</FILL>\n- Centros de custo: <FILL>_______________</FILL>\n- Localização e organização dos produtos no supermercado.\n\nCom os melhores cumprimentos,\nGestão de Supermercados"
+    },
+    "ccira": {
+      "title": "Validação de Antimicrobianos — Farmacêutica CCIRA",
+      "para": "ana.durães@ulsm.min-saude.pt",
+      "cc": "—",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Validação Antimicrobianos — [Nome do Serviço]",
+      "body": "Bom dia,\n\nVimos por este solicitar a validação dos antimicrobianos a constar no stock de dupla caixa do serviço <FILL>[Nome do Serviço]</FILL>.\n\nCom os melhores cumprimentos,\nGestão de Supermercados"
+    },
+    "proposta": {
+      "title": "Envio da Proposta de Consumos ao Serviço",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Proposta Revisão Supermercado — [Nome do Serviço] (PDF + Excel)",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio enviar o documento em formatos PDF e Excel com consumos e proposta da equipa da gestão de supermercados.\n\nA extração de consumos corresponde aos movimentos verificados nos últimos 12 meses. A análise dos consumos tem como princípio base a verificação de movimentos. Por este motivo, produtos que são solicitados a outros serviços não surgem nos dados e produtos desperdiçados por prazo de validade expirado surgem como consumidos pelo serviço. Alertamos para a necessidade de validar estes dados.\n\nOs antimicrobianos são alvo de análise pelo farmacêutico que integra a CCIRA e serão autorizados de acordo com os protocolos instituídos no serviço.\n\nConsideramos ainda importante explicar os conceitos pedido SGICM e produtos não stockáveis:\n\n- Pedido SGICM (PD): nestes artigos a gestão é da responsabilidade do serviço clínico. Correspondem a produtos de baixa rotação, multidoses ou artigos de justificação por doente que não justificam a implementação de dupla caixa, ainda assim é imprescindível a sua existência no serviço. Nestes casos a caixa será de cor diferente e as identificações têm cor laranja. A caixa deve permanecer no serviço e não tem etiqueta RFID.\n\n- Produtos não stockáveis: Estes produtos correspondem a artigos não stockáveis (não existe stock no armazém da logística/farmácia), assim, a retirada de kanban implica a criação de encomenda.\n\nSugerimos que esta proposta seja divulgada pelos Enfermeiros do serviço de forma a identificar lacunas na análise.\n\nPerante qualquer dúvida pode contactar a equipa de gestão de supermercados pelos contactos 3744 (SF) ou 2511 (SL), dependendo do tipo de artigo. No entanto, a resposta à proposta deverá ser sempre enviada através de e-mail.\n\nO(A) Enfermeiro(a) gestor(a) dispõe de 1 semana para enviar a proposta, sob penalização de só entrar no próximo ciclo de revisão.\n\nCom os melhores cumprimentos,\nGestão de Supermercados"
+    },
+    "ajuste": {
+      "title": "Pedido de Esclarecimento / Ajuste da Proposta",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Esclarecimento Proposta — [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio solicitar o esclarecimento de algumas sugestões enviadas.\n\n<FILL>[Inserir motivo(s) — adaptar conforme necessário]</FILL>\n\nExemplos:\n- O produto solicitado não apresenta consumos que justifiquem a sua introdução em stock de dupla caixa.\n- As quantidades solicitadas não apresentam justificação. Cada produto tem autonomia mínima superior ou igual a 8 dias, o que não justifica o aumento da quantidade (aplicável a supermercados com rota diária).\n- Nos serviços de dose unitária a regra das autonomias de 8 dias não se aplica. Por norma cada produto deverá ter 2 a 3 dias de autonomia (a avaliar consoante o serviço).\n- Tendo em conta o espaço disponível não é possível colocar as referências solicitadas. Existe possibilidade de disponibilizar mais espaço?\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+    },
+    "acordofinal": {
+      "title": "Divulgação de Proposta Final (Acordo Fechado)",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Acordo Final Supermercado — [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio informar que foi fechado o acordo final. Iremos proceder à simulação nos próximos dias e assim que esteja pronta enviaremos e-mail a solicitar a validação da simulação.\n\nEm anexo enviamos o acordo que será simulado em formato PDF.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+    },
+    "validacaosimulacao": {
+      "title": "Convite para Validação da Simulação",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Validação da Simulação — [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio solicitar o comparecimento do(a) Enfermeiro(a) gestor(a) no Serviço de Logística de forma a validar a simulação (organização espacial com etiquetas impressas a preto/branco) criada pela equipa da gestão de supermercados. Hora e data pode ser acordada através deste e-mail.\n\nA ausência de contacto será interpretada como resposta positiva para avançar com produção do supermercado, com impressão, corte e colagem de etiquetas definitivas.\n\nCom os melhores cumprimentos,\nGestão de Supermercados"
+    },
+    "confirmacaosimulacao": {
+      "title": "Confirmação da Simulação por E-mail",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Confirmação Simulação — [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio solicitar a confirmação do(a) Enfermeiro(a) gestor(a) sobre a simulação visualizada a <FILL>[inserir data]</FILL>.\n\nJunto remeto a listagem da disposição dos artigos solicitada pela Enfermeiro(a).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+    },
+    "datamontagem": {
+      "title": "Validação da Data de Montagem",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Coordenador TAS/AO · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Data de Montagem Supermercado — [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio informar que prevemos que será iniciada a montagem do stock de dupla caixa no dia <FILL>[data]</FILL>. Caso o(a) Enfermeiro(a) gestor(a) preconize que o espaço deve ser higienizado deve, por favor, agilizar com o serviço responsável pela higienização do espaço.\n\nSe a data enunciada causar alguma perturbação no serviço por favor responda a este e-mail com sugestão alternativa.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+    },
+    "conclusaoSC": {
+      "title": "Conclusão da Revisão — E-mail ao Serviço Clínico",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Revisão Concluída — Stock Dupla Caixa [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa se encontra terminada.\n\nA rota passa a ter os supermercados <FILL>_________</FILL>, com as designações <FILL>____________</FILL>. As caixas do stock são <FILL>___cor___</FILL>. As caixas dos pedidos SGICM estão identificadas com a cor <FILL>__________</FILL>. De relembrar que correspondem a artigos cuja gestão é realizada pelos enfermeiros, devendo ser requisitados por pedido eletrónico (Pedido SGICM). Estas devem manter-se sempre no serviço.\n\nO stock está organizado da seguinte forma:\n<FILL>[Mencionar as zonas existentes]</FILL>\n\nAs zonas de consolidação de caixas vazias estão representadas na planta pelo triângulo amarelo e no local pela seguinte sinalética:\n\nAgradecemos o vosso cuidado na separação de material farmacêutico vs material clínico, de modo a evitar constrangimentos no processo e possíveis falhas no abastecimento.\n\nA organização do stock de dupla caixa está simulada na seguinte planta:\n[COLAR IMAGEM DA PLANTA]\n\nA reposição de material farmacêutico ocorre <FILL>[esquema de reposição]</FILL>.\n\nRelembro que o stock está equipado com etiquetas RFID, assim a rota tem de ser transportada exclusivamente pelos TAS do Serviço de Logística, que devem passar pelos pórticos sitos no piso -1. O procedimento de enviar caixas/kanbans através de TAS do próprio serviço está proibido.\n\nEnviamos em anexo o Index dos produtos farmacêuticos e clínicos em formatos PDF.\n\nA próxima etapa crucial é a formação dos utilizadores dos supermercados. Esta formação, com a duração de uma hora, será agendada de acordo com a vossa conveniência.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+    },
+    "conclusaoSFSL": {
+      "title": "Conclusão da Revisão — E-mail aos SF e SL",
+      "para": "tsdt.farmacia@ulsm.min-saude.pt · farmacêuticos_ulsm@ulsm.min-saude.pt",
+      "cc": "filipe.sousa@ulsm.min-saude.pt · marta.lourenco@ulsm.min-saude.pt · vera.soares.lopes@ulsm.min-saude.pt",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Revisão Concluída SF/SL — [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa de <FILL>[inserir serviço]</FILL> se encontra terminada.\n\nA rota passa a ter os supermercados <FILL>_________</FILL>, com as designações <FILL>____________</FILL>. As caixas do stock são <FILL>___cor___</FILL>. As caixas dos pedidos SGICM estão identificadas com a cor <FILL>__________</FILL>.\n\nO stock está organizado da seguinte forma:\n<FILL>[Mencionar as zonas existentes]</FILL>\n\nA organização do stock de dupla caixa está simulada na seguinte planta:\n[COLAR IMAGEM DA PLANTA]\n\nA reposição de material farmacêutico ocorre <FILL>[esquema de reposição]</FILL>.\n\nRelembro que o stock está equipado com etiquetas RFID, assim a rota tem de ser transportada exclusivamente pelos TAS do Serviço de Logística, que devem passar pelos pórticos sitos no piso -1. O procedimento de enviar caixas/kanbans através de TAS do próprio serviço passa a ser proibido. A rota deve ser debitada com recurso a PDA, com movimento do tipo RSA (não deve ser consolidado pedido através do menu \"satisfação de pedidos\").\n\nNo caso dos Serviços Farmacêuticos, a existência de problemas deve ser reportada aos responsáveis (Ana Correia, Andreia, Rafaela, Marta Figueiredo e Flávia). O Index de material farmacêutico está disponível no TEAMS: Geral > Ficheiros > STOCKS Serviços (pasta vermelha).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+    },
+    "resultadosfinais": {
+      "title": "Notificação com Resultados Finais (Devoluções e Validades)",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Resultados Finais — Devoluções e Validades [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nApós análise dos artigos dispensados, apresentamos os seguintes dados:\n\n<FILL>[COLAR DADOS RELATIVOS A DEVOLUÇÕES POR EXCESSO DE STOCK E RELATIVOS A PRAZOS DE VALIDADE EXPIRADOS]</FILL>\n\nA distribuição pelo método de dupla caixa é um bom método para garantir a gestão eficiente de stock, promovendo um controlo adequado das quantidades e reduzindo o desperdício. No entanto, para que este resulte da melhor maneira, é essencial que as regras sejam rigorosamente cumpridas. É da responsabilidade do serviço clínico garantir que os intervenientes do processo realizem a gestão de prazos de validade e cumpram as regras de armazenamento e de utilização.\n\nContamos com a colaboração de todos para assegurar que as normas são cumpridas e que este sistema continue a apresentar-se como uma mais valia.\n\n<FILL>[Notas adicionais sobre eventos não decorram como planeado, se aplicável]</FILL>\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+    },
+    "auditoria": {
+      "title": "Envio de Relatório de Auditoria 5S",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestora c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "assunto": "Relatório de Auditoria 5S — Supermercado [Nome do Serviço]",
+      "body": "Bom dia/Boa tarde,\n\nNo âmbito da Verificação 5S realizada, foi efetuada uma análise ao cumprimento das normas estabelecidas no \"Supermercado | stock dupla caixa\", tendo em conta as responsabilidades específicas de cada interveniente no processo, nomeadamente os responsáveis pela Manutenção, pela Reposição e pela Utilização do \"Supermercado\". No mesmo processo foram identificados pontos de contacto entre diferentes funções, os quais se traduzem em Responsabilidades Partilhadas, especialmente entre os Utilizadores e os responsáveis pela Reposição, e encontram-se devidamente assinalados na grelha de verificação.\n\nO principal objetivo desta análise é identificar o grau de conformidade com os procedimentos estabelecidos, promovendo a melhoria contínua e a responsabilidade clara dos intervenientes. A partilha feita em anexo dos resultados com os gestores do Serviço/Supermercado visa apoiar a tomada de decisões, corrigir eventuais não conformidades e reforçar o alinhamento entre as equipas, contribuindo para uma gestão mais eficiente e sustentável de todos os recursos.\n\nFico ao dispor para qualquer esclarecimento adicional ou dúvidas que possam surgir entretanto.\n\nCom os melhores cumprimentos,\nGestão de Supermercados"
+    }
+  },
+  "phases": [
+    {
+      "title": "Comunicação<br>&amp; Planeamento",
+      "duration": "⏱ ~2 dias",
+      "steps": [
+        {
+          "title": "Criar pasta de trabalho partilhada (DCLF)",
+          "time": "rápido",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Criar pasta com nomenclatura: <code>Código Serviço - Serviço</code>.\n        <ul>\n          <li>Ficheiro de trabalho: <code>SiglaServiço_revisão_A TRABALHAR</code></li>\n          <li>Ficheiros enviados pela Gestão: <code>SiglaServiço_revisão_farmácia_V1</code> / <code>_clínico_V1</code></li>\n          <li>Ficheiros do Enfermeiro gestor: <code>SiglaServiço_revisão_farmácia_E</code> (E2, E3…)</li>\n        </ul>\n      "
+        },
+        {
+          "title": "Enviar e-mail às chefias — abertura do processo",
+          "time": "2 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Via <code>gestao.supermercados@ulsm.min-saude.pt</code> para Enfermeiro(a) gestor(a).<br>\n        CC: Diretores SF/SL, supervisores, gestores de departamento.<br>\n        Temas: funcionamento supermercado, localização stocks, espaço, centros de custo, cronograma, RFID, grupos funcionais, higienização, validades, temperatura/humidade.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('abertura', event)\">✉ Ver template de e-mail</button>\n      "
+        },
+        {
+          "title": "Reunião com Enfermeiro Chefe — gestão de expectativas",
+          "time": "1 hora",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><span class=\"role-badge role-sc\">SC</span><br><br>\n        Confirmar: localização supermercados farmacêutico/clínico, prateleiras, centros de custo, cronograma detalhado, implementação RFID, agrupamento por grupo funcional, enfermeiro substituto, higienização, responsável validades, controlo temperatura/humidade.\n      "
+        },
+        {
+          "title": "Enviar ata da reunião com cronograma",
+          "time": "2 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        E-mail padrão com ata e cronograma de revisão (template 4 semanas). Alertar para cumprimento de prazos.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('ata', event)\">✉ Ver template de e-mail</button>\n      "
+        }
+      ]
+    },
+    {
+      "title": "Análise de<br>Consumos",
+      "duration": "⏱ ~2 dias",
+      "steps": [
+        {
+          "title": "Extrair listagem de consumos do Data Discovery",
+          "time": "5 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Movimentos → Filtros → intervalo 12 meses → configurar campos (Código Estado, Serviço, Armazém; Valor/Consumo/Aquisição como métricas) → Ver detalhe → Guardar → Exportar \"Listagem (Excel)\".<br>\n        Guardar em <code>Revisão Supermercados</code> como <code>Movimentos_list_xxxx</code>.\n      <div><br></div><div class=\"step-pdf-pill\" data-pdf-path=\"pdfs/Tutorial_Mapa_Consumos_DataDiscovery.pdf\" data-pdf-name=\"Tutorial_Mapa_Consumos_DataDiscovery.pdf\"><span>📄</span><span class=\"pdf-pill-name\">Tutorial_Mapa_Consumos_DataDiscovery.pdf</span><button class=\"pdf-pill-open\" title=\"Abrir PDF\">↗</button><button class=\"pdf-pill-del\" title=\"Remover\">✕</button></div>"
+        },
+        {
+          "title": "Atualizar Excel de análise — folha \"Consumos\"",
+          "time": "2 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Consulta → Atualizar. Importar listagem para o Excel de análise (Anexo I — Template consumos).\n      "
+        },
+        {
+          "title": "Extrair listagem do index (Data Discovery → Supermercados)",
+          "time": "2 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Supermercados → Supermercados Config. → Ver detalhe → Guardar → Exportar Excel.<br>\n        Guardar como <code>Supermercados Config._list_xxxx</code>.\n      "
+        },
+        {
+          "title": "Atualizar folha \"Listagem\" e tabela dinâmica \"TD Consumos\"",
+          "time": "3 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Consulta → Atualizar. Verificar campos da tabela dinâmica e atualizar TD Consumos.\n      "
+        },
+        {
+          "title": "Decisão: artigos a remover, adicionar, ajustar quantidades",
+          "time": "1 hora",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Análise por preço médio, consumo diário, autonomia e estado (stockável/não-stockável, autorizado, ativo/inativo).\n        <div class=\"decision\">Autonomia mínima ≥ 8 dias. Baixa rotação → \"Pedido SGICM\". Antimicrobianos → validação farmacêutico CCIRA.</div>\n      "
+        },
+        {
+          "title": "Corrigir preços em branco e grupos funcionais",
+          "time": "10 min",
+          "body": "<span class=\"role-badge role-sf\">SF</span>"
+        },
+        {
+          "title": "Criar proposta (nº caixas, tipo, quantidades) — protótipo inicial",
+          "time": "30 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Farmácia: validar antimicrobianos com CCIRA por e-mail antes de avançar.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('ccira', event)\">✉ Ver template de e-mail (CCIRA)</button>\n      "
+        },
+        {
+          "title": "Enviar proposta ao serviço (PDF + Excel)",
+          "time": "2 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Para: Enfermeiro gestor. CC: Diretores SF/SL, supervisores, gestores.<br>\n        O(A) Enfermeiro(a) gestor(a) tem <strong>1 semana</strong> para responder, sob penalização de entrar no próximo ciclo.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('proposta', event)\">✉ Ver template de e-mail</button>\n      "
+        }
+      ]
+    },
+    {
+      "title": "Validação<br>&amp; Protótipo",
+      "duration": "⏱ ~1,5 semanas",
+      "steps": [
+        {
+          "title": "Análise do feedback do serviço",
+          "time": "3 dias",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Verificar: quantidades alteradas, observações, produtos novos/excluídos, pedidos de posição, consumos reais.\n        <div class=\"decision\">Proposta aceite? → E-mail proposta final. Necessita ajuste? → E-mail pedido de esclarecimento.</div>\n        <button class=\"email-btn\" onclick=\"openEmail('ajuste', event)\">✉ Ver template — Pedido de ajuste</button>\n        <button class=\"email-btn\" style=\"margin-left:6px\" onclick=\"openEmail('acordofinal', event)\">✉ Ver template — Acordo final</button>\n      "
+        },
+        {
+          "title": "Caracterização do tipo de caixa por artigo",
+          "time": "variável",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Regras: não exceder altura prateleira, peso C/D ≤ 8 kg, última prateleira ≥ 15 cm do solo, sem luz direta.<br>\n        Farmácia: pensos na horizontal, última posição vazia, LASA/High Alert assinalados, frio em embalagem primária.\n      "
+        },
+        {
+          "title": "Simulação informática do layout (grupos funcionais)",
+          "time": "3 horas",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Anexo II — Protótipo simulação. Grupos funcionais + tipologia de caixa. Se espaço insuficiente, contactar Enfermeiro gestor.\n      "
+        },
+        {
+          "title": "Montagem de estantes no arquivo para simulação física",
+          "time": "2h + 15 min",
+          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        TAS monta estantes no arquivo conforme planta; coloca caixas necessárias nas prateleiras.\n      "
+        },
+        {
+          "title": "Carregamento de artigos no sistema Supermarket (Glintt)",
+          "time": "~2 min/artigo",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Template importar supermercado → Atualizar consulta → Filtrar serviço → Corrigir dados → Exportar CSV com código do supermercado → Importar no Supermarket → Confirmar.<br>\n        Criar supermercado (pórtico: 1=HPH / 2=ACES) e serviço com cores por polo/especialidade.\n      "
+        }
+      ]
+    },
+    {
+      "title": "Simulação",
+      "duration": "⏱ ~2 dias",
+      "steps": [
+        {
+          "title": "Impressão e corte de kanbans provisórios (p/b)",
+          "time": "10 min",
+          "body": "<span class=\"role-badge role-tas\">TAS</span><br><br>Kanbans provisórios em preto e branco para fase de simulação."
+        },
+        {
+          "title": "Colagem dos kanbans provisórios nas caixas",
+          "time": "30 min",
+          "body": "<span class=\"role-badge role-tas\">TAS</span>"
+        },
+        {
+          "title": "Convidar Enfermeiro para validar simulação no arquivo",
+          "time": "1 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Ausência de resposta = aprovação tácita para avançar com produção definitiva.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('validacaosimulacao', event)\">✉ Ver template de e-mail</button>\n      "
+        },
+        {
+          "title": "Validação física com Enfermeiro + TAS armazém",
+          "time": "1 hora",
+          "body": "\n        <span class=\"role-badge role-sc\">SC</span><span class=\"role-badge role-tas\">TAS</span><br><br>\n        Verificar: tamanho de caixas, posições, organização por grupo funcional. Registar alterações.\n      "
+        },
+        {
+          "title": "Ajuste de kanbans (físicos e informáticos) se necessário",
+          "time": "30 min",
+          "body": "<span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span>"
+        },
+        {
+          "title": "Confirmação final da simulação por e-mail",
+          "time": "2 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Solicitar confirmação escrita ao Enfermeiro gestor sobre simulação aprovada.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('confirmacaosimulacao', event)\">✉ Ver template de e-mail</button>\n      "
+        }
+      ]
+    },
+    {
+      "title": "Montagem",
+      "duration": "⏱ ~1 semana",
+      "steps": [
+        {
+          "title": "Impressão definitiva de kanbans, costas, frentes, posições e identificações",
+          "time": "5 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Impressão a cores. Plastificar → Cortar (guilhotina laser) → Fita dupla face → Inserir nas caixas ou colar.\n      "
+        },
+        {
+          "title": "Colocação de etiquetas nas caixas (normas de colagem)",
+          "time": "8 horas",
+          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Etiquetas plastificadas com fita dupla face dentro das caixas. Colar etiqueta na caixa. Caixas nas posições definitivas.\n      "
+        },
+        {
+          "title": "Marcar posições nas prateleiras (fita preta + etiquetas de posição)",
+          "time": "30 min",
+          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Para armários de enfermaria: marcação feita no SC. Retirar papel de transporte das caixas.\n      "
+        },
+        {
+          "title": "Colagem de etiquetas LASA e HIGH ALERT (TSDT Farmácia)",
+          "time": "10 min",
+          "body": "\n        <span class=\"tag\">TSDT Farmácia</span><br><br>\n        Apenas medicamentos farmacêuticos. HIGH ALERT requer confirmação por 2 operadores.\n      "
+        },
+        {
+          "title": "Impressão de tags RFID em lote e saída pelo pórtico",
+          "time": "10 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Impressão Etiquetas → Caixa → selecionar supermercado → Localização → Selecionar todos → Imprimir Etiquetas.<br>\n        <em>Nota: só após validação do stock e posições no serviço.</em>\n      "
+        },
+        {
+          "title": "Colagem de tags RFID e validação pelo responsável",
+          "time": "2 horas",
+          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Verificar número da etiqueta com posição da caixa. Para superfícies rugosas: fita dupla face antes da tag. Quando só existe uma caixa, colocar tag com número mais baixo.\n      "
+        },
+        {
+          "title": "Inventário das tags RFID para validar existências",
+          "time": "15 min",
+          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        OPL de inventário RFID. Sempre precedido e sucedido por inventário ao criar, inativar ou eliminar tags.\n      "
+        },
+        {
+          "title": "Validar data de montagem com Enfermeiro chefe",
+          "time": "1 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Comunicar data prevista. Solicitar higienização prévia se necessário.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('datamontagem', event)\">✉ Ver template de e-mail</button>\n      "
+        },
+        {
+          "title": "Deslocação e montagem no serviço clínico",
+          "time": "1 dia",
+          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><span class=\"role-badge role-sf\">SF</span><br><br>\n        Estantes: montar, caixas na posição, etiquetas de posição.<br>\n        Armários: fita cola preta, caixas na posição.<br>\n        Transferir medicação/materiais antigos. Verificar validades.<br>\n        Afixar: número prateleira/letra armário, index, normas de picking (Anexo V), indicadores visuais (Anexo IV).<br>\n        Caixas sem stock → zona \"Kanbans para repor\" (Anexo VI).\n      "
+        },
+        {
+          "title": "Afixar normas de utilização e indicadores visuais",
+          "time": "2 min",
+          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Anexo IV (Indicadores Visuais) e Anexo V (Norma de Picking) afixados no local.\n      "
+        }
+      ]
+    },
+    {
+      "title": "Comunicação<br>Final &amp; Devolução",
+      "duration": "⏱ ~2 dias",
+      "steps": [
+        {
+          "title": "E-mail de conclusão ao serviço clínico",
+          "time": "1 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Informar: rotas, designações, cores das caixas, organização do stock, zonas de consolidação, esquema de reposição, regras RFID (exclusividade TAS/SL, pórticos piso -1). Enviar index em PDF.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('conclusaoSC', event)\">✉ Ver template de e-mail (SC)</button>\n      "
+        },
+        {
+          "title": "E-mail de conclusão aos SF e SL",
+          "time": "1 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Para: TSDT, farmacêuticos. Informar rotas, cores, procedimento RSA por PDA (não satisfação de pedidos), responsáveis farmácia. Index disponível em TEAMS.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('conclusaoSFSL', event)\">✉ Ver template de e-mail (SF/SL)</button>\n      "
+        },
+        {
+          "title": "Devolução de material excedente e limpeza de caixas/estantes",
+          "time": "7 horas",
+          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Artigos excedentes ou retirados → devolver aos armazéns respetivos.<br>\n        Artigos com prazo expirado ou sem condições → inutilizar.<br>\n        Registar no template de Devoluções (Registo de devolução de artigos do SC ao armazém).\n      "
+        },
+        {
+          "title": "E-mail com resultados finais (excesso de stock e validades)",
+          "time": "1 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Partilhar dados de devoluções por excesso e prazos expirados. Reforçar responsabilidades do SC na gestão de validades e armazenamento.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('resultadosfinais', event)\">✉ Ver template de e-mail</button>\n      "
+        },
+       {
+          "title": "E-mail com questionário)",
+          "time": "1 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Solicitar o preenchimento do questionário de satisfação.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('resultadosfinais', event)\">✉ Ver template de e-mail</button>\n      "
+        }
+
+      ]
+    },
+    {
+      "title": "Formação<br>&amp; Auditoria",
+      "duration": "⏱ contínuo",
+      "steps": [
+        {
+          "title": "Formação aos intervenientes do serviço clínico",
+          "time": "40–60 min",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Apresentação PowerPoint. Serviço preenche formulário de formação interna. Enviar questionário de avaliação (Office Forms).\n      "
+        },
+        {
+          "title": "Auditorias periódicas — verificação 5S",
+          "time": "periódico",
+          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Análise do cumprimento das normas. Verificar: Manutenção, Reposição e Utilização. Identificar Responsabilidades Partilhadas.<br>\n        Não conformidades → contactar responsáveis → ações corretivas → ações de melhoria.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('auditoria', event)\">✉ Ver template de e-mail (auditoria)</button>\n      "
+        }
+      ]
+    }
+  ]
+}

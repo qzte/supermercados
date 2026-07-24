@@ -1,0 +1,71 @@
+# ULSM · Gestão de Supermercados — Deploy GitHub Pages
+
+**Versão da aplicação:** v3.9.1
+**URL de produção:** https://qzte.github.io/supermercados/
+
+---
+
+## Estrutura do repositório
+
+```
+supermercados/
+├── index.html                          # aplicação (cópia de ulsm_supermercados_3_9_1.html)
+├── ulsm_supermercados_3_9_1.html       # ficheiro versionado (referência)
+├── workflow-default.json               # template do workflow (fases e passos)
+├── .nojekyll                           # desativa o processamento Jekyll
+├── README.md                           # este ficheiro
+└── backups/
+    ├── EMAIL-template.json             # templates de e-mail
+    └── ulsm_supermercados_backup.json  # dados dos processos
+```
+
+> `.nojekyll` é obrigatório — sem ele o GitHub Pages ignora ficheiros/pastas iniciados por `_` e pode interferir com o servir de JSON.
+
+---
+
+## Deploy
+
+1. Criar o repositório `supermercados` na conta `qzte` (público).
+2. Copiar todos os ficheiros acima para a raiz do repositório.
+3. `Settings` → `Pages` → **Source:** `Deploy from a branch` → **Branch:** `main` / `/ (root)`.
+4. Aguardar 1–2 min pela primeira publicação.
+5. Abrir https://qzte.github.io/supermercados/
+
+### Actualizar a aplicação
+
+Substituir `index.html` **e** `ulsm_supermercados_X_Y_Z.html` pela nova versão, fazer commit e push. O Pages republica automaticamente.
+
+---
+
+## Carregamento automático
+
+Servida por HTTPS, a app faz `fetch()` de caminhos relativos ao subpath `/supermercados/`:
+
+| Ficheiro | Efeito se ausente |
+|---|---|
+| `workflow-default.json` | cai no fallback inline `window.__ULSM_INLINE_DEFAULT` |
+| `backups/EMAIL-template.json` | templates de e-mail indisponíveis |
+| `backups/ulsm_supermercados_backup.json` | arranca vazio (BootScreen) |
+
+A sessão persiste em `sessionStorage` — um refresh não regressa à BootScreen; fechar a aba limpa-a.
+
+---
+
+## Persistência dos dados
+
+O GitHub Pages é **read-only**. O ficheiro `backups/ulsm_supermercados_backup.json` no repositório serve apenas como estado inicial de leitura.
+
+Fluxo de trabalho:
+
+1. Abrir a app → os dados são carregados do repositório.
+2. Editar (modo Editor + PIN).
+3. `💾 Guardar backup` → o ficheiro é descarregado localmente.
+4. Fazer commit do ficheiro actualizado para `backups/ulsm_supermercados_backup.json`.
+
+> ⚠️ Não editar em simultâneo — o último commit sobrescreve.
+
+---
+
+## Cache
+
+O GitHub Pages serve os JSON com cache de curta duração. Se uma actualização de backup não aparecer, forçar refresh (`Ctrl+Shift+R`).
