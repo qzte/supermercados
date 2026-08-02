@@ -1,23 +1,36 @@
 # ULSM · Gestão de Supermercados — GitHub Pages
 
-**Versão da aplicação:** v3.11.0
+**Versão da aplicação:** v3.12.0
 **URL de produção:** https://qzte.github.io/supermercados/
 
 ---
 
+## ⚠️ Ler primeiro: o `index.html` é gerado
+
+**Não editar `index.html` à mão.** É produzido a partir de `src/index.src.html` e qualquer alteração directa é perdida no build seguinte. O ficheiro que se edita é o **`src/index.src.html`**.
+
 ## Estrutura do repositório
 
-Estrutura **plana** — todos os ficheiros na raiz. A app faz `fetch()` de caminhos relativos sem subpastas.
+Os ficheiros **servidos** estão todos na raiz — a app faz `fetch()` de caminhos relativos sem subpastas. As fontes e as ferramentas ficam à parte.
 
 ```
 supermercados/
-├── index.html                          # aplicação servida (cópia idêntica do ficheiro versionado)
-├── ulsm_supermercados_3_11_0.html      # ficheiro versionado (referência/arquivo)
-├── workflow-default.json               # template do workflow — 7 fases
-├── email-template.json                 # templates de e-mail  ⚠ minúsculas
-├── ulsm_supermercados_backup.json      # dados dos processos
-├── .nojekyll                           # desativa o processamento Jekyll
-└── README.md                           # este ficheiro
+│
+│  ── EDITAR ────────────────────────────────────────────────
+├── src/index.src.html                  # ✏️  a aplicação (contém JSX)
+├── tools/build.mjs                     #     compila o JSX
+├── workflow-default.json               #     template do workflow — 7 fases
+├── email-template.json                 #     templates de e-mail  ⚠ minúsculas
+├── ulsm_supermercados_backup.json      #     dados dos processos
+│
+│  ── GERADO — não editar ──────────────────────────────────
+├── index.html                          # 🤖  aplicação servida
+├── ulsm_supermercados_3_12_0.html      # 🤖  cópia arquivada (idêntica)
+│
+├── .github/workflows/build.yml         #     compila e faz commit no push
+├── package.json                        #     dependências do build
+├── .nojekyll                           #     desativa o processamento Jekyll
+└── README.md                           #     este ficheiro
 ```
 
 > ⚠️ **Case-sensitive.** O GitHub Pages distingue maiúsculas de minúsculas. O ficheiro tem de se chamar `email-template.json` — `EMAIL-template.json` devolve 404 e a app cai no fallback inline.
@@ -36,7 +49,41 @@ supermercados/
 
 ### Actualizar a aplicação
 
-Substituir `index.html` **e** adicionar o novo `ulsm_supermercados_X_Y_Z.html`, commit + push. O Pages republica automaticamente.
+1. Editar **`src/index.src.html`**.
+2. Ao mudar de versão, actualizar os **dois** sítios onde ela aparece — `const APP_VERSION` e o badge no cabeçalho. O build recusa-se a correr se divergirem.
+3. Commit + push. A Action compila e faz commit do `index.html` e da cópia versionada; o Pages republica.
+
+O nome do ficheiro arquivado deriva de `APP_VERSION`, e a cópia da versão anterior é removida automaticamente — deixa de ser preciso fazê-lo à mão.
+
+> Podes editar `src/index.src.html` pela interface web do GitHub. A Action trata do resto; o `index.html` aparece num segundo commit, cerca de um minuto depois.
+
+### Build local (opcional)
+
+```bash
+npm ci
+npm run build     # gera index.html + cópia versionada
+npm run check     # verifica se estão actualizados, sem escrever
+```
+
+`npm run check` é o que evita que o `index.html` fique dessincronizado da fonte.
+
+---
+
+## Porquê um build
+
+`src/index.src.html` contém **~5 500 linhas de JSX**, que o browser não percebe. Sem build, cada carregamento de página descarregava o Babel (2,8 MB; 589 KB comprimidos) e traduzia essas linhas outra vez — trabalho idêntico, repetido em cada visita de cada utilizador, com a página em branco enquanto corria.
+
+Tempo até a app estar utilizável (mediana de 3 execuções, bibliotecas locais):
+
+| CPU | Sem build | Com build | |
+|---|---|---|---|
+| Desktop | 1 529 ms | **140 ms** | 10,9× |
+| Telemóvel médio (4× mais lento) | 4 958 ms | **456 ms** | 10,9× |
+| Telemóvel modesto (6×) | 7 044 ms | **809 ms** | 8,7× |
+
+Em produção a diferença é maior: o Babel vinha do cdnjs, pelo que desaparecem também 589 KB de transferência. O `index.html` cresce 28 KB (o JS compilado é mais verboso que o JSX) — troca amplamente favorável.
+
+O ficheiro-fonte mantém o `<script type="text/babel">` de propósito: **abre e corre directamente no browser**, sem passo de build, o que o mantém utilizável para testar alterações antes do commit.
 
 ---
 
