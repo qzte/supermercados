@@ -1,6 +1,6 @@
 # ULSM · Gestão de Supermercados — GitHub Pages
 
-**Versão da aplicação:** v3.10.0
+**Versão da aplicação:** v3.10.1
 **URL de produção:** https://qzte.github.io/supermercados/
 
 ---
@@ -12,7 +12,7 @@ Estrutura **plana** — todos os ficheiros na raiz. A app faz `fetch()` de camin
 ```
 supermercados/
 ├── index.html                          # aplicação servida (cópia idêntica do ficheiro versionado)
-├── ulsm_supermercados_3_10_0.html      # ficheiro versionado (referência/arquivo)
+├── ulsm_supermercados_3_10_1.html      # ficheiro versionado (referência/arquivo)
 ├── workflow-default.json               # template do workflow — 7 fases
 ├── email-template.json                 # templates de e-mail  ⚠ minúsculas
 ├── ulsm_supermercados_backup.json      # dados dos processos
@@ -54,7 +54,13 @@ Todos usam cache-busting por querystring — actualizações são apanhadas sem 
 
 Em `file://` os `fetch()` são bloqueados pelo protocolo e a app usa exclusivamente os fallbacks inline.
 
-A sessão persiste em `sessionStorage` — um refresh não regressa à BootScreen; fechar a aba limpa-a.
+A sessão persiste em `sessionStorage` — um refresh não regressa à BootScreen; fechar a aba limpa-a. Os processos **e** o plano anual são ambos guardados nessa sessão.
+
+### Dependências externas
+
+React, ReactDOM e Babel são carregados de `cdnjs.cloudflare.com`. Se essas bibliotecas não carregarem (sem internet, bloqueio de rede/proxy), a app mostra um ecrã de erro explícito com botão de recarregar — em vez de uma página em branco. O mesmo acontece se o arranque falhar por outro motivo ou demorar mais de 12 s.
+
+Os relatórios em PDF/Excel carregam `jsPDF`, `html2canvas` e `SheetJS` da mesma CDN, mas só no momento da exportação.
 
 ### Precedência do workflow
 
@@ -69,7 +75,7 @@ O GitHub Pages é **read-only**. O `ulsm_supermercados_backup.json` no repositó
 Fluxo de trabalho:
 
 1. Abrir a app → dados carregados do repositório.
-2. `Entrar` → modo Editor → PIN → editar.
+2. `Entrar` → modo Editor → PIN → editar. O PIN é um dos nomes em `window.__ULSM_EDITOR_PINS` e **ignora maiúsculas/minúsculas** (`joaquim` = `JOAQUIM`).
 3. `💾 Guardar backup` → ficheiro descarregado localmente.
 4. Commit do ficheiro actualizado sobre `ulsm_supermercados_backup.json`.
 
