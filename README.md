@@ -1,6 +1,6 @@
 # ULSM · Gestão de Supermercados — GitHub Pages
 
-**Versão da aplicação:** v3.10.1
+**Versão da aplicação:** v3.11.0
 **URL de produção:** https://qzte.github.io/supermercados/
 
 ---
@@ -12,7 +12,7 @@ Estrutura **plana** — todos os ficheiros na raiz. A app faz `fetch()` de camin
 ```
 supermercados/
 ├── index.html                          # aplicação servida (cópia idêntica do ficheiro versionado)
-├── ulsm_supermercados_3_10_1.html      # ficheiro versionado (referência/arquivo)
+├── ulsm_supermercados_3_11_0.html      # ficheiro versionado (referência/arquivo)
 ├── workflow-default.json               # template do workflow — 7 fases
 ├── email-template.json                 # templates de e-mail  ⚠ minúsculas
 ├── ulsm_supermercados_backup.json      # dados dos processos
@@ -82,3 +82,22 @@ Fluxo de trabalho:
 > ⚠️ Não editar em simultâneo — o último commit sobrescreve.
 
 O backup incluído neste pacote está vazio (`version: 2`, `data: []`) — arranque limpo.
+
+---
+
+## Responsividade e acessibilidade
+
+A app é utilizável em telemóvel a partir de **320 px** de largura, sem scroll horizontal em nenhuma das três vistas. Abaixo de 900 px a barra de navegação passa a duas linhas e a variável `--nav-h` acompanha a mudança — qualquer elemento `sticky` deve usar `top: var(--nav-h)` em vez de um valor fixo.
+
+As grelhas da app são definidas em **estilos inline do React**, que têm precedência sobre CSS normal. Por isso as media queries responsivas usam classes utilitárias com `!important`:
+
+| Classe | Efeito |
+|---|---|
+| `.rg-2` … `.rg-6` | colapsa N colunas para 2 e depois 1, por patamares |
+| `.rg-stats` | cartões de indicadores; mantém 2 colunas até 360 px |
+| `.rp-pad` | reduz o padding lateral dos contentores principais |
+| `.scroll-x` | põe conteúdo largo a rolar dentro do próprio contentor |
+
+Ao adicionar uma grelha nova, aplicar a classe correspondente — não basta o estilo inline.
+
+Do lado da acessibilidade: as três vistas são um `tablist` navegável por setas/Home/End, as cinco modais têm `role="dialog"`, fecham com Escape, confinam o Tab e devolvem o foco ao elemento que as abriu, os controlos de filtro expõem `aria-pressed`, e o foco por teclado é sempre visível (`:focus-visible`). São respeitados `prefers-reduced-motion` e `prefers-contrast`.
