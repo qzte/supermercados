@@ -1,0 +1,89 @@
+name: Build
+
+# Compila o JSX de src/index.src.html e faz commit do index.html gerado (e da
+# cópia versionada). O GitHub Pages continua a servir a partir do branch — não é
+# preciso mexer nas definições de Pages.
+#
+# O gatilho ignora de propósito os ficheiros gerados: o commit que este workflow
+# faz toca apenas em index.html e ulsm_supermercados_*.html, portanto não se
+# volta a accionar a si próprio.
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'tools/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tools/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+# Uma execução de cada vez por branch, para dois pushes seguidos não gerarem
+# commits concorrentes sobre os mesmos ficheiros.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Em pull_request o checkout aponta para o merge commit, que é
+          # destacado; precisamos do branch real para poder fazer push.
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Validar o resultado
+        run: |
+          # Se o Babel tivesse ficado no ficheiro servido, o build não teria
+          # cumprido o seu propósito.
+          if grep -q 'babel-standalone' index.html; then
+            echo "::error::index.html ainda carrega o Babel — o build não removeu a dependência."
+            exit 1
+          fi
+          if grep -q 'type="text/babel"' index.html; then
+            echo "::error::index.html ainda contém JSX por compilar."
+            exit 1
+          fi
+          # A cópia arquivada tem de ser byte a byte igual ao ficheiro servido —
+          # é essa a convenção do repositório.
+          archive=$(ls ulsm_supermercados_*_*_*.html)
+          if ! cmp -s index.html "$archive"; then
+            echo "::error::index.html e $archive divergem."
+            exit 1
+          fi
+          echo "index.html e $archive gerados e coerentes ($(wc -c < index.html) bytes)."
+
+      - name: Fazer commit dos ficheiros gerados
+        run: |
+          if git diff --quiet -- index.html 'ulsm_supermercados_*.html'; then
+            echo "Nada a fazer — os ficheiros gerados já estão actualizados."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html 'ulsm_supermercados_*.html'
+          git commit -m "build: regenerar index.html a partir de src/index.src.html [skip ci]"
+          git push

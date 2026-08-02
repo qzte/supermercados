@@ -1,0 +1,15 @@
+{
+  "name": "ulsm-supermercados",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Build da aplicação ULSM · Gestão de Supermercados (compila o JSX de src/index.src.html)",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "check": "node tools/build.mjs --check"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-react": "^7.27.1"
+  }
+}
