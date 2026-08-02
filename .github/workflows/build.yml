@@ -8,15 +8,14 @@ name: Build
 # faz toca apenas em index.html e ulsm_supermercados_*.html, portanto não se
 # volta a accionar a si próprio.
 
+# Só `push`, de propósito. O push cobre todos os branches deste repositório,
+# incluindo os de pull requests — acrescentar o gatilho `pull_request` criava
+# duas execuções em grupos de concorrência diferentes que podiam tentar fazer
+# commit e push em simultâneo sobre os mesmos ficheiros.
+# Para contribuições vindas de forks, o build corre-se localmente com
+# `npm run build` (ou verifica-se com `npm run check`).
 on:
   push:
-    paths:
-      - 'src/**'
-      - 'tools/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/build.yml'
-  pull_request:
     paths:
       - 'src/**'
       - 'tools/**'
@@ -40,10 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Em pull_request o checkout aponta para o merge commit, que é
-          # destacado; precisamos do branch real para poder fazer push.
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-node@v4
         with:
