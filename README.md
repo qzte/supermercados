@@ -101,7 +101,13 @@ Todos usam cache-busting por querystring — actualizações são apanhadas sem 
 
 Em `file://` os `fetch()` são bloqueados pelo protocolo e a app usa exclusivamente os fallbacks inline.
 
-A sessão persiste em `sessionStorage` — um refresh não regressa à BootScreen; fechar a aba limpa-a. Os processos **e** o plano anual são ambos guardados nessa sessão.
+### Arranque: os ficheiros são sempre pedidos
+
+Sem sessão em cache, a app **pergunta pelos dois ficheiros** — workflow e backup de dados — em vez de aplicar automaticamente o que está no repositório. A versão publicada pode estar desactualizada face à que se tem localmente, e o ecrã de arranque mostra **data e nº de processos** de cada uma para a escolha ser informada. Continua a ser possível usá-la com um clique; só não é imposta.
+
+A sessão persiste em `sessionStorage` — um refresh não regressa ao ecrã de arranque; fechar a aba limpa-a. Os processos **e** o plano anual são ambos guardados nessa sessão.
+
+> ⚠️ O `workflow-default.json` do repositório está em **formato legado**: 39 passos, fases sem `id`, passos sem `emailKey` nem `instructions`. A app traz embutida uma versão completa (7 fases, 40 passos, com templates de e-mail) e ignora o ficheiro legado — tanto no `loadWorkflow` como no ecrã de arranque, que nesse caso oferece a versão incluída na app em vez da publicada. Para voltar a servir o ficheiro do repositório, exportá-lo actualizado a partir do editor de workflow.
 
 ### Dependências externas
 
