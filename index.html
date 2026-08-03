@@ -2856,6 +2856,82 @@ async function loadPlanFromFile(file) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MEMÓRIA DA ESCOLHA DE ARRANQUE
+// Guarda a ORIGEM de cada ficheiro escolhido, nunca o conteúdo. É essa a
+// distinção que permite poupar cliques sem reintroduzir dados velhos: as
+// origens remotas ("publicada", "incluída na app", "sem backup") são relidas
+// do zero em cada arranque, logo estão sempre actualizadas por construção. Um
+// ficheiro local não pode ser relido sem nova interacção do utilizador, e
+// guardar uma cópia sua seria exactamente o snapshot desactualizado que este
+// ecrã existe para evitar — por isso essa origem não é repetida.
+// ─────────────────────────────────────────────────────────────────────────────
+const BOOT_CHOICE_KEY = 'ulsm:bootChoice';
+const ORIGENS_RELIVEIS = ['publicada', 'incluida', 'sem-backup'];
+function saveBootChoice(choice) {
+  try {
+    localStorage.setItem(BOOT_CHOICE_KEY, JSON.stringify({
+      ...choice,
+      ts: Date.now()
+    }));
+  } catch (e) {}
+}
+function readBootChoice() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(BOOT_CHOICE_KEY) || 'null');
+    if (!isObj(parsed)) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+function clearBootChoice() {
+  try {
+    localStorage.removeItem(BOOT_CHOICE_KEY);
+  } catch (e) {}
+}
+// Só é repetível quando NENHUM dos lados dependeu de um ficheiro local.
+function bootChoiceReplayable(choice) {
+  return !!choice && ORIGENS_RELIVEIS.includes(choice.workflow) && ORIGENS_RELIVEIS.includes(choice.backup);
+}
+
+// Vai buscar de novo o que a escolha guardada indica. Devolve null se algo
+// falhar — nesse caso o arranque volta a perguntar em vez de adivinhar.
+async function replayBootChoice(choice) {
+  const isFullFormat = w => Array.isArray(w?.phases) && w.phases.length > 0 && w.phases.some(ph => Number.isInteger(ph.id) || (ph.steps || []).some(st => st.emailKey !== undefined || st.instructions !== undefined));
+  const grab = async url => {
+    if (location.protocol === 'file:') return null;
+    try {
+      const r = await fetch(url + '?v=' + Date.now());
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) {
+      return null;
+    }
+  };
+  let workflow = null;
+  if (choice.workflow === 'publicada') {
+    const raw = await grab('workflow-default.json');
+    if (!isFullFormat(raw)) return null;
+    workflow = raw;
+  } else if (choice.workflow === 'incluida') {
+    const builtIn = window.__ULSM_DEFAULT_WORKFLOW || window.__ULSM_INLINE_DEFAULT || null;
+    if (!isFullFormat(builtIn)) return null;
+    workflow = builtIn;
+  }
+  let backup = null;
+  if (choice.backup === 'publicada') {
+    const raw = await grab(BACKUP_FILENAME);
+    if (!raw) return null;
+    backup = normalizeBackup(raw);
+    if (!backup) return null;
+  }
+  return {
+    workflow,
+    backup
+  };
+}
+
 // Normaliza um backup já parseado para o formato usado pelo arranque.
 // Partilhado entre o ficheiro escolhido pelo utilizador e a versão publicada
 // no repositório, para os dois caminhos não divergirem.
@@ -7396,6 +7472,10 @@ function BootScreen({
     bk: null,
     checked: false
   });
+  // Origem escolhida em cada slot: 'publicada' | 'incluida' | 'local' | 'sem-backup'.
+  // É isto — e não o conteúdo — que fica memorizado para o arranque seguinte.
+  const [wfOrigem, setWfOrigem] = useState(null);
+  const [bkOrigem, setBkOrigem] = useState(null);
   const wfRef = React.useRef();
   const bkRef = React.useRef();
   React.useEffect(() => {
@@ -7470,6 +7550,7 @@ function BootScreen({
         return;
       }
       window.__ULSM_BOOT_WORKFLOW = parsed;
+      setWfOrigem('local');
       setWfState('ok');
     } catch (e) {
       setWfState('err');
@@ -7487,6 +7568,7 @@ function BootScreen({
     try {
       const result = await loadFromFile(file);
       window.__ULSM_BOOT_BACKUP = result;
+      setBkOrigem('local');
       setBkState('ok');
     } catch (e) {
       setBkState('err');
@@ -7532,6 +7614,16 @@ function BootScreen({
     window.__ULSM_SESSION.procs = procs;
     window.__ULSM_SESSION.filename = filename;
     if (bk && isObj(bk.annualPlan)) window.__ULSM_SESSION.annualPlan = sanitizePlan(bk.annualPlan);
+
+    // Memorizar a origem para o próximo arranque não voltar a perguntar quando
+    // ambos os lados puderem ser relidos frescos. Uma escolha que envolva um
+    // ficheiro local não é repetível — fica registada, mas o arranque seguinte
+    // volta a perguntar esse slot em vez de reutilizar um snapshot.
+    saveBootChoice({
+      workflow: wfOrigem,
+      backup: bkOrigem,
+      backupName: filename
+    });
     onReady(procs, filename);
   }
   return /*#__PURE__*/React.createElement("div", {
@@ -7616,6 +7708,7 @@ function BootScreen({
     detail: published.wf ? `${published.wf.data.phases.length} fases · ` + `${published.wf.data.phases.reduce((a, ph) => a + (ph.steps || []).length, 0)} passos` : '',
     onUse: () => {
       window.__ULSM_BOOT_WORKFLOW = published.wf.data;
+      setWfOrigem(published.wf.origem === 'publicada' ? 'publicada' : 'incluida');
       setWfErr('');
       setWfState('ok');
     }
@@ -7639,6 +7732,7 @@ function BootScreen({
     onUse: () => {
       window.__ULSM_BOOT_BACKUP = published.bk.data;
       window.__ULSM_BOOT_BACKUP_NAME = BACKUP_FILENAME;
+      setBkOrigem('publicada');
       setBkErr('');
       setBkState('ok');
     }
@@ -7651,6 +7745,7 @@ function BootScreen({
     type: "button",
     onClick: () => {
       setBkState('ok');
+      setBkOrigem('sem-backup');
       window.__ULSM_BOOT_BACKUP = null;
     },
     style: {
@@ -8872,6 +8967,19 @@ function App() {
   const session = window.__ULSM_SESSION;
   const [procs, setProcs] = useState(session.procs || []);
   const [loadedFilename] = useState(session.filename || BACKUP_FILENAME);
+  const bootOrigemLabel = (() => {
+    const o = session.bootOrigem;
+    if (!isObj(o)) return "";
+    const nomes = {
+      publicada: "versão publicada",
+      incluida: "versão incluída na app",
+      local: "ficheiro local",
+      "sem-backup": "sem backup"
+    };
+    const wf = nomes[o.workflow] || "—";
+    const bk = nomes[o.backup] || "—";
+    return `workflow ${wf} · dados ${bk}`;
+  })();
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
@@ -9194,8 +9302,24 @@ function App() {
       overflow: "hidden",
       textOverflow: "ellipsis",
       whiteSpace: "nowrap"
+    },
+    title: bootOrigemLabel ? `Origem: ${bootOrigemLabel}` : undefined
+  }, "\uD83D\uDCC4 ", loadedFilename || BACKUP_FILENAME), /*#__PURE__*/React.createElement("button", {
+    onClick: () => window.__ULSM_openBootScreen && window.__ULSM_openBootScreen(),
+    title: bootOrigemLabel ? `Dados de: ${bootOrigemLabel}. Clique para trocar de ficheiros.` : "Trocar de ficheiros",
+    "aria-label": bootOrigemLabel ? `Trocar de ficheiros. Dados actuais de: ${bootOrigemLabel}` : "Trocar de ficheiros",
+    style: {
+      fontFamily: "monospace",
+      fontSize: 10,
+      color: "#0284c7",
+      cursor: "pointer",
+      background: "transparent",
+      border: "1px solid rgba(2,132,199,.3)",
+      borderRadius: 5,
+      padding: "3px 9px",
+      whiteSpace: "nowrap"
     }
-  }, "\uD83D\uDCC4 ", loadedFilename || BACKUP_FILENAME), unsaved && /*#__PURE__*/React.createElement("span", {
+  }, "\u21C4 trocar"), unsaved && /*#__PURE__*/React.createElement("span", {
     style: {
       fontFamily: "monospace",
       fontSize: 10,
@@ -11902,6 +12026,51 @@ function KpisPanel() {
   // Boot sequence: workflow-default.json primeiro, depois backup automático
   // Se não carregar automaticamente (file:// ou HTTP sem ficheiros), mostra BootScreen
   // Carrega os templates de e-mail antes do workflow
+  // Ecrã de arranque — usado no boot e também a pedido, para trocar de
+  // ficheiros sem ter de limpar a sessão à mão.
+  function showBootScreen() {
+    if (document.getElementById('boot-screen-overlay')) return;
+    const bootOverlay = document.createElement('div');
+    bootOverlay.id = 'boot-screen-overlay';
+    bootOverlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#eef2f7;';
+    bootOverlay.setAttribute('role', 'dialog');
+    bootOverlay.setAttribute('aria-modal', 'true');
+    bootOverlay.setAttribute('aria-label', 'Arranque da aplicação');
+    document.body.appendChild(bootOverlay);
+
+    // Sem isto, o Tab saltava do ecrã de arranque para a navegação escondida
+    // por trás do overlay.
+    const behind = [...['app-nav', 'view-tracking', 'view-workflow', 'view-kpis'].map(id => document.getElementById(id)), document.querySelector('.skip-link')].filter(Boolean);
+    behind.forEach(el => {
+      el.inert = true;
+      el.setAttribute('aria-hidden', 'true');
+    });
+    const releaseBehind = () => behind.forEach(el => {
+      el.inert = false;
+      el.removeAttribute('aria-hidden');
+    });
+    function onBootReady(procs, filename) {
+      // Persistir na sessão para sobreviver a refreshes
+      window.__ULSM_SESSION.userChose = true;
+      window.__ULSM_SESSION.bootOrigem = readBootChoice();
+      saveSession(procs, filename);
+      // Re-montar workflow com fases eventualmente atualizadas
+      mountWorkflow();
+      mountLegend();
+      trackingRoot.render(/*#__PURE__*/React.createElement(App, {
+        key: 'boot-' + Date.now()
+      }));
+      setTimeout(() => {
+        releaseBehind();
+        bootOverlay.remove();
+      }, 80);
+    }
+    ReactDOM.createRoot(bootOverlay).render(/*#__PURE__*/React.createElement(BootScreen, {
+      onReady: onBootReady
+    }));
+  }
+  window.__ULSM_openBootScreen = showBootScreen;
+
   // Carrega templates de e-mail e workflow em paralelo — ambos concluem antes de montar UI
   Promise.all([loadEmailTemplates().catch(() => {}), loadWorkflow()]).then(async () => {
     // 1. Tentar restaurar sessão do sessionStorage (refresh da página)
@@ -11923,51 +12092,61 @@ function KpisPanel() {
       return;
     }
 
-    // 2. Sem sessão em cache, o arranque pergunta sempre pelos dois ficheiros.
-    //    O backup publicado no repositório NÃO é aplicado automaticamente: pode
-    //    estar desactualizado face ao que o utilizador tem localmente, e este
-    //    ecrã mostra data e nº de processos de ambos para a escolha ser
-    //    informada. É oferecido como opção de um clique, não imposto.
-    {
-      // Mostrar BootScreen para seleção dos ficheiros
-      const bootOverlay = document.createElement('div');
-      bootOverlay.id = 'boot-screen-overlay';
-      bootOverlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#eef2f7;';
-      bootOverlay.setAttribute('role', 'dialog');
-      bootOverlay.setAttribute('aria-modal', 'true');
-      bootOverlay.setAttribute('aria-label', 'Arranque da aplicação');
-      document.body.appendChild(bootOverlay);
-
-      // Sem isto, o Tab saltava do ecrã de arranque para a navegação escondida
-      // por trás do overlay.
-      const behind = [...['app-nav', 'view-tracking', 'view-workflow', 'view-kpis'].map(id => document.getElementById(id)), document.querySelector('.skip-link')].filter(Boolean);
-      behind.forEach(el => {
-        el.inert = true;
-        el.setAttribute('aria-hidden', 'true');
-      });
-      const releaseBehind = () => behind.forEach(el => {
-        el.inert = false;
-        el.removeAttribute('aria-hidden');
-      });
-      function onBootReady(procs, filename) {
-        // Persistir na sessão para sobreviver a refreshes
+    // 2. Repetir a última escolha, quando é seguro fazê-lo.
+    //    Só se repetem origens que são relidas do zero (publicada / incluída na
+    //    app / sem backup): nesse caso não há snapshot antigo em lado nenhum, os
+    //    dados vêm frescos e a escolha do utilizador é respeitada sem lhe voltar
+    //    a pedir dois ficheiros em cada separador novo. Uma escolha que envolveu
+    //    um ficheiro local não é repetida — esse não pode ser relido, e cachear
+    //    o seu conteúdo seria o dado desactualizado que este ecrã evita.
+    const choice = readBootChoice();
+    if (bootChoiceReplayable(choice)) {
+      const replayed = await replayBootChoice(choice);
+      if (replayed) {
+        if (replayed.workflow) {
+          window.__ULSM_DEFAULT_WORKFLOW = replayed.workflow;
+          if (replayed.workflow.emailTemplates) window.__ULSM_DEFAULT_TEMPLATES = replayed.workflow.emailTemplates;
+          window.__ULSM_PHASES = buildPhasesFromData(replayed.workflow.phases);
+          try {
+            localStorage.setItem('workflowTemplate', JSON.stringify({
+              phases: replayed.workflow.phases
+            }));
+          } catch (e) {}
+        }
+        let procs = [];
+        let filename = BACKUP_FILENAME;
+        if (replayed.backup) {
+          const currentWorkflow = JSON.parse(localStorage.getItem('workflowTemplate') || '{}');
+          const {
+            processes
+          } = syncTrackingToWorkflow(replayed.backup.procs, replayed.backup.workflow || {}, currentWorkflow);
+          procs = processes;
+          if (isObj(replayed.backup.annualPlan)) {
+            window.__ULSM_SESSION.annualPlan = sanitizePlan(replayed.backup.annualPlan);
+          }
+        }
+        window.__ULSM_SESSION.loaded = true;
         window.__ULSM_SESSION.userChose = true;
+        window.__ULSM_SESSION.procs = procs;
+        window.__ULSM_SESSION.filename = filename;
+        window.__ULSM_SESSION.bootOrigem = choice;
         saveSession(procs, filename);
-        // Re-montar workflow com fases eventualmente atualizadas
         mountWorkflow();
         mountLegend();
         trackingRoot.render(/*#__PURE__*/React.createElement(App, {
-          key: 'boot-' + Date.now()
+          key: 'replay-' + Date.now()
         }));
-        setTimeout(() => {
-          releaseBehind();
-          bootOverlay.remove();
-        }, 80);
+        return;
       }
-      ReactDOM.createRoot(bootOverlay).render(/*#__PURE__*/React.createElement(BootScreen, {
-        onReady: onBootReady
-      }));
+      // Falhou a releitura (offline, ficheiro removido, formato mudou):
+      // perguntar em vez de arrancar com o que quer que seja.
     }
+
+    // 3. Sem escolha repetível, o arranque pergunta pelos dois ficheiros.
+    //    O backup publicado NÃO é aplicado automaticamente: pode estar
+    //    desactualizado face ao que o utilizador tem localmente, e este ecrã
+    //    mostra data e nº de processos de ambos para a escolha ser informada.
+    showBootScreen();
   }).catch(err => {
     // Falha irrecuperável no arranque — revelar a página com uma mensagem em vez
     // de deixar o utilizador perante um ecrã branco.
