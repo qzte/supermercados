@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gestão de Supermercados — ULSM</title>
+<!-- Ícone da aplicação (SKz). O favicon vai embutido em data URI para que o
+     ficheiro HTML continue a mostrar o ícone quando é distribuído sozinho; os
+     ficheiros soltos ao lado servem a instalação no ecrã inicial. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22 role=%22img%22 aria-label=%22SKz%22><rect width=%22512%22 height=%22512%22 rx=%2252%22 fill=%22%230000FF%22/><path fill=%22%23FFFFFF%22 d=%22M187.6 294.9Q187.6 321.8 169.7 336.1Q151.7 350.3 116.9 350.3Q85.2 350.3 67.2 337.8Q49.2 325.3 44.0 300.0L77.4 293.9Q80.8 308.4 90.6 315.0Q100.4 321.6 117.9 321.6Q154.0 321.6 154.0 297.1Q154.0 289.3 149.9 284.2Q145.7 279.2 138.2 275.8Q130.6 272.4 109.2 267.6Q90.7 262.8 83.5 259.8Q76.2 256.9 70.3 252.9Q64.5 249.0 60.4 243.4Q56.3 237.8 54.0 230.2Q51.7 222.7 51.7 212.9Q51.7 188.1 68.5 174.9Q85.3 161.7 117.4 161.7Q148.1 161.7 163.5 172.4Q178.9 183.0 183.3 207.6L149.8 212.7Q147.2 200.9 139.3 194.9Q131.4 188.9 116.7 188.9Q85.3 188.9 85.3 210.7Q85.3 217.9 88.7 222.4Q92.0 227.0 98.6 230.2Q105.1 233.4 125.1 238.2Q148.9 243.8 159.1 248.5Q169.4 253.3 175.3 259.6Q181.3 265.9 184.5 274.7Q187.6 283.4 187.6 294.9ZM327.2 347.7 267.9 263.5 247.6 280.8V347.7H213.0V164.4H247.6V247.5L321.9 164.4H362.2L291.7 242.0L367.9 347.7ZM378.6 347.7V324.9L431.0 247.1H382.8V223.9H463.0V246.9L410.8 324.2H468.0V347.7Z%22/></svg>">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="SKz">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -452,7 +461,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.0</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.1</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2365,7 +2374,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.15.0";
+const APP_VERSION = "3.15.1";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
