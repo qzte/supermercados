@@ -452,7 +452,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.12.0</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.13.0</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2361,7 +2361,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.12.0";
+const APP_VERSION = "3.13.0";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
@@ -2543,9 +2543,23 @@ function sanitizeProc(proc, idx = 0) {
   return clean;
 }
 
+// O `id` é a única chave usada para gravar (`procs.map(p=>p.id===updated.id?…)`)
+// e eliminar (`procs.filter(p=>p.id!==id)`) processos. Backups antigos podem
+// conter ids repetidos — versões anteriores derivavam-nos de `Date.now()`, que
+// devolve o mesmo valor para processos criados no mesmo milissegundo. Com ids
+// repetidos, editar um processo reescrevia os seus homónimos e eliminar um
+// eliminava-os todos. Reatribuir os duplicados no carregamento garante que o
+// resto da aplicação pode continuar a tratar o id como identificador único.
 function sanitizeProcs(raw) {
   if(!Array.isArray(raw)) return [];
-  return raw.map((p, i) => sanitizeProc(p, i)).filter(Boolean);
+  const seen = new Set();
+  return raw.map((p, i) => sanitizeProc(p, i)).filter(Boolean).map(proc => {
+    if (!seen.has(proc.id)) { seen.add(proc.id); return proc; }
+    let id = newLocalId();
+    while (seen.has(id)) id = newLocalId();
+    seen.add(id);
+    return { ...proc, id };
+  });
 }
 
 function createStorageEnvelope(list) {
@@ -2805,7 +2819,12 @@ async function loadFromFile(file) {
 }
 
 // Export current data — asks user to pick save location (Chrome/Edge)
-// Falls back to normal download on unsupported browsers
+// Falls back to normal download on unsupported browsers.
+// Devolve `true` se o ficheiro chegou mesmo a ser escrito e `false` se o
+// utilizador cancelou o diálogo. Sem esta distinção, cancelar o "Guardar"
+// limpava o indicador "● não guardado" e desarmava o aviso de fecho de página,
+// pelo que o trabalho podia ser perdido num fecho de separador sem qualquer
+// sinal de que nunca tinha sido gravado.
 async function exportToFile(list) {
   const envelope = createStorageEnvelope(sanitizeProcs(list));
   const json = JSON.stringify(envelope, null, 2);
@@ -2820,9 +2839,9 @@ async function exportToFile(list) {
       const writable = await handle.createWritable();
       await writable.write(json);
       await writable.close();
-      return; // success — no fallback needed
+      return true; // success — no fallback needed
     } catch (e) {
-      if (e.name === "AbortError") return; // user cancelled — do nothing
+      if (e.name === "AbortError") return false; // user cancelled — do nothing
       // Other error — fall through to download fallback
     }
   }
@@ -2836,6 +2855,7 @@ async function exportToFile(list) {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  return true;
 }
 
 function canUnlockEditor(pin) {
@@ -5236,7 +5256,12 @@ function BootScreen({ onReady }) {
     window.__ULSM_SESSION.loaded = true;
     window.__ULSM_SESSION.procs = procs;
     window.__ULSM_SESSION.filename = filename;
-    if (bk && isObj(bk.annualPlan)) window.__ULSM_SESSION.annualPlan = sanitizePlan(bk.annualPlan);
+    // O plano anual acompanha sempre o backup escolhido — incluindo quando o
+    // backup não traz plano nenhum. Este ecrã também é reaberto a partir do
+    // "⇄ trocar"; manter o plano anterior fazia com que o plano de um ficheiro
+    // passasse para outro e fosse gravado no backup errado na gravação seguinte.
+    window.__ULSM_SESSION.annualPlan =
+      (bk && isObj(bk.annualPlan)) ? sanitizePlan(bk.annualPlan) : sanitizePlan({});
 
     // Memorizar a origem para o próximo arranque não voltar a perguntar quando
     // ambos os lados puderem ser relidos frescos. Uma escolha que envolva um
@@ -6171,20 +6196,35 @@ function App() {
     return a.id-b.id;
   });
 
+  // Um processo pode ter apenas um dos percursos activo (`roles`). O tracking do
+  // percurso desactivado continua a existir no objecto, parado na fase 1, e o
+  // `calcStatus` classifica-o a partir da Data Alvo do processo — pelo que um
+  // processo só-clínico com prazo ultrapassado aparecia também como "farmácia
+  // atrasada". Os totais 🏥/💊 contavam então percursos inexistentes e não batiam
+  // certo com o número grande ao lado nem com os mesmos totais no KPI Executivo,
+  // que já filtra por role. Contar sempre através deste helper.
+  const roleStatus = (p, role) =>
+    p.roles?.[role] === false ? null : calcStatus(p[role], p.targetDate);
+
   const stats = {
     total: procs.length,
-    active: procs.filter(p=>!isDone(p) && calcStatus(p.clinico,p.targetDate)!=="paused" && calcStatus(p.farmacia,p.targetDate)!=="paused").length,
+    active: procs.filter(p=>!isDone(p) && roleStatus(p,"clinico")!=="paused" && roleStatus(p,"farmacia")!=="paused").length,
     late: procs.filter(isLate).length,
     done: procs.filter(isDone).length,
-    cliDone: procs.filter(p=>calcStatus(p.clinico,p.targetDate)==="done").length,
-    farDone: procs.filter(p=>calcStatus(p.farmacia,p.targetDate)==="done").length,
-    cliLate: procs.filter(p=>calcStatus(p.clinico,p.targetDate)==="late").length,
-    farLate: procs.filter(p=>calcStatus(p.farmacia,p.targetDate)==="late").length,
+    cliDone: procs.filter(p=>roleStatus(p,"clinico")==="done").length,
+    farDone: procs.filter(p=>roleStatus(p,"farmacia")==="done").length,
+    cliLate: procs.filter(p=>roleStatus(p,"clinico")==="late").length,
+    farLate: procs.filter(p=>roleStatus(p,"farmacia")==="late").length,
   };
 
   // ── Throughput — processos concluídos nos últimos 30 dias ────────────────
+  // `getRealCompletionTs` devolve a conclusão de qualquer um dos percursos, pelo
+  // que um processo com o clínico terminado e a farmácia ainda a decorrer era
+  // contado aqui como concluído enquanto o cartão CONCLUÍDOS, que usa `isDone`,
+  // o excluía. Exigir `isDone` alinha os dois.
   const now30 = Date.now();
   const throughput30 = procs.filter(p => {
+    if (!isDone(p)) return false;
     const realDoneTs = getRealCompletionTs(p);
     if (!realDoneTs) return false;
     const lastDone = new Date(realDoneTs).getTime();
@@ -6283,7 +6323,12 @@ function App() {
                     persist(result.procs);
                     window.__ULSM_SESSION.procs = result.procs;
                     window.__ULSM_SESSION.filename = file.name;
-                    if (result.annualPlan) { setAnnualPlan(result.annualPlan); window.__ULSM_SESSION.annualPlan = result.annualPlan; }
+                    // Substituir os dados substitui também o plano anual: se o
+                    // backup escolhido não traz plano, o plano do ficheiro
+                    // anterior não pode ficar para trás e acabar gravado neste.
+                    const newPlan = result.annualPlan || sanitizePlan({});
+                    setAnnualPlan(newPlan);
+                    window.__ULSM_SESSION.annualPlan = newPlan;
                     if (window.__ULSM_saveSession) window.__ULSM_saveSession(result.procs, file.name);
                   } catch(err) { alert("Erro ao carregar: " + err); }
                   e.target.value = "";
@@ -6533,9 +6578,12 @@ function App() {
             <div style={{ fontSize:9,color:"#7b8794",fontFamily:"monospace",letterSpacing:".12em",marginBottom:10 }}>DISTRIBUIÇÃO POR FASE</div>
             <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
               {getPHASES().map(ph=>{
+                // Só percursos activos entram na contagem: o tracking de um role
+                // desactivado fica parado na fase 1 para sempre e inflacionava a
+                // primeira fase com processos que lá não estão.
                 const count = procs.filter(p=>
-                  (p.clinico.currentPhase===ph.id && calcStatus(p.clinico,p.targetDate)!=="done") ||
-                  (p.farmacia.currentPhase===ph.id && calcStatus(p.farmacia,p.targetDate)!=="done")
+                  (p.roles?.clinico !== false && p.clinico.currentPhase===ph.id && calcStatus(p.clinico,p.targetDate)!=="done") ||
+                  (p.roles?.farmacia !== false && p.farmacia.currentPhase===ph.id && calcStatus(p.farmacia,p.targetDate)!=="done")
                 ).length;
                 return (
                   <div key={ph.id} onClick={()=>setFilterStatus("all")}
@@ -6561,7 +6609,12 @@ function App() {
         onSave={handleSave} onDelete={handleDelete} isEditor={isEditor}/>}
       {showNew&&<NewProcessModal onClose={()=>setShowNew(false)} onCreate={handleCreate}/>}
       {showExport&&<ExportModal procs={procs} filename={BACKUP_FILENAME}
-        onExport={async()=>{ await exportToFile(procs); setShowExport(false); setUnsaved(false); }}
+        onExport={async()=>{
+          const saved = await exportToFile(procs);
+          setShowExport(false);
+          // Só marcar como guardado quando o ficheiro foi mesmo escrito.
+          if (saved) setUnsaved(false);
+        }}
         onCancel={()=>setShowExport(false)}/>}
     </div>
   );

@@ -1,6 +1,6 @@
 # ULSM · Gestão de Supermercados — GitHub Pages
 
-**Versão da aplicação:** v3.12.0
+**Versão da aplicação:** v3.13.0
 **URL de produção:** https://qzte.github.io/supermercados/
 
 ---
@@ -152,6 +152,18 @@ Fluxo de trabalho:
 > ⚠️ Não editar em simultâneo — o último commit sobrescreve.
 
 O backup incluído neste pacote está vazio (`version: 2`, `data: []`) — arranque limpo.
+
+**Cancelar o diálogo de gravação não conta como gravar.** O indicador `● não guardado` só desaparece depois de o ficheiro ser mesmo escrito; se o diálogo do browser for fechado sem escolher destino, o aviso mantém-se e o alerta de fecho de página continua armado.
+
+**O plano anual viaja dentro do backup.** Trocar de ficheiro — pelo `⇄ trocar` ou pelo `📂 Carregar backup` — substitui o plano pelo do ficheiro novo. Um backup sem plano deixa o plano vazio, em vez de herdar o do ficheiro anterior.
+
+### Identificadores de processo
+
+O `id` de cada processo é a chave usada para gravar e eliminar. Backups gerados por versões antigas podem conter ids repetidos (derivavam de `Date.now()`, igual para processos criados no mesmo milissegundo). No carregamento, os duplicados são **reatribuídos** — a primeira ocorrência mantém o id original. Sem isto, editar um processo reescrevia os homónimos e eliminá-lo eliminava-os todos.
+
+### Percursos activos (`roles`)
+
+Um processo pode ter só o percurso **clínico** ou só o de **farmácia** (`roles.clinico` / `roles.farmacia`). O tracking do percurso desactivado continua a existir no objecto, parado na fase 1. Qualquer contagem ou indicador tem por isso de verificar `roles` antes de olhar para o estado — caso contrário conta percursos que não existem: os totais 🏥/💊, a barra de distribuição por fase e o throughput a 30 dias já o fazem.
 
 ---
 
