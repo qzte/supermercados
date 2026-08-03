@@ -452,7 +452,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.14.0</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.0</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -1065,55 +1065,59 @@ function syncTrackingToWorkflow(processes, oldWorkflow, newWorkflow) {
     return { processes, changes };
   }
   
+  // Um percurso concluído não tem "passo atual" para sincronizar: recuar-lhe a
+  // posição volta a pô-lo em cima de um passo por fazer, e quem depois clica nesse
+  // passo para o "fechar outra vez" acrescenta ao phaseLog uma conclusão com a data
+  // de hoje. Foi assim que processos terminados em Abril/Maio passaram a ter no
+  // phaseLog uma conclusão de Julho, contradizendo o seu próprio histórico.
+  const skipReposition = trk => !trk || trk.status === "done";
+
+  // O aviso só interessa a quem ainda tem passos por dar: um percurso concluído já
+  // não tem "passo atual" para verificar, e um percurso desactivado (roles[...] ===
+  // false) nem sequer faz parte do processo — as três notas eram escritas nos dois
+  // percursos de todos os processos, enchendo de avisos históricos que não podiam
+  // ser accionados. Devolve true se escreveu em algum percurso.
+  function noteBoth(proc, action) {
+    let wrote = false;
+    ['clinico','farmacia'].forEach(role => {
+      if(proc.roles?.[role] === false) return;
+      const trk = proc[role];
+      if(!trk || !Array.isArray(trk.history) || trk.status === "done") return;
+      trk.history.push({ ts: new Date().toISOString(), action });
+      wrote = true;
+    });
+    return wrote;
+  }
+
   const updated = processes.map(proc => {
     const newProc = JSON.parse(JSON.stringify(proc));
-    
+
     // Remove tracking for deleted steps
     if(changes.removed.length > 0) {
       changes.removed.forEach(({ phaseIdx, stepIdx }) => {
-        if(newProc.clinico.currentPhase === phaseIdx + 1 && newProc.clinico.currentStep === stepIdx) {
+        if(!skipReposition(newProc.clinico) && newProc.clinico.currentPhase === phaseIdx + 1 && newProc.clinico.currentStep === stepIdx) {
           // Step was deleted - mark as moved to next
           newProc.clinico.currentStep = Math.min(stepIdx, (newWorkflow.phases[phaseIdx]?.steps?.length || 1) - 1);
         }
-        if(newProc.farmacia.currentPhase === phaseIdx + 1 && newProc.farmacia.currentStep === stepIdx) {
+        if(!skipReposition(newProc.farmacia) && newProc.farmacia.currentPhase === phaseIdx + 1 && newProc.farmacia.currentStep === stepIdx) {
           newProc.farmacia.currentStep = Math.min(stepIdx, (newWorkflow.phases[phaseIdx]?.steps?.length || 1) - 1);
         }
       });
-      
-      newProc.clinico.history?.push({
-        ts: new Date().toISOString(),
-        action: "⚠️ Workflow sincronizado: " + changes.removed.length + " passo(s) removido(s)"
-      });
-      newProc.farmacia.history?.push({
-        ts: new Date().toISOString(),
-        action: "⚠️ Workflow sincronizado: " + changes.removed.length + " passo(s) removido(s)"
-      });
+
+      noteBoth(newProc, "⚠️ Workflow sincronizado: " + changes.removed.length + " passo(s) removido(s)");
     }
-    
+
     // Add notification for new steps
     if(changes.added.length > 0) {
-      newProc.clinico.history?.push({
-        ts: new Date().toISOString(),
-        action: "⚠️ Workflow sincronizado: " + changes.added.length + " novo(s) passo(s) adicionado(s) — verificar manualmente"
-      });
-      newProc.farmacia.history?.push({
-        ts: new Date().toISOString(),
-        action: "⚠️ Workflow sincronizado: " + changes.added.length + " novo(s) passo(s) adicionado(s) — verificar manualmente"
-      });
+      noteBoth(newProc, "⚠️ Workflow sincronizado: " + changes.added.length + " novo(s) passo(s) adicionado(s) — verificar manualmente");
     }
 
     // Notificar quando passos foram reordenados (posição no tracking pode estar desfasada)
     if(changes.reordered) {
-      newProc.clinico.history?.push({
-        ts: new Date().toISOString(),
-        action: "⚠️ Workflow reordenado — verificar se o passo atual ainda está correto"
-      });
-      newProc.farmacia.history?.push({
-        ts: new Date().toISOString(),
-        action: "⚠️ Workflow reordenado — verificar se o passo atual ainda está correto"
-      });
-      // Flag para a UI mostrar badge de aviso
-      newProc._workflowReordered = true;
+      if(noteBoth(newProc, "⚠️ Workflow reordenado — verificar se o passo atual ainda está correto")) {
+        // Flag para a UI mostrar badge de aviso
+        newProc._workflowReordered = true;
+      }
     }
 
     return newProc;
@@ -2361,7 +2365,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.14.0";
+const APP_VERSION = "3.15.0";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
