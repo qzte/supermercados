@@ -453,7 +453,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.13.0</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.14.0</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2453,7 +2453,7 @@ const ROLE_COLORS = {
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.13.0";
+const APP_VERSION = "3.14.0";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 function isObj(v) {
@@ -2471,12 +2471,39 @@ function toSafeIso(v) {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }
+
+// Uma data ISO opcional: ao contrário de `toSafeIso`, um valor em falta continua em
+// falta em vez de passar a "agora". Carimbar a data actual sobre um campo vazio
+// inventa informação que depois é lida como se tivesse sido registada.
+function toSafeIsoOrNull(v) {
+  if (typeof v !== "string") return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+// `stepId`, `stepDates` e `isNote` eram descartados aqui. Como o sanitize corre em
+// cada carregamento, bastava reabrir a aplicação para o histórico perder as datas
+// de envio/resposta/execução de cada passo e a marca de nota — informação que o
+// próprio histórico mostra (ver o render das entradas).
 function sanitizeHistory(v) {
   if (!Array.isArray(v)) return [];
-  return v.filter(isObj).map(item => ({
-    ts: toSafeIso(item.ts),
-    action: toSafeText(item.action, 400)
-  })).filter(item => item.action).slice(-250);
+  return v.filter(isObj).map(item => {
+    const out = {
+      ts: toSafeIso(item.ts),
+      action: toSafeText(item.action, 400)
+    };
+    if (item.stepId) out.stepId = toSafeText(item.stepId, 20);
+    if (item.isNote) out.isNote = true;
+    if (isObj(item.stepDates)) {
+      const sd = {};
+      ['sentAt', 'replyDeadline', 'replyReceivedAt', 'executedAt'].forEach(k => {
+        const iso = toSafeIsoOrNull(item.stepDates[k]);
+        if (iso) sd[k] = iso;
+      });
+      if (Object.keys(sd).length) out.stepDates = sd;
+    }
+    return out;
+  }).filter(item => item.action).slice(-250);
 }
 function sanitizeEmailLog(v) {
   if (!Array.isArray(v)) return [];
@@ -2489,14 +2516,28 @@ function sanitizeEmailLog(v) {
     subject: toSafeText(item.subject, 220)
   })).slice(-250);
 }
+
+// `corrected` era descartado. Uma conclusão corrigida à mão e uma conclusão com a
+// data errada por outro motivo ficavam indistinguíveis logo ao recarregar, o que
+// tira à aplicação a única forma de saber se a data do phaseLog foi mesmo escolhida
+// por alguém — ver `getRoleCompletionTs`. As datas do passo eram perdidas do mesmo
+// modo. `slice(-500)` mantém-se: corta pelo início, preservando o fim do log.
 function sanitizePhaseLog(v) {
   if (!Array.isArray(v)) return [];
-  return v.filter(isObj).map(e => ({
-    phaseId: Number.isInteger(e.phaseId) ? e.phaseId : 1,
-    stepId: toSafeText(e.stepId, 20),
-    ts: toSafeIso(e.ts),
-    action: toSafeText(e.action, 40)
-  })).slice(-500);
+  return v.filter(isObj).map(e => {
+    const out = {
+      phaseId: Number.isInteger(e.phaseId) ? e.phaseId : 1,
+      stepId: toSafeText(e.stepId, 20),
+      ts: toSafeIso(e.ts),
+      action: toSafeText(e.action, 40)
+    };
+    if (e.corrected) out.corrected = true;
+    ['sentAt', 'replyDeadline', 'replyReceivedAt', 'executedAt'].forEach(k => {
+      const iso = toSafeIsoOrNull(e[k]);
+      if (iso) out[k] = iso;
+    });
+    return out;
+  }).slice(-500);
 }
 
 // Parse legacy history text into phaseLog entries
@@ -2762,27 +2803,130 @@ function getEffectivePlannedEnd(entry, procs) {
   return linked && linked.targetDate ? linked.targetDate : entry.plannedEndDate;
 }
 
-// Data real de conclusão de um processo, respeitando correções de data.
-// O phaseLog é append-only: uma correção anexa uma nova entrada 'done' no fim do
-// log com o ts corrigido. Por isso, dentro de cada role usa-se a ÚLTIMA entrada
-// 'done' por ordem de registo (não o ts máximo, que ignorava correções que
-// recuam a data). Entre roles, o processo conclui quando o último termina → ts
-// mais tardio. Devolve string ISO ou null.
+// Um processo está concluído quando TODOS os percursos activos estão concluídos.
+// Mesma regra do cartão CONCLUÍDOS (`isDone`) e do Plano Anual; existe também ao
+// nível do módulo para que as funções de data abaixo possam aplicá-la.
+function isProcDone(proc) {
+  if (!proc) return false;
+  const hasCli = proc.roles?.clinico !== false;
+  const hasFar = proc.roles?.farmacia !== false;
+  const cliDone = !hasCli || proc.clinico?.status === "done";
+  const farDone = !hasFar || proc.farmacia?.status === "done";
+  return (hasCli || hasFar) && cliDone && farDone;
+}
+
+// A conclusão de um percurso é escrita em DOIS sítios ao mesmo tempo: a entrada
+// "🏁 Processo concluído!" no `history` (a que o utilizador lê no separador
+// Histórico) e a entrada 'done' no `phaseLog` (a que alimentava sozinha o "Fim
+// real" e o Δ Fim). Sendo escritas juntas, deviam ter sempre a mesma data — se
+// divergirem, o que o utilizador lê e o que os KPI mostram contradizem-se, sem
+// nada no ecrã que explique a diferença.
+//
+// Só há uma razão legítima para divergirem: a correcção manual de data, que anexa
+// ao phaseLog uma entrada marcada `corrected` e deixa auditoria no histórico. Fora
+// desse caso, manda o histórico — é o registo visível e é aquele que o utilizador
+// pode conferir.
+function findLastPhaseLogDone(trk) {
+  const pl = trk?.phaseLog || [];
+  for (let i = pl.length - 1; i >= 0; i--) {
+    if (pl[i].action === 'done') return pl[i];
+  }
+  return null;
+}
+function findLastHistoryDoneTs(trk) {
+  const h = trk?.history || [];
+  for (let i = h.length - 1; i >= 0; i--) {
+    const a = h[i]?.action || '';
+    if (a.includes('🏁') && a.includes('conclu')) return h[i].ts;
+  }
+  return null;
+}
+function hasRecordedCorrection(trk) {
+  const done = findLastPhaseLogDone(trk);
+  if (done?.corrected) return true;
+  // Dados anteriores à preservação do `corrected` no sanitize: a auditoria da
+  // correcção continua no histórico e serve de prova de que a data foi escolhida.
+  return (trk?.history || []).some(h => (h?.action || '').includes('Data de conclusão corrigida'));
+}
+
+// Data real de conclusão de UM percurso. Devolve string ISO ou null.
+// O `status !== "done"` é uma guarda deliberada: como o phaseLog é append-only, um
+// percurso que tenha estado concluído e voltou a abrir mantém lá o 'done' antigo,
+// e sem esta guarda essa data continuava a ser dada como a conclusão real.
+function getRoleCompletionTs(trk) {
+  if (!trk || trk.status !== "done") return null;
+  const done = findLastPhaseLogDone(trk);
+  if (hasRecordedCorrection(trk)) return done ? done.ts : findLastHistoryDoneTs(trk);
+  return findLastHistoryDoneTs(trk) || (done ? done.ts : null);
+}
+
+// Divergência entre os dois registos sem correcção que a justifique — devolve
+// { historyTs, phaseLogTs } ou null. Serve para a mostrar em vez de a esconder.
+function getCompletionMismatch(trk) {
+  if (!trk || trk.status !== "done" || hasRecordedCorrection(trk)) return null;
+  const done = findLastPhaseLogDone(trk);
+  const histTs = findLastHistoryDoneTs(trk);
+  if (!done || !histTs) return null;
+  if (Math.abs(new Date(done.ts) - new Date(histTs)) < 86400000) return null;
+  return {
+    historyTs: histTs,
+    phaseLogTs: done.ts
+  };
+}
+
+// Data real de conclusão do processo: entre percursos, conclui quando o último
+// termina → ts mais tardio. Devolve string ISO ou null.
+// Só contam os percursos ACTIVOS: um percurso desactivado (roles[role] === false)
+// não faz parte do processo, e o 'done' que lá tenha ficado de quando esteve
+// activo não pode ditar a data de conclusão — `isDone`, `roleStatus`,
+// `procOverallPct` e o Plano Anual já ignoram esse percurso, esta função também.
 function getRealCompletionTs(proc) {
   if (!proc) return null;
   let realDoneTs = null;
   ['clinico', 'farmacia'].forEach(role => {
-    const pl = proc[role]?.phaseLog || [];
-    let roleDoneTs = null;
-    for (let i = pl.length - 1; i >= 0; i--) {
-      if (pl[i].action === 'done') {
-        roleDoneTs = pl[i].ts;
-        break;
-      }
-    }
+    if (proc.roles?.[role] === false) return;
+    const roleDoneTs = getRoleCompletionTs(proc[role]);
     if (roleDoneTs && (!realDoneTs || roleDoneTs > realDoneTs)) realDoneTs = roleDoneTs;
   });
   return realDoneTs;
+}
+
+// Desvio face à Data Alvo, em dias (positivo = atraso).
+// Num processo concluído o relógio PÁRA na data real de conclusão; só enquanto
+// decorre é que conta até hoje. Sem isto o cartão e o modal continuavam a somar
+// atraso a processos já fechados — um processo com alvo 17/03 concluído a 09/07
+// aparecia com "140d atraso" no modal (contagem viva até hoje) e "+114d" no Δ Fim
+// do Plano Anual (que sempre parou na conclusão), para a mesma data alvo.
+function calcTargetDeviation(proc) {
+  if (!proc?.targetDate) return null;
+  const doneTs = isProcDone(proc) ? getRealCompletionTs(proc) : null;
+  const ref = doneTs ? new Date(doneTs) : new Date();
+  return Math.round((ref - new Date(proc.targetDate)) / 86400000);
+}
+
+// Indicador de prazo (texto + cor) partilhado pelo cartão e pelo modal, para que
+// não voltem a divergir. Devolve null quando não há Data Alvo.
+function targetBadge(proc) {
+  if (!proc?.targetDate) return null;
+  if (isProcDone(proc)) {
+    const dev = calcTargetDeviation(proc);
+    if (dev === null) return {
+      text: "✓ concluído",
+      color: "#0d9488",
+      done: true
+    };
+    return {
+      text: dev < 0 ? `✓ concluído ${Math.abs(dev)}d antes` : dev === 0 ? "✓ concluído no prazo" : `concluído +${dev}d`,
+      color: dev <= 0 ? "#0d9488" : dev <= 7 ? "#ea9a3e" : "#e05252",
+      done: true
+    };
+  }
+  const d = daysUntil(proc.targetDate);
+  return {
+    text: d === null ? "" : d < 0 ? `${Math.abs(d)}d atraso` : d === 0 ? "hoje!" : `${d}d`,
+    color: d === null ? "#7b8794" : d < 0 ? "#e05252" : d <= 7 ? "#ea9a3e" : "#0d9488",
+    done: false
+  };
 }
 
 // v3.9.0 — Corrigir data de conclusão de um tracking (role).
@@ -4981,7 +5125,11 @@ function ProcessDetail({
   } : null;
   const isStepDone = (phaseId, stepIdx) => phaseId < trk.currentPhase || phaseId === trk.currentPhase && stepIdx < trk.currentStep;
   const isStepCurrent = (phaseId, stepIdx) => phaseId === trk.currentPhase && stepIdx === trk.currentStep;
-  const days = daysUntil(draft.targetDate);
+
+  // Prazo: congruente com o Δ Fim do Plano Anual — pára na conclusão real.
+  const prazo = targetBadge(draft);
+  const realDoneTs = getRealCompletionTs(draft);
+  const mismatch = getCompletionMismatch(trk);
   const cfg = STATUS_CFG[calcStatus(trk, draft.targetDate)];
   const trkColor = trkMode === "clinico" ? "#ea9a3e" : "#0284c7";
   const replyInfo = calcAwaitingReply(trk);
@@ -5080,11 +5228,11 @@ function ProcessDetail({
       padding: "2px 7px",
       fontSize: 10
     }
-  }, "CC ", draft.costCenter), trk.responsible && /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC64 ", trk.responsible), draft.targetDate && /*#__PURE__*/React.createElement("span", {
+  }, "CC ", draft.costCenter), trk.responsible && /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC64 ", trk.responsible), prazo && /*#__PURE__*/React.createElement("span", {
     style: {
-      color: days === null ? "#7b8794" : days < 0 ? "#e05252" : days <= 7 ? "#ea9a3e" : "#0d9488"
+      color: prazo.color
     }
-  }, "\uD83D\uDCC5 ", days === null ? "" : days < 0 ? `${Math.abs(days)}d atraso` : days === 0 ? "hoje!" : `${days}d`, " \xB7 alvo: ", fmtDate(draft.targetDate))), (draft.serviceContact?.name || draft.serviceContact?.phone || draft.serviceContact?.email) && /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDCC5 ", prazo.text, " \xB7 alvo: ", fmtDate(draft.targetDate), prazo.done && realDoneTs && /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 real: ", fmtDate(realDoneTs)))), (draft.serviceContact?.name || draft.serviceContact?.phone || draft.serviceContact?.email) && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "inline-flex",
       alignItems: "center",
@@ -5200,7 +5348,14 @@ function ProcessDetail({
       fontFamily: "monospace",
       color: "#ea9a3e"
     }
-  }, totalPct(draft.clinico), "%")), draft.roles?.clinico !== false && draft.roles?.farmacia !== false && /*#__PURE__*/React.createElement("div", {
+  }, totalPct(draft.clinico), "%"), getRoleCompletionTs(draft.clinico) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 8.5,
+      color: "#7b8794",
+      fontFamily: "monospace"
+    },
+    title: "Data de conclus\xE3o do percurso cl\xEDnico"
+  }, fmtDate(getRoleCompletionTs(draft.clinico)))), draft.roles?.clinico !== false && draft.roles?.farmacia !== false && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 18,
       color: "#d8e0ea"
@@ -5223,7 +5378,14 @@ function ProcessDetail({
       fontFamily: "monospace",
       color: "#0284c7"
     }
-  }, totalPct(draft.farmacia), "%")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, totalPct(draft.farmacia), "%"), getRoleCompletionTs(draft.farmacia) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 8.5,
+      color: "#7b8794",
+      fontFamily: "monospace"
+    },
+    title: "Data de conclus\xE3o do percurso de farm\xE1cia"
+  }, fmtDate(getRoleCompletionTs(draft.farmacia)))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
@@ -5998,7 +6160,25 @@ function ProcessDetail({
     style: {
       color: trkMode === "clinico" ? "#ea9a3e" : "#0284c7"
     }
-  }, trkMode === "clinico" ? "CLÍNICO" : "FARMÁCIA")), /*#__PURE__*/React.createElement("div", {
+  }, trkMode === "clinico" ? "CLÍNICO" : "FARMÁCIA")), mismatch && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(234,154,62,.1)",
+      border: "1px solid rgba(234,154,62,.45)",
+      borderRadius: 8,
+      padding: "10px 12px",
+      marginBottom: 16,
+      fontSize: 11,
+      lineHeight: 1.55,
+      color: "#334155"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "monospace",
+      fontWeight: 700,
+      color: "#ea9a3e",
+      marginBottom: 4
+    }
+  }, "\u26A0 Datas de conclus\xE3o divergentes"), "O hist\xF3rico regista a conclus\xE3o a ", /*#__PURE__*/React.createElement("strong", null, fmtDate(mismatch.historyTs)), ", mas o registo interno de fases tem ", /*#__PURE__*/React.createElement("strong", null, fmtDate(mismatch.phaseLogTs)), ", sem nenhuma correc\xE7\xE3o de data que o justifique. Est\xE1 a ser usada a data do hist\xF3rico. Se a data correcta for outra, usar \u201C\uD83D\uDD27 Corrigir data de conclus\xE3o\u201D em Detalhes para a fixar com auditoria."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -6365,6 +6545,7 @@ function ProcessCard({
   const cliPhase = getPHASES()[cli.currentPhase - 1];
   const farPhase = getPHASES()[far.currentPhase - 1];
   const days = daysUntil(proc.targetDate);
+  const prazo = targetBadge(proc);
 
   // Overall status: worst of active roles only
   const statusPriority = {
@@ -6942,13 +7123,13 @@ function ProcessCard({
       alignItems: "center",
       gap: 6
     }
-  }, proc.targetDate && /*#__PURE__*/React.createElement("span", {
+  }, prazo && (prazo.done || days === null || days <= 7) && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 10,
       fontFamily: "monospace",
-      color: days === null ? "#7b8794" : days < 0 ? "#e05252" : days <= 7 ? "#ea9a3e" : "#0d9488"
+      color: prazo.color
     }
-  }, days === null ? "" : days < 0 ? `${Math.abs(days)}d atraso` : days === 0 ? "hoje" : days <= 7 ? `${days}d` : ""), /*#__PURE__*/React.createElement("span", {
+  }, prazo.text), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 10,
       fontFamily: "monospace",
@@ -9152,13 +9333,9 @@ function App() {
     setSelected(base);
     setTrackingSubTab("cards");
   }, [annualPlan, procs]);
-  const isDone = p => {
-    const hasCli = p.roles?.clinico !== false;
-    const hasFar = p.roles?.farmacia !== false;
-    const cliDone = !hasCli || calcStatus(p.clinico, p.targetDate) === "done";
-    const farDone = !hasFar || calcStatus(p.farmacia, p.targetDate) === "done";
-    return cliDone && farDone;
-  };
+
+  // Regra única, partilhada com as funções de data ao nível do módulo.
+  const isDone = p => isProcDone(p);
   const isLate = p => {
     const hasCli = p.roles?.clinico !== false;
     const hasFar = p.roles?.farmacia !== false;
@@ -10559,6 +10736,10 @@ function KpisPanel() {
   // evita duplicação quando ambos os lados concluem no mesmo mês
   const monthlyDone = {};
   procs.forEach(proc => {
+    // Só processos efectivamente concluídos — com um percurso fechado e o outro a
+    // decorrer o processo era contado como concluído no mês do primeiro, inflando o
+    // gráfico face ao cartão CONCLUÍDOS (mesma correcção já feita no throughput).
+    if (!isProcDone(proc)) return;
     // Data real de conclusão (respeita correções de data — ver getRealCompletionTs).
     const lastDoneTs = getRealCompletionTs(proc);
     if (!lastDoneTs) return;
@@ -10576,7 +10757,10 @@ function KpisPanel() {
     const realStart = linked ? linked.startDate : null;
     const plannedEnd = getEffectivePlannedEnd(entry, procs);
     // Data real de conclusão (respeita correções de data — ver getRealCompletionTs).
-    const realDoneTs = linked ? getRealCompletionTs(linked) : null;
+    // Exigir `isProcDone`: com um percurso concluído e o outro a decorrer, o processo
+    // ainda não terminou, mas a data do percurso já fechado era apresentada como
+    // "Fim real" (com Δ Fim) numa linha cujo Estado dizia "Em curso".
+    const realDoneTs = linked && isProcDone(linked) ? getRealCompletionTs(linked) : null;
     const realEnd = realDoneTs ? realDoneTs.slice(0, 10) : null;
     const desvioInicio = entry.plannedStartDate && realStart ? Math.round((new Date(realStart) - new Date(entry.plannedStartDate)) / 86400000) : null;
     const desvioFim = plannedEnd && realEnd ? Math.round((new Date(realEnd) - new Date(plannedEnd)) / 86400000) : null;
@@ -10702,6 +10886,8 @@ function KpisPanel() {
     const kpiRate = kpiTotal ? Math.round(kpiDone / kpiTotal * 100) + '%' : '0%';
     const monthly = new Array(12).fill(0);
     procs.forEach(proc => {
+      // Mesma regra do gráfico no ecrã: só processos efectivamente concluídos.
+      if (!isProcDone(proc)) return;
       const lastDoneTs = getRealCompletionTs(proc);
       if (!lastDoneTs) return;
       const d = new Date(lastDoneTs);
@@ -11720,7 +11906,7 @@ function KpisPanel() {
     style: {
       borderBottom: '2px solid #d8e0ea'
     }
-  }, ['Serviço', 'Início previsto', 'Início real', 'Δ início', 'Fim previsto', 'Fim alvo real', 'Δ fim', 'Estado'].map(h => /*#__PURE__*/React.createElement("th", {
+  }, ['Serviço', 'Início previsto', 'Início real', 'Δ início', 'Fim previsto', 'Fim real', 'Δ fim', 'Estado'].map(h => /*#__PURE__*/React.createElement("th", {
     key: h,
     style: {
       padding: '6px 10px',
@@ -11803,7 +11989,8 @@ function KpisPanel() {
         fontFamily: 'monospace',
         fontSize: 11,
         color: '#7b8794'
-      }
+      },
+      title: linked ? ['clinico', 'farmacia'].filter(r => linked.roles?.[r] !== false).map(r => `${r === 'clinico' ? 'Clínico' : 'Farmácia'}: ${getRoleCompletionTs(linked[r]) ? fmtDate(getRoleCompletionTs(linked[r])) : 'não concluído'}`).join(' · ') : undefined
     }, realEnd ? fmtDate(realEnd) : /*#__PURE__*/React.createElement("span", {
       style: {
         color: '#333'
