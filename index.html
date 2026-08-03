@@ -2856,27 +2856,32 @@ async function loadPlanFromFile(file) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Normaliza um backup já parseado para o formato usado pelo arranque.
+// Partilhado entre o ficheiro escolhido pelo utilizador e a versão publicada
+// no repositório, para os dois caminhos não divergirem.
+function normalizeBackup(parsed) {
+  const raw = Array.isArray(parsed) ? parsed : Array.isArray(parsed.data) ? parsed.data : null;
+  if (!raw) return null;
+  return {
+    procs: sanitizeProcs(raw),
+    meta: isObj(parsed) ? parsed : {},
+    workflow: parsed.workflow || JSON.parse(localStorage.getItem('workflowTemplate') || '{}'),
+    annualPlan: isObj(parsed.annualPlan) ? sanitizePlan(parsed.annualPlan) : null
+  };
+}
+
 // Load from a File object (user picked via <input type=file>)
 async function loadFromFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const parsed = JSON.parse(e.target.result);
-        const raw = Array.isArray(parsed) ? parsed : Array.isArray(parsed.data) ? parsed.data : null;
-        if (!raw) {
+        const normalized = normalizeBackup(JSON.parse(e.target.result));
+        if (!normalized) {
           reject("Formato inválido.");
           return;
         }
-
-        // Capture workflow from backup for sync
-        const backupWorkflow = parsed.workflow || JSON.parse(localStorage.getItem('workflowTemplate') || '{}');
-        resolve({
-          procs: sanitizeProcs(raw),
-          meta: isObj(parsed) ? parsed : {},
-          workflow: backupWorkflow,
-          annualPlan: isObj(parsed.annualPlan) ? sanitizePlan(parsed.annualPlan) : null
-        });
+        resolve(normalized);
       } catch {
         reject("Ficheiro JSON inválido ou corrompido.");
       }
@@ -7209,6 +7214,63 @@ function NewProcessModal({
 // FILE SLOT — componente de drag-and-drop para carregamento de ficheiros
 // Definido fora de BootScreen para evitar remount a cada re-render
 // ─────────────────────────────────────────────────────────────────────────────
+// Acção secundária por baixo de cada slot: usar o ficheiro publicado no
+// repositório em vez de um local. Mostra data e dimensão para a escolha ser
+// informada — é isso que permite saber qual das versões é a mais actual.
+function PublishedOption({
+  available,
+  checked,
+  active,
+  detail,
+  onUse,
+  rotulo
+}) {
+  if (!checked) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 8,
+        textAlign: 'center',
+        fontSize: 11,
+        color: '#7b8794',
+        fontFamily: 'monospace'
+      }
+    }, "a verificar vers\xE3o publicada\u2026");
+  }
+  if (!available) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 8,
+        textAlign: 'center',
+        fontSize: 11,
+        color: '#aab0bc',
+        fontFamily: 'monospace'
+      }
+    }, "sem vers\xE3o publicada");
+  }
+  return /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: onUse,
+    disabled: active,
+    style: {
+      marginTop: 8,
+      width: '100%',
+      padding: '7px 10px',
+      borderRadius: 8,
+      border: `1px solid ${active ? 'rgba(13,148,136,.4)' : '#d8e0ea'}`,
+      background: active ? 'rgba(13,148,136,.08)' : '#ffffff',
+      color: active ? '#0d9488' : '#0284c7',
+      fontFamily: 'monospace',
+      fontSize: 11,
+      cursor: active ? 'default' : 'pointer',
+      lineHeight: 1.5
+    }
+  }, active ? '✓ em uso' : rotulo || '↓ usar a versão publicada', /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#7b8794',
+      fontSize: 10
+    }
+  }, detail));
+}
 function FileSlot({
   label,
   hint,
@@ -7221,79 +7283,96 @@ function FileSlot({
 }) {
   const stateColor = state === 'ok' ? '#0d9488' : state === 'err' ? '#e05252' : state === 'loading' ? '#0284c7' : '#d8e0ea';
   const stateBg = state === 'ok' ? 'rgba(13,148,136,.08)' : state === 'err' ? 'rgba(224,82,82,.08)' : '#ffffff';
-  return /*#__PURE__*/React.createElement("div", {
-    onClick: () => inputRef.current.click(),
-    onDragOver: e => e.preventDefault(),
-    onDrop: e => {
-      e.preventDefault();
-      onFile(e.dataTransfer.files[0]);
-    },
-    style: {
-      border: `2px dashed ${stateColor}`,
-      borderRadius: 14,
-      background: stateBg,
-      padding: '28px 20px',
-      textAlign: 'center',
-      cursor: 'pointer',
-      transition: 'all .2s',
-      minHeight: 160,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 32,
-      marginBottom: 10
-    }
-  }, state === 'ok' ? '✅' : state === 'err' ? '❌' : state === 'loading' ? '⏳' : icon), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      fontWeight: 700,
-      color: '#1e293b',
-      marginBottom: 4
-    }
-  }, label), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'monospace',
-      fontSize: 11,
-      color: '#0284c7',
-      marginBottom: 6
-    }
-  }, filename), state === 'ok' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#0d9488'
-    }
-  }, "Carregado \u2713"), state === 'err' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#e05252'
-    }
-  }, err), !state && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#7b8794',
-      lineHeight: 1.5
-    }
-  }, hint), state === 'loading' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#0284c7'
-    }
-  }, "A carregar\u2026"), /*#__PURE__*/React.createElement("input", {
-    ref: inputRef,
-    type: "file",
-    accept: ".json",
-    onChange: e => {
-      onFile(e.target.files[0]);
-      window.__ULSM_BOOT_BACKUP_NAME = e.target.files[0]?.name;
-    },
-    style: {
-      display: 'none'
-    }
-  }));
+  return (
+    /*#__PURE__*/
+    // Zona de largar ficheiros: um <div> com onClick não é alcançável por
+    // teclado. Como este ecrã é obrigatório no arranque, expõe-se como botão
+    // com activação por Enter/Espaço.
+    React.createElement("div", {
+      role: "button",
+      tabIndex: 0,
+      "aria-label": `${label} — ${state === 'ok' ? 'carregado' : 'selecionar ficheiro ' + filename}`,
+      onClick: () => inputRef.current.click(),
+      onKeyDown: e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          inputRef.current.click();
+        }
+      },
+      onDragOver: e => e.preventDefault(),
+      onDrop: e => {
+        e.preventDefault();
+        onFile(e.dataTransfer.files[0]);
+      },
+      style: {
+        border: `2px dashed ${stateColor}`,
+        borderRadius: 14,
+        background: stateBg,
+        padding: '28px 20px',
+        textAlign: 'center',
+        cursor: 'pointer',
+        transition: 'all .2s',
+        minHeight: 160,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 32,
+        marginBottom: 10
+      }
+    }, state === 'ok' ? '✅' : state === 'err' ? '❌' : state === 'loading' ? '⏳' : icon), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: '#1e293b',
+        marginBottom: 4
+      }
+    }, label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: 'monospace',
+        fontSize: 11,
+        color: '#0284c7',
+        marginBottom: 6
+      }
+    }, filename), state === 'ok' && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#0d9488'
+      }
+    }, "Carregado \u2713"), state === 'err' && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#e05252'
+      }
+    }, err), !state && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#7b8794',
+        lineHeight: 1.5
+      }
+    }, hint), state === 'loading' && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: '#0284c7'
+      }
+    }, "A carregar\u2026"), /*#__PURE__*/React.createElement("input", {
+      ref: inputRef,
+      type: "file",
+      accept: ".json",
+      "aria-label": `Ficheiro ${filename}`,
+      tabIndex: -1,
+      onChange: e => {
+        onFile(e.target.files[0]);
+        window.__ULSM_BOOT_BACKUP_NAME = e.target.files[0]?.name;
+      },
+      style: {
+        display: 'none'
+      }
+    }))
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7308,8 +7387,71 @@ function BootScreen({
   const [bkState, setBkState] = useState(null);
   const [wfErr, setWfErr] = useState('');
   const [bkErr, setBkErr] = useState('');
+  // Versões publicadas no repositório, se estiverem acessíveis. Não são
+  // aplicadas automaticamente: são apresentadas com data e nº de processos
+  // para o utilizador poder comparar com o ficheiro que tem localmente e
+  // escolher conscientemente a mais actual.
+  const [published, setPublished] = useState({
+    wf: null,
+    bk: null,
+    checked: false
+  });
   const wfRef = React.useRef();
   const bkRef = React.useRef();
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (location.protocol === 'file:') {
+        setPublished(p => ({
+          ...p,
+          checked: true
+        }));
+        return;
+      }
+      const grab = async url => {
+        try {
+          const r = await fetch(url + '?v=' + Date.now());
+          if (!r.ok) return null;
+          return await r.json();
+        } catch (e) {
+          return null;
+        }
+      };
+      const [wfRaw, bkRaw] = await Promise.all([grab('workflow-default.json'), grab(BACKUP_FILENAME)]);
+      if (cancelled) return;
+      // O workflow-default.json do repositório pode estar em formato legado
+      // (fases sem id, passos sem emailKey/instructions). O arranque sempre o
+      // ignorou nesse caso, porque a app traz embutida uma versão completa —
+      // oferecê-lo aqui seria um downgrade silencioso, com perda dos templates
+      // de e-mail e das instruções. Mesma regra de detecção do loadWorkflow.
+      const isFullFormat = w => Array.isArray(w?.phases) && w.phases.length > 0 && w.phases.some(ph => Number.isInteger(ph.id) || (ph.steps || []).some(st => st.emailKey !== undefined || st.instructions !== undefined));
+      const builtIn = window.__ULSM_DEFAULT_WORKFLOW || window.__ULSM_INLINE_DEFAULT || null;
+      const wf = isFullFormat(wfRaw) ? {
+        data: wfRaw,
+        origem: 'publicada'
+      } : isFullFormat(builtIn) ? {
+        data: builtIn,
+        origem: 'incluída na app'
+      } : null;
+      let bk = null;
+      if (bkRaw) {
+        const norm = normalizeBackup(bkRaw);
+        if (norm) bk = {
+          data: norm,
+          updatedAt: bkRaw.updatedAt || null,
+          count: norm.procs.length
+        };
+      }
+      setPublished({
+        wf,
+        bk,
+        checked: true
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const bothLoaded = wfState === 'ok' && bkState === 'ok';
   async function loadWorkflowFile(file) {
     if (!file) return;
@@ -7455,9 +7597,9 @@ function BootScreen({
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
       gap: 14,
-      marginBottom: 20
+      marginBottom: 14
     }
-  }, /*#__PURE__*/React.createElement(FileSlot, {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(FileSlot, {
     label: "Workflow",
     hint: "Template com as fases e passos do processo",
     filename: "workflow-default.json",
@@ -7466,7 +7608,18 @@ function BootScreen({
     inputRef: wfRef,
     icon: "\uD83D\uDCCB",
     onFile: loadWorkflowFile
-  }), /*#__PURE__*/React.createElement(FileSlot, {
+  }), /*#__PURE__*/React.createElement(PublishedOption, {
+    available: !!published.wf,
+    checked: published.checked,
+    active: wfState === 'ok',
+    rotulo: published.wf ? `↓ usar a versão ${published.wf.origem}` : '',
+    detail: published.wf ? `${published.wf.data.phases.length} fases · ` + `${published.wf.data.phases.reduce((a, ph) => a + (ph.steps || []).length, 0)} passos` : '',
+    onUse: () => {
+      window.__ULSM_BOOT_WORKFLOW = published.wf.data;
+      setWfErr('');
+      setWfState('ok');
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(FileSlot, {
     label: "Backup de dados",
     hint: "Processos em curso guardados anteriormente",
     filename: BACKUP_FILENAME,
@@ -7478,12 +7631,24 @@ function BootScreen({
       window.__ULSM_BOOT_BACKUP_NAME = f?.name;
       loadBackupFile(f);
     }
-  })), wfState === 'ok' && bkState !== 'ok' && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement(PublishedOption, {
+    available: !!published.bk,
+    checked: published.checked,
+    active: bkState === 'ok',
+    detail: published.bk ? `${published.bk.count} processo${published.bk.count === 1 ? '' : 's'}` + (published.bk.updatedAt ? ` · ${fmtDate(published.bk.updatedAt)}` : '') : '',
+    onUse: () => {
+      window.__ULSM_BOOT_BACKUP = published.bk.data;
+      window.__ULSM_BOOT_BACKUP_NAME = BACKUP_FILENAME;
+      setBkErr('');
+      setBkState('ok');
+    }
+  }))), wfState === 'ok' && bkState !== 'ok' && /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: 'center',
       marginBottom: 14
     }
-  }, /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
     onClick: () => {
       setBkState('ok');
       window.__ULSM_BOOT_BACKUP = null;
@@ -7492,7 +7657,11 @@ function BootScreen({
       fontSize: 12,
       color: '#7b8794',
       cursor: 'pointer',
-      textDecoration: 'underline'
+      textDecoration: 'underline',
+      background: 'none',
+      border: 'none',
+      fontFamily: 'inherit',
+      padding: 4
     }
   }, "Primeiro arranque \u2014 continuar sem backup")), /*#__PURE__*/React.createElement("button", {
     onClick: handleContinue,
@@ -9675,7 +9844,7 @@ function App() {
   }, "\uD83D\uDCC2 Carregar backup")) : /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
-      gridTemplateColumns: "repeat(auto-fill,minmax(330px,1fr))",
+      gridTemplateColumns: "repeat(auto-fill,minmax(min(330px,100%),1fr))",
       gap: 14
     }
   }, filtered.map(p => /*#__PURE__*/React.createElement(ProcessCard, {
@@ -11730,41 +11899,6 @@ function KpisPanel() {
   }
   window.__ULSM_saveSession = saveSession;
 
-  // Tenta carregar ulsm_supermercados_backup.json automaticamente (sem interação)
-  // Só funciona quando servido via HTTP(S) — em file:// é ignorado silenciosamente
-  async function loadBackupAuto() {
-    if (location.protocol === 'file:') return false;
-    try {
-      const r = await fetch('ulsm_supermercados_backup.json?v=' + Date.now());
-      if (!r.ok) return false;
-      const parsed = await r.json();
-      const raw = Array.isArray(parsed) ? parsed : Array.isArray(parsed.data) ? parsed.data : null;
-      if (!raw) return false;
-      const procs = sanitizeProcs(raw);
-      // Sincronizar workflow do backup só se não existir versão editada localmente.
-      // Não sobrescrever edições do editor com uma versão potencialmente mais antiga do backup.
-      const hasLocalWorkflow = !!localStorage.getItem('workflowTemplate');
-      if (!hasLocalWorkflow && parsed.workflow && Object.keys(parsed.workflow).length > 0) {
-        try {
-          localStorage.setItem('workflowTemplate', JSON.stringify(parsed.workflow));
-        } catch (e) {}
-      }
-      // Um backup vazio mas válido (data: []) NÃO conta como sessão carregada.
-      // A flag `loaded` controla apenas se o ecrã de carregamento é saltado; se
-      // um ficheiro sem processos a activasse, o utilizador ficava com a app
-      // vazia e sem nenhuma forma de carregar os seus dados — o carregador só
-      // existe no LoadScreen e em modo editor.
-      window.__ULSM_SESSION.loaded = procs.length > 0;
-      window.__ULSM_SESSION.procs = procs;
-      window.__ULSM_SESSION.filename = 'ulsm_supermercados_backup.json';
-      if (isObj(parsed.annualPlan)) window.__ULSM_SESSION.annualPlan = sanitizePlan(parsed.annualPlan);
-      saveSession(procs, 'ulsm_supermercados_backup.json');
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
   // Boot sequence: workflow-default.json primeiro, depois backup automático
   // Se não carregar automaticamente (file:// ou HTTP sem ficheiros), mostra BootScreen
   // Carrega os templates de e-mail antes do workflow
@@ -11789,19 +11923,32 @@ function KpisPanel() {
       return;
     }
 
-    // 2. Tentar carregar backup automaticamente via HTTP
-    const backupLoaded = await loadBackupAuto();
-    if (backupLoaded) {
-      // Tudo carregado automaticamente — arrancar direto
-      mountWorkflow();
-      mountLegend();
-      trackingRoot.render(/*#__PURE__*/React.createElement(App, null));
-    } else {
-      // Mostrar BootScreen para seleção manual dos ficheiros
+    // 2. Sem sessão em cache, o arranque pergunta sempre pelos dois ficheiros.
+    //    O backup publicado no repositório NÃO é aplicado automaticamente: pode
+    //    estar desactualizado face ao que o utilizador tem localmente, e este
+    //    ecrã mostra data e nº de processos de ambos para a escolha ser
+    //    informada. É oferecido como opção de um clique, não imposto.
+    {
+      // Mostrar BootScreen para seleção dos ficheiros
       const bootOverlay = document.createElement('div');
       bootOverlay.id = 'boot-screen-overlay';
       bootOverlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#eef2f7;';
+      bootOverlay.setAttribute('role', 'dialog');
+      bootOverlay.setAttribute('aria-modal', 'true');
+      bootOverlay.setAttribute('aria-label', 'Arranque da aplicação');
       document.body.appendChild(bootOverlay);
+
+      // Sem isto, o Tab saltava do ecrã de arranque para a navegação escondida
+      // por trás do overlay.
+      const behind = [...['app-nav', 'view-tracking', 'view-workflow', 'view-kpis'].map(id => document.getElementById(id)), document.querySelector('.skip-link')].filter(Boolean);
+      behind.forEach(el => {
+        el.inert = true;
+        el.setAttribute('aria-hidden', 'true');
+      });
+      const releaseBehind = () => behind.forEach(el => {
+        el.inert = false;
+        el.removeAttribute('aria-hidden');
+      });
       function onBootReady(procs, filename) {
         // Persistir na sessão para sobreviver a refreshes
         window.__ULSM_SESSION.userChose = true;
@@ -11813,6 +11960,7 @@ function KpisPanel() {
           key: 'boot-' + Date.now()
         }));
         setTimeout(() => {
+          releaseBehind();
           bootOverlay.remove();
         }, 80);
       }
