@@ -2379,11 +2379,37 @@ function toSafeIso(v) {
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }
 
+// Uma data ISO opcional: ao contrário de `toSafeIso`, um valor em falta continua em
+// falta em vez de passar a "agora". Carimbar a data actual sobre um campo vazio
+// inventa informação que depois é lida como se tivesse sido registada.
+function toSafeIsoOrNull(v) {
+  if(typeof v !== "string") return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+// `stepId`, `stepDates` e `isNote` eram descartados aqui. Como o sanitize corre em
+// cada carregamento, bastava reabrir a aplicação para o histórico perder as datas
+// de envio/resposta/execução de cada passo e a marca de nota — informação que o
+// próprio histórico mostra (ver o render das entradas).
 function sanitizeHistory(v) {
   if(!Array.isArray(v)) return [];
   return v
     .filter(isObj)
-    .map(item => ({ ts: toSafeIso(item.ts), action: toSafeText(item.action, 400) }))
+    .map(item => {
+      const out = { ts: toSafeIso(item.ts), action: toSafeText(item.action, 400) };
+      if(item.stepId) out.stepId = toSafeText(item.stepId, 20);
+      if(item.isNote) out.isNote = true;
+      if(isObj(item.stepDates)) {
+        const sd = {};
+        ['sentAt','replyDeadline','replyReceivedAt','executedAt'].forEach(k => {
+          const iso = toSafeIsoOrNull(item.stepDates[k]);
+          if(iso) sd[k] = iso;
+        });
+        if(Object.keys(sd).length) out.stepDates = sd;
+      }
+      return out;
+    })
     .filter(item => item.action)
     .slice(-250);
 }
@@ -2403,14 +2429,27 @@ function sanitizeEmailLog(v) {
     .slice(-250);
 }
 
+// `corrected` era descartado. Uma conclusão corrigida à mão e uma conclusão com a
+// data errada por outro motivo ficavam indistinguíveis logo ao recarregar, o que
+// tira à aplicação a única forma de saber se a data do phaseLog foi mesmo escolhida
+// por alguém — ver `getRoleCompletionTs`. As datas do passo eram perdidas do mesmo
+// modo. `slice(-500)` mantém-se: corta pelo início, preservando o fim do log.
 function sanitizePhaseLog(v) {
   if(!Array.isArray(v)) return [];
-  return v.filter(isObj).map(e => ({
-    phaseId: Number.isInteger(e.phaseId) ? e.phaseId : 1,
-    stepId: toSafeText(e.stepId, 20),
-    ts: toSafeIso(e.ts),
-    action: toSafeText(e.action, 40),
-  })).slice(-500);
+  return v.filter(isObj).map(e => {
+    const out = {
+      phaseId: Number.isInteger(e.phaseId) ? e.phaseId : 1,
+      stepId: toSafeText(e.stepId, 20),
+      ts: toSafeIso(e.ts),
+      action: toSafeText(e.action, 40),
+    };
+    if(e.corrected) out.corrected = true;
+    ['sentAt','replyDeadline','replyReceivedAt','executedAt'].forEach(k => {
+      const iso = toSafeIsoOrNull(e[k]);
+      if(iso) out[k] = iso;
+    });
+    return out;
+  }).slice(-500);
 }
 
 // Parse legacy history text into phaseLog entries
@@ -2649,21 +2688,62 @@ function isProcDone(proc) {
   return (hasCli || hasFar) && cliDone && farDone;
 }
 
-// Data real de conclusão de UM percurso (clínico ou farmácia), respeitando
-// correções de data. O phaseLog é append-only: uma correção anexa uma nova
-// entrada 'done' no fim do log com o ts corrigido, pelo que se usa a ÚLTIMA
-// entrada 'done' por ordem de registo (não o ts máximo, que ignorava correções
-// que recuam a data). Devolve string ISO ou null.
-// O `status !== "done"` é uma guarda deliberada: como o log nunca é reescrito, um
+// A conclusão de um percurso é escrita em DOIS sítios ao mesmo tempo: a entrada
+// "🏁 Processo concluído!" no `history` (a que o utilizador lê no separador
+// Histórico) e a entrada 'done' no `phaseLog` (a que alimentava sozinha o "Fim
+// real" e o Δ Fim). Sendo escritas juntas, deviam ter sempre a mesma data — se
+// divergirem, o que o utilizador lê e o que os KPI mostram contradizem-se, sem
+// nada no ecrã que explique a diferença.
+//
+// Só há uma razão legítima para divergirem: a correcção manual de data, que anexa
+// ao phaseLog uma entrada marcada `corrected` e deixa auditoria no histórico. Fora
+// desse caso, manda o histórico — é o registo visível e é aquele que o utilizador
+// pode conferir.
+function findLastPhaseLogDone(trk) {
+  const pl = trk?.phaseLog || [];
+  for (let i = pl.length - 1; i >= 0; i--) {
+    if (pl[i].action === 'done') return pl[i];
+  }
+  return null;
+}
+
+function findLastHistoryDoneTs(trk) {
+  const h = trk?.history || [];
+  for (let i = h.length - 1; i >= 0; i--) {
+    const a = h[i]?.action || '';
+    if (a.includes('🏁') && a.includes('conclu')) return h[i].ts;
+  }
+  return null;
+}
+
+function hasRecordedCorrection(trk) {
+  const done = findLastPhaseLogDone(trk);
+  if (done?.corrected) return true;
+  // Dados anteriores à preservação do `corrected` no sanitize: a auditoria da
+  // correcção continua no histórico e serve de prova de que a data foi escolhida.
+  return (trk?.history || []).some(h => (h?.action || '').includes('Data de conclusão corrigida'));
+}
+
+// Data real de conclusão de UM percurso. Devolve string ISO ou null.
+// O `status !== "done"` é uma guarda deliberada: como o phaseLog é append-only, um
 // percurso que tenha estado concluído e voltou a abrir mantém lá o 'done' antigo,
 // e sem esta guarda essa data continuava a ser dada como a conclusão real.
 function getRoleCompletionTs(trk) {
   if (!trk || trk.status !== "done") return null;
-  const pl = trk.phaseLog || [];
-  for (let i = pl.length - 1; i >= 0; i--) {
-    if (pl[i].action === 'done') return pl[i].ts;
-  }
-  return null;
+  const done = findLastPhaseLogDone(trk);
+  if (hasRecordedCorrection(trk)) return done ? done.ts : findLastHistoryDoneTs(trk);
+  return findLastHistoryDoneTs(trk) || (done ? done.ts : null);
+}
+
+// Divergência entre os dois registos sem correcção que a justifique — devolve
+// { historyTs, phaseLogTs } ou null. Serve para a mostrar em vez de a esconder.
+function getCompletionMismatch(trk) {
+  if (!trk || trk.status !== "done" || hasRecordedCorrection(trk)) return null;
+  const done = findLastPhaseLogDone(trk);
+  const histTs = findLastHistoryDoneTs(trk);
+  if (!done || !histTs) return null;
+  if (Math.abs(new Date(done.ts) - new Date(histTs)) < 86400000) return null;
+  return { historyTs: histTs, phaseLogTs: done.ts };
 }
 
 // Data real de conclusão do processo: entre percursos, conclui quando o último
@@ -3997,6 +4077,7 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
   // Prazo: congruente com o Δ Fim do Plano Anual — pára na conclusão real.
   const prazo = targetBadge(draft);
   const realDoneTs = getRealCompletionTs(draft);
+  const mismatch = getCompletionMismatch(trk);
   const cfg = STATUS_CFG[calcStatus(trk, draft.targetDate)];
 
   const trkColor = trkMode === "clinico" ? "#ea9a3e" : "#0284c7";
@@ -4496,6 +4577,22 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
               <div style={{ fontSize:10, color:"#7b8794", fontFamily:"monospace", letterSpacing:".1em", marginBottom:12 }}>
                 HISTÓRICO — <span style={{ color:trkMode==="clinico"?"#ea9a3e":"#0284c7" }}>{trkMode==="clinico"?"CLÍNICO":"FARMÁCIA"}</span>
               </div>
+              {/* Divergência entre o histórico e o registo de fases, sem correcção
+                  registada que a justifique. Antes o "Fim real" e o Δ Fim saíam em
+                  silêncio do registo de fases, e nada no ecrã explicava porque não
+                  batiam certo com a data que o histórico mostra. */}
+              {mismatch && (
+                <div style={{ background:"rgba(234,154,62,.1)", border:"1px solid rgba(234,154,62,.45)",
+                  borderRadius:8, padding:"10px 12px", marginBottom:16, fontSize:11, lineHeight:1.55, color:"#334155" }}>
+                  <div style={{ fontFamily:"monospace", fontWeight:700, color:"#ea9a3e", marginBottom:4 }}>
+                    ⚠ Datas de conclusão divergentes
+                  </div>
+                  O histórico regista a conclusão a <strong>{fmtDate(mismatch.historyTs)}</strong>, mas o registo
+                  interno de fases tem <strong>{fmtDate(mismatch.phaseLogTs)}</strong>, sem nenhuma correcção de
+                  data que o justifique. Está a ser usada a data do histórico. Se a data correcta for outra,
+                  usar “🔧 Corrigir data de conclusão” em Detalhes para a fixar com auditoria.
+                </div>
+              )}
               <div style={{ display:"flex", gap:8, marginBottom:20 }}>
                 <input value={newNote} onChange={e=>setNewNote(e.target.value)}
                   onKeyDown={e=>e.key==="Enter"&&addNote()}
@@ -7764,7 +7861,15 @@ function KpisPanel() {
                             <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:11, color:'#7b8794' }}>
                               {plannedEnd?fmtDate(plannedEnd):'—'}
                             </td>
-                            <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:11, color:'#7b8794' }}>
+                            {/* O processo fecha quando o ÚLTIMO percurso termina, pelo que esta
+                                data pode ser bastante posterior ao fim do percurso que se está a
+                                ver no histórico. O tooltip diz de qual das duas veio. */}
+                            <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:11, color:'#7b8794' }}
+                              title={linked ? ['clinico','farmacia']
+                                .filter(r => linked.roles?.[r] !== false)
+                                .map(r => `${r==='clinico'?'Clínico':'Farmácia'}: ${
+                                  getRoleCompletionTs(linked[r]) ? fmtDate(getRoleCompletionTs(linked[r])) : 'não concluído'}`)
+                                .join(' · ') : undefined}>
                               {realEnd?fmtDate(realEnd):<span style={{color:'#333'}}>—</span>}
                             </td>
                             <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:11, fontWeight:700, color:dfColor }}>
