@@ -101,13 +101,30 @@ Todos usam cache-busting por querystring — actualizações são apanhadas sem 
 
 Em `file://` os `fetch()` são bloqueados pelo protocolo e a app usa exclusivamente os fallbacks inline.
 
-### Arranque: os ficheiros são sempre pedidos
+### Arranque: escolha explícita, memorizada quando é seguro
 
-Sem sessão em cache, a app **pergunta pelos dois ficheiros** — workflow e backup de dados — em vez de aplicar automaticamente o que está no repositório. A versão publicada pode estar desactualizada face à que se tem localmente, e o ecrã de arranque mostra **data e nº de processos** de cada uma para a escolha ser informada. Continua a ser possível usá-la com um clique; só não é imposta.
+Na primeira utilização a app **pergunta pelos dois ficheiros** — workflow e backup de dados — em vez de aplicar automaticamente o que está no repositório. O ecrã mostra **nº de fases/passos** e **nº de processos e data** de cada versão publicada, para a escolha ser informada.
+
+A escolha fica memorizada em `localStorage` (`ulsm:bootChoice`), mas o que se guarda é a **origem, nunca o conteúdo**:
+
+| Origem | Repetida sem perguntar? | Porquê |
+|---|---|---|
+| `publicada` | ✅ | é relida do repositório em cada arranque — fresca por construção |
+| `incluida` | ✅ | vem do próprio ficheiro da app |
+| `sem-backup` | ✅ | não há nada a reler |
+| `local` | ❌ | um ficheiro do disco não pode ser relido sem nova interacção; guardar uma cópia sua seria precisamente o snapshot desactualizado que este ecrã evita |
+
+Ou seja: quem usa as versões publicadas não volta a ser interrompido, e continua a receber dados actuais porque são refetchados. Quem usa um ficheiro local é sempre questionado — não há alternativa correcta. Se a releitura falhar (offline, ficheiro removido, formato mudado), o arranque **volta a perguntar** em vez de adivinhar.
+
+A barra de topo do Tracking mostra a origem dos dados em `title` e tem um botão **⇄ trocar** que reabre o ecrã de arranque.
 
 A sessão persiste em `sessionStorage` — um refresh não regressa ao ecrã de arranque; fechar a aba limpa-a. Os processos **e** o plano anual são ambos guardados nessa sessão.
 
-> ⚠️ O `workflow-default.json` do repositório está em **formato legado**: 39 passos, fases sem `id`, passos sem `emailKey` nem `instructions`. A app traz embutida uma versão completa (7 fases, 40 passos, com templates de e-mail) e ignora o ficheiro legado — tanto no `loadWorkflow` como no ecrã de arranque, que nesse caso oferece a versão incluída na app em vez da publicada. Para voltar a servir o ficheiro do repositório, exportá-lo actualizado a partir do editor de workflow.
+### Publicar um workflow novo
+
+O `workflow-default.json` é a via para alterar o processo para toda a gente sem tocar no código: editar no editor de workflow, exportar, e fazer commit do ficheiro. O `loadWorkflow` dá-lhe precedência sobre a versão embutida na app (e o `localStorage` tem precedência sobre ambos, para não sobrescrever edições locais em curso).
+
+> ⚠️ O ficheiro tem de estar no **esquema actual** — fases com `id`/`code`/`color`/`label` e passos com `role`/`instructions`/`emailKey`. Um ficheiro em esquema legado é **ignorado em silêncio**: parece estar a ser servido, mas a app usa a versão embutida. Foi o que aconteceu durante meses. O `npm run build` passa a **falhar** nesse caso, com a indicação do que corrigir.
 
 ### Dependências externas
 
