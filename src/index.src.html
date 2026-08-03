@@ -6283,12 +6283,23 @@ function App() {
         {/* ── CARDS ── */}
         {filtered.length===0 ? (
           <div style={{ textAlign:"center",padding:60 }}>
-            <div style={{ fontSize:36,marginBottom:12 }}>📋</div>
+            <div style={{ fontSize:36,marginBottom:12 }} aria-hidden="true">📋</div>
             <div style={{ fontSize:13,color:"#7b8794" }}>
               {procs.length===0
-                ? isEditor?"Sem processos. Clique em «+ Novo processo» para começar.":"Sem processos. Um editor deve criar o primeiro processo."
+                ? isEditor?"Sem processos. Clique em «+ Novo processo» para começar.":"Sem processos carregados."
                 : "Nenhum processo corresponde aos filtros."}
             </div>
+            {/* Sem esta acção, quem chega a uma app vazia não tem forma de
+                carregar os seus dados: o carregador de ficheiros só existe no
+                ecrã de arranque e em modo editor. */}
+            {procs.length===0 && !isEditor && (
+              <button onClick={()=>window.__openEntrar && window.__openEntrar()}
+                style={{ marginTop:16, padding:"9px 18px", borderRadius:8,
+                  border:"1px solid rgba(2,132,199,.4)", background:"rgba(2,132,199,.1)",
+                  color:"#0284c7", fontFamily:"monospace", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                📂 Carregar backup
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(330px,1fr))", gap:14 }}>
@@ -7606,7 +7617,8 @@ function KpisPanel() {
   function saveSession(procs, filename) {
     try {
       const annualPlan = window.__ULSM_SESSION.annualPlan || null;
-      sessionStorage.setItem(SS_KEY, JSON.stringify({ procs, filename, annualPlan, ts: Date.now() }));
+      const userChose = !!window.__ULSM_SESSION.userChose;
+      sessionStorage.setItem(SS_KEY, JSON.stringify({ procs, filename, annualPlan, userChose, ts: Date.now() }));
     } catch(e) {}
   }
   function restoreSession() {
@@ -7637,7 +7649,12 @@ function KpisPanel() {
       if (!hasLocalWorkflow && parsed.workflow && Object.keys(parsed.workflow).length > 0) {
         try { localStorage.setItem('workflowTemplate', JSON.stringify(parsed.workflow)); } catch(e) {}
       }
-      window.__ULSM_SESSION.loaded = true;
+      // Um backup vazio mas válido (data: []) NÃO conta como sessão carregada.
+      // A flag `loaded` controla apenas se o ecrã de carregamento é saltado; se
+      // um ficheiro sem processos a activasse, o utilizador ficava com a app
+      // vazia e sem nenhuma forma de carregar os seus dados — o carregador só
+      // existe no LoadScreen e em modo editor.
+      window.__ULSM_SESSION.loaded = procs.length > 0;
       window.__ULSM_SESSION.procs = procs;
       window.__ULSM_SESSION.filename = 'ulsm_supermercados_backup.json';
       if (isObj(parsed.annualPlan)) window.__ULSM_SESSION.annualPlan = sanitizePlan(parsed.annualPlan);
@@ -7657,9 +7674,15 @@ Promise.all([loadEmailTemplates().catch(() => {}), loadWorkflow()]).then(async (
     // 1. Tentar restaurar sessão do sessionStorage (refresh da página)
     const saved = restoreSession();
     if (saved) {
-      window.__ULSM_SESSION.loaded = true;
-      window.__ULSM_SESSION.procs = sanitizeProcs(saved.procs);
+      const savedProcs = sanitizeProcs(saved.procs);
+      // Mesma regra do arranque automático: uma sessão vazia não deve esconder
+      // o carregador. `userChose` marca quem já passou pelo LoadScreen de forma
+      // deliberada (incluindo a opção "primeira vez"), para não ser reenviado
+      // para lá em cada visita.
+      window.__ULSM_SESSION.loaded = savedProcs.length > 0 || !!saved.userChose;
+      window.__ULSM_SESSION.procs = savedProcs;
       window.__ULSM_SESSION.filename = saved.filename || BACKUP_FILENAME;
+      window.__ULSM_SESSION.userChose = !!saved.userChose;
       if (saved.annualPlan) window.__ULSM_SESSION.annualPlan = sanitizePlan(saved.annualPlan);
       mountWorkflow();
       mountLegend();
@@ -7684,11 +7707,12 @@ Promise.all([loadEmailTemplates().catch(() => {}), loadWorkflow()]).then(async (
 
       function onBootReady(procs, filename) {
         // Persistir na sessão para sobreviver a refreshes
+        window.__ULSM_SESSION.userChose = true;
         saveSession(procs, filename);
         // Re-montar workflow com fases eventualmente atualizadas
         mountWorkflow();
         mountLegend();
-        trackingRoot.render(<App />);
+        trackingRoot.render(<App key={'boot-' + Date.now()} />);
         setTimeout(() => {
           bootOverlay.remove();
         }, 80);
@@ -7708,11 +7732,13 @@ Promise.all([loadEmailTemplates().catch(() => {}), loadWorkflow()]).then(async (
   // Called after LoadScreen completes — re-render App with data, switch to Tracking
   function onLoaded(procs, filename) {
     window.__ULSM_SESSION.loaded = true;
+    window.__ULSM_SESSION.userChose = true;
     window.__ULSM_SESSION.procs = procs;
     window.__ULSM_SESSION.filename = filename;
+    saveSession(procs, filename);
 
     const overlay = document.getElementById('load-screen-overlay');
-    trackingRoot.render(<App />);
+    trackingRoot.render(<App key={'loaded-' + Date.now()} />);
 
     setTimeout(() => {
       if (overlay) overlay.remove();
