@@ -58,6 +58,38 @@ need(badgeMatch, 'não encontrei o badge de versão no cabeçalho.');
 need(badgeMatch[1] === version,
   `a versão no badge (v${badgeMatch[1]}) e em APP_VERSION (${version}) não coincidem.`);
 
+// ── 1b. Validar o workflow publicado ─────────────────────────────────────────
+// O workflow-default.json já esteve em esquema legado (fases sem id, passos sem
+// emailKey/instructions) durante meses. Nesse estado o loadWorkflow ignora-o em
+// silêncio e a app usa o workflow embutido — ou seja, o ficheiro parecia estar a
+// ser servido mas não era. Esta verificação faz o build falhar em vez de deixar
+// isso repetir-se sem ninguém dar por ela.
+const workflowPath = join(ROOT, 'workflow-default.json');
+const workflowRaw = await readFile(workflowPath, 'utf8').catch(() => null);
+need(workflowRaw !== null, 'workflow-default.json não existe.');
+
+let workflow;
+try {
+  workflow = JSON.parse(workflowRaw);
+} catch (e) {
+  need(false, `workflow-default.json não é JSON válido: ${e.message}`);
+}
+
+need(Array.isArray(workflow.phases) && workflow.phases.length > 0,
+  'workflow-default.json não tem fases.');
+
+// Mesma regra de detecção que o loadWorkflow e o ecrã de arranque aplicam.
+const workflowIsFullFormat = workflow.phases.some(ph =>
+  Number.isInteger(ph.id) ||
+  (ph.steps || []).some(st => st.emailKey !== undefined || st.instructions !== undefined));
+need(workflowIsFullFormat,
+  'workflow-default.json está em esquema legado (fases sem `id`, passos sem `emailKey`/`instructions`). ' +
+  'A aplicação ignora-o nesse estado e usa o workflow embutido — o ficheiro seria servido mas nunca lido. ' +
+  'Exportar uma versão actual a partir do editor de workflow.');
+
+const workflowSteps = workflow.phases.reduce((n, ph) => n + (ph.steps || []).length, 0);
+need(workflowSteps > 0, 'workflow-default.json não tem passos.');
+
 // ── 2. Compilar o bloco JSX ──────────────────────────────────────────────────
 const jsxBlock = /<script type="text\/babel"[^>]*>([\s\S]*?)<\/script>/;
 const jsxMatch = source.match(jsxBlock);
@@ -123,7 +155,8 @@ if (CHECK) {
   need(archive === html, `${archiveName} não corresponde ao index.html. Corre \`npm run build\`.`);
   need(staleArchives.length === 0,
     `ficheiros de versões antigas por remover: ${staleArchives.join(', ')}. Corre \`npm run build\`.`);
-  console.log(`✓ ficheiros gerados estão actualizados (v${version})`);
+  console.log(`✓ ficheiros gerados estão actualizados (v${version}); ` +
+    `workflow-default.json com ${workflow.phases.length} fases · ${workflowSteps} passos`);
 } else {
   await writeFile(OUT, html);
   await writeFile(join(ROOT, archiveName), html);
@@ -134,5 +167,6 @@ if (CHECK) {
   console.log(`  JSX compilado   ${kb(jsxMatch[1].length)} → ${kb(safeCode.length)}`);
   console.log(`  index.html      ${kb(source.length)} → ${kb(html.length)} (Babel removido do runtime)`);
   console.log(`  arquivo         ${archiveName}`);
+  console.log(`  workflow        ${workflow.phases.length} fases · ${workflowSteps} passos (esquema actual)`);
   if (staleArchives.length) console.log(`  removido        ${staleArchives.join(', ')}`);
 }

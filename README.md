@@ -120,7 +120,11 @@ A barra de topo do Tracking mostra a origem dos dados em `title` e tem um botão
 
 A sessão persiste em `sessionStorage` — um refresh não regressa ao ecrã de arranque; fechar a aba limpa-a. Os processos **e** o plano anual são ambos guardados nessa sessão.
 
-> ⚠️ O `workflow-default.json` do repositório está em **formato legado**: 39 passos, fases sem `id`, passos sem `emailKey` nem `instructions`. A app traz embutida uma versão completa (7 fases, 40 passos, com templates de e-mail) e ignora o ficheiro legado — tanto no `loadWorkflow` como no ecrã de arranque, que nesse caso oferece a versão incluída na app em vez da publicada. Para voltar a servir o ficheiro do repositório, exportá-lo actualizado a partir do editor de workflow.
+### Publicar um workflow novo
+
+O `workflow-default.json` é a via para alterar o processo para toda a gente sem tocar no código: editar no editor de workflow, exportar, e fazer commit do ficheiro. O `loadWorkflow` dá-lhe precedência sobre a versão embutida na app (e o `localStorage` tem precedência sobre ambos, para não sobrescrever edições locais em curso).
+
+> ⚠️ O ficheiro tem de estar no **esquema actual** — fases com `id`/`code`/`color`/`label` e passos com `role`/`instructions`/`emailKey`. Um ficheiro em esquema legado é **ignorado em silêncio**: parece estar a ser servido, mas a app usa a versão embutida. Foi o que aconteceu durante meses. O `npm run build` passa a **falhar** nesse caso, com a indicação do que corrigir.
 
 ### Dependências externas
 

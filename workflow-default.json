@@ -2,9 +2,9 @@
   "emailTemplates": {
     "abertura": {
       "title": "Comunicação de Abertura do Processo",
-      "rem": "gestao.supermercados@ulsm.min-saude.pt",
       "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
       "cc": "Diretor(a) SF · Diretor(a) SL · Coordenador(a) TSDT · Enf.º(a) gestor(a) c/ funções de direção · Gestor(a) de departamento · Gestor(a) SF",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
       "assunto": "Revisão Supermercado — [Nome do Serviço]",
       "body": "Bom dia/Boa tarde,\n\nVimos por este meio informar que o supermercado referente ao serviço <FILL>[Nome do Serviço]</FILL> vai ser alvo de revisão.\n\nNecessitamos de agendar reunião com a seguinte ordem de trabalhos:\n\n1. Explicar como funciona um supermercado e que artigos podem constar (alta rotatividade e produtos emergentes);\n   1.1 Como ler o ficheiro de revisão de supermercado e como deve responder.\n2. Verificar localização dos supermercados de material farmacêutico e clínico;\n3. Verificar necessidade de adquirir prateleiras para armários (se aplicável);\n4. Verificar centros de custo;\n5. Estabelecer cronograma (explicação de etapas);\n6. Informar como irá decorrer o processo;\n7. Verificar agrupamento de artigos — arrumação por grupo funcional — para organização espacial;\n8. Enfermeiro substituto;\n9. Plano de higienização pré-montagem e manutenção do supermercado;\n10. Responsabilização de verificação de prazos de validade;\n11. Controlo de temperatura e humidade do supermercado.\n\nMais se informa que em anexo enviamos o cronograma previsto, bem como as responsabilidades.\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
     },
@@ -107,239 +107,490 @@
   },
   "phases": [
     {
-      "title": "Comunicação<br>&amp; Planeamento",
-      "duration": "⏱ ~2 dias",
+      "id": 1,
+      "code": "F01",
+      "color": "#0d9488",
+      "label": "Comunicação & Planeamento",
+      "duration": "~2 dias",
       "steps": [
         {
+          "id": "1.1",
           "title": "Criar pasta de trabalho partilhada (DCLF)",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "rápido",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Criar pasta com nomenclatura: <code>Código Serviço - Serviço</code>.\n        <ul>\n          <li>Ficheiro de trabalho: <code>SiglaServiço_revisão_A TRABALHAR</code></li>\n          <li>Ficheiros enviados pela Gestão: <code>SiglaServiço_revisão_farmácia_V1</code> / <code>_clínico_V1</code></li>\n          <li>Ficheiros do Enfermeiro gestor: <code>SiglaServiço_revisão_farmácia_E</code> (E2, E3…)</li>\n        </ul>\n      "
+          "instructions": "Criar pasta na área partilhada com a nomenclatura: Código Serviço - Serviço.\n\nRegras de nomenclatura:\n• Ficheiro de trabalho: SiglaServiço_revisão_A TRABALHAR\n• Ficheiros da Gestão: SiglaServiço_revisão_farmácia_V1 e _clínico_V1\n• Ficheiros do Enf. gestor: SiglaServiço_revisão_farmácia_E (E2, E3…)",
+          "emailKey": null
         },
         {
+          "id": "1.2",
           "title": "Enviar e-mail às chefias — abertura do processo",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "2 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Via <code>gestao.supermercados@ulsm.min-saude.pt</code> para Enfermeiro(a) gestor(a).<br>\n        CC: Diretores SF/SL, supervisores, gestores de departamento.<br>\n        Temas: funcionamento supermercado, localização stocks, espaço, centros de custo, cronograma, RFID, grupos funcionais, higienização, validades, temperatura/humidade.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('abertura', event)\">✉ Ver template de e-mail</button>\n      "
+          "instructions": "Enviar via gestao.supermercados@ulsm.min-saude.pt para o Enfermeiro(a) gestor(a).\n\nCC obrigatório: Diretores SF/SL, Coordenador TSDT, Enf.º gestor c/ funções de direção, Gestor de departamento, Gestor SF.\n\nTemas a cobrir: funcionamento supermercado, localização stocks, espaço, centros de custo, cronograma, RFID, grupos funcionais, higienização, validades, temperatura/humidade.",
+          "emailKey": "abertura"
         },
         {
+          "id": "1.3",
           "title": "Reunião com Enfermeiro Chefe — gestão de expectativas",
+          "role": [
+            "SF",
+            "SL",
+            "SC"
+          ],
           "time": "1 hora",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><span class=\"role-badge role-sc\">SC</span><br><br>\n        Confirmar: localização supermercados farmacêutico/clínico, prateleiras, centros de custo, cronograma detalhado, implementação RFID, agrupamento por grupo funcional, enfermeiro substituto, higienização, responsável validades, controlo temperatura/humidade.\n      "
+          "instructions": "Confirmar em reunião:\n• Localização dos supermercados farmacêutico e clínico\n• Necessidade de prateleiras adicionais\n• Centros de custo\n• Cronograma detalhado (atualizar com o Enf. gestor)\n• Implementação RFID\n• Agrupamento por grupo funcional (dar proposta de grupos)\n• Identificar enfermeiro substituto\n• Plano de higienização pré-montagem\n• Responsável pela verificação de prazos de validade\n• Controlo de temperatura e humidade",
+          "emailKey": null
         },
         {
+          "id": "1.4",
           "title": "Enviar ata da reunião com cronograma",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "2 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        E-mail padrão com ata e cronograma de revisão (template 4 semanas). Alertar para cumprimento de prazos.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('ata', event)\">✉ Ver template de e-mail</button>\n      "
+          "instructions": "E-mail padrão com ata e cronograma de revisão (template de 4 semanas).\n\nAlertar para cumprimento de prazos sob penalização de adiamento para o próximo ciclo.",
+          "emailKey": "ata"
         }
       ]
     },
     {
-      "title": "Análise de<br>Consumos",
-      "duration": "⏱ ~2 dias",
+      "id": 2,
+      "code": "F02",
+      "color": "#0284c7",
+      "label": "Análise de Consumos",
+      "duration": "~2 dias",
       "steps": [
         {
+          "id": "2.1",
           "title": "Extrair listagem de consumos do Data Discovery",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "5 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Movimentos → Filtros → intervalo 12 meses → configurar campos (Código Estado, Serviço, Armazém; Valor/Consumo/Aquisição como métricas) → Ver detalhe → Guardar → Exportar \"Listagem (Excel)\".<br>\n        Guardar em <code>Revisão Supermercados</code> como <code>Movimentos_list_xxxx</code>.\n      <div><br></div><div class=\"step-pdf-pill\" data-pdf-path=\"pdfs/Tutorial_Mapa_Consumos_DataDiscovery.pdf\" data-pdf-name=\"Tutorial_Mapa_Consumos_DataDiscovery.pdf\"><span>📄</span><span class=\"pdf-pill-name\">Tutorial_Mapa_Consumos_DataDiscovery.pdf</span><button class=\"pdf-pill-open\" title=\"Abrir PDF\">↗</button><button class=\"pdf-pill-del\" title=\"Remover\">✕</button></div>"
+          "instructions": "Movimentos → Movimentos → ⚙ Filtros → intervalo 12 meses\n\nConfigurar campos:\n• Filtros: Código Estado, Código Serviço, Código Armazém\n• Linhas: Armazém\n• Métricas: Valor, Valor Consumo, Valor Aquisição\n\nExportar: símbolo abaixo da engrenagem → Listagem (Excel) → Confirmar\n\nGuardar como Movimentos_list_xxxx na pasta Revisão Supermercados.",
+          "emailKey": null
         },
         {
+          "id": "2.2",
           "title": "Atualizar Excel de análise — folha \"Consumos\"",
+          "role": [
+            "SF"
+          ],
           "time": "2 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Consulta → Atualizar. Importar listagem para o Excel de análise (Anexo I — Template consumos).\n      "
+          "instructions": "Abrir o Excel de análise (Anexo I — Template consumos).\nSelecionar a folha Consumos → Consulta → Atualizar.",
+          "emailKey": null
         },
         {
+          "id": "2.3",
           "title": "Extrair listagem do index (Data Discovery → Supermercados)",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "2 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Supermercados → Supermercados Config. → Ver detalhe → Guardar → Exportar Excel.<br>\n        Guardar como <code>Supermercados Config._list_xxxx</code>.\n      "
+          "instructions": "Supermercados → Supermercados Config. → Ver detalhe → Guardar\n\nExportar: Listagem (Excel)\n\nGuardar como Supermercados Config._list_xxxx.",
+          "emailKey": null
         },
         {
+          "id": "2.4",
           "title": "Atualizar folha \"Listagem\" e tabela dinâmica \"TD Consumos\"",
+          "role": [
+            "SF"
+          ],
           "time": "3 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Consulta → Atualizar. Verificar campos da tabela dinâmica e atualizar TD Consumos.\n      "
+          "instructions": "Folha Listagem → Consulta → Atualizar\n\nFolha TD Consumos → clicar na tabela dinâmica → Atualizar\n\nVerificar campos selecionados.",
+          "emailKey": null
         },
         {
+          "id": "2.5",
           "title": "Decisão: artigos a remover, adicionar, ajustar quantidades",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "1 hora",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Análise por preço médio, consumo diário, autonomia e estado (stockável/não-stockável, autorizado, ativo/inativo).\n        <div class=\"decision\">Autonomia mínima ≥ 8 dias. Baixa rotação → \"Pedido SGICM\". Antimicrobianos → validação farmacêutico CCIRA.</div>\n      "
+          "instructions": "Analisar por: preço médio, consumo diário médio, autonomia, estado (stockável/não-stockável, autorizado, ativo/inativo).\n\n⚡ Regras de decisão:\n• Autonomia mínima ≥ 8 dias (rota diária) ou 2-3 dias (dose unitária)\n• Baixa rotação → classificar como Pedido SGICM\n• Antimicrobianos SF → validação obrigatória pela farmacêutica CCIRA antes de avançar",
+          "emailKey": null
         },
         {
+          "id": "2.6",
           "title": "Corrigir preços em branco e grupos funcionais",
+          "role": [
+            "SF"
+          ],
           "time": "10 min",
-          "body": "<span class=\"role-badge role-sf\">SF</span>"
+          "instructions": "Verificar coluna de preço médio e preencher valores em branco.\n\nVerificar e corrigir o grupo funcional de cada artigo (necessário para simulação de layout por grupos).",
+          "emailKey": null
         },
         {
+          "id": "2.7",
           "title": "Criar proposta (nº caixas, tipo, quantidades) — protótipo inicial",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "30 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Farmácia: validar antimicrobianos com CCIRA por e-mail antes de avançar.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('ccira', event)\">✉ Ver template de e-mail (CCIRA)</button>\n      "
+          "instructions": "Definir artigo a artigo:\n• Número de caixas (normalmente 2)\n• Tipo de caixa (A, B, C, D, O, EL, EM, CF)\n• Quantidade por caixa\n\nFarmácia: antes de enviar ao serviço, enviar antimicrobianos para validação pela farmacêutica CCIRA (ana.durães@ulsm.min-saude.pt).",
+          "emailKey": "ccira"
         },
         {
+          "id": "2.8",
           "title": "Enviar proposta ao serviço (PDF + Excel)",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "2 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Para: Enfermeiro gestor. CC: Diretores SF/SL, supervisores, gestores.<br>\n        O(A) Enfermeiro(a) gestor(a) tem <strong>1 semana</strong> para responder, sob penalização de entrar no próximo ciclo.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('proposta', event)\">✉ Ver template de e-mail</button>\n      "
+          "instructions": "Enviar PDF e Excel ao Enfermeiro(a) gestor(a).\n\n⏰ Prazo: o Enf. gestor tem 1 semana para responder, sob penalização de entrada no próximo ciclo de revisão.",
+          "emailKey": "proposta"
         }
       ]
     },
     {
-      "title": "Validação<br>&amp; Protótipo",
-      "duration": "⏱ ~1,5 semanas",
+      "id": 3,
+      "code": "F03",
+      "color": "#8b5cf6",
+      "label": "Validação & Protótipo",
+      "duration": "~1,5 semanas",
       "steps": [
         {
+          "id": "3.1",
           "title": "Análise do feedback do serviço",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "3 dias",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Verificar: quantidades alteradas, observações, produtos novos/excluídos, pedidos de posição, consumos reais.\n        <div class=\"decision\">Proposta aceite? → E-mail proposta final. Necessita ajuste? → E-mail pedido de esclarecimento.</div>\n        <button class=\"email-btn\" onclick=\"openEmail('ajuste', event)\">✉ Ver template — Pedido de ajuste</button>\n        <button class=\"email-btn\" style=\"margin-left:6px\" onclick=\"openEmail('acordofinal', event)\">✉ Ver template — Acordo final</button>\n      "
+          "instructions": "Verificar:\n• Quantidades alteradas (com justificação)\n• Observações\n• Produtos a introduzir (verificar consumos reais)\n• Produtos a excluir (verificar porquê)\n• Solicitações sobre posições\n\n⚡ Decisão:\n→ Proposta aceite: enviar e-mail acordo final\n→ Necessita ajuste: enviar e-mail pedido de esclarecimento",
+          "emailKey": "ajuste"
         },
         {
+          "id": "3.2",
+          "title": "Enviar e-mail de acordo final ao serviço",
+          "role": [
+            "SF",
+            "SL"
+          ],
+          "time": "2 min",
+          "instructions": "Só avançar quando houver acordo fechado com o Enf. gestor.\n\nEnviar acordo em PDF como anexo.",
+          "emailKey": "acordofinal"
+        },
+        {
+          "id": "3.3",
           "title": "Caracterização do tipo de caixa por artigo",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "variável",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Regras: não exceder altura prateleira, peso C/D ≤ 8 kg, última prateleira ≥ 15 cm do solo, sem luz direta.<br>\n        Farmácia: pensos na horizontal, última posição vazia, LASA/High Alert assinalados, frio em embalagem primária.\n      "
+          "instructions": "Regras gerais:\n• Não exceder altura de prateleira\n• Peso caixas C/D ≤ 8 kg\n• Última prateleira ≥ 15 cm do solo\n• Caixas A/O: não colocar nas prateleiras superiores nem inferiores\n• Artigos pesados: não nas prateleiras superiores\n• Sem luz direta\n\nFarmácia (cuidados especiais):\n• Pensos na horizontal (princípio ativo)\n• Última posição do stock medicamentos: deixar vazia (substituições)\n• Medicamentos de frio: dispensar em embalagem primária\n• Assinalar LASA e HIGH ALERT",
+          "emailKey": null
         },
         {
+          "id": "3.4",
           "title": "Simulação informática do layout (grupos funcionais)",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "3 horas",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Anexo II — Protótipo simulação. Grupos funcionais + tipologia de caixa. Se espaço insuficiente, contactar Enfermeiro gestor.\n      "
+          "instructions": "Usar Anexo II — Protótipo simulação (Excel).\n\nConsiderar:\n1. Grupos funcionais (artigos do mesmo grupo ficam juntos)\n2. Tipologia de caixa (tamanho + peso)\n3. Ergonomia (artigos pesados a altura de cintura)\n\nSe espaço insuficiente: contactar Enf. gestor para aumentar espaço disponível ou reduzir artigos/quantidades.",
+          "emailKey": null
         },
         {
-          "title": "Montagem de estantes no arquivo para simulação física",
-          "time": "2h + 15 min",
-          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        TAS monta estantes no arquivo conforme planta; coloca caixas necessárias nas prateleiras.\n      "
-        },
-        {
-          "title": "Carregamento de artigos no sistema Supermarket (Glintt)",
-          "time": "~2 min/artigo",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Template importar supermercado → Atualizar consulta → Filtrar serviço → Corrigir dados → Exportar CSV com código do supermercado → Importar no Supermarket → Confirmar.<br>\n        Criar supermercado (pórtico: 1=HPH / 2=ACES) e serviço com cores por polo/especialidade.\n      "
-        }
-      ]
-    },
-    {
-      "title": "Simulação",
-      "duration": "⏱ ~2 dias",
-      "steps": [
-        {
-          "title": "Impressão e corte de kanbans provisórios (p/b)",
-          "time": "10 min",
-          "body": "<span class=\"role-badge role-tas\">TAS</span><br><br>Kanbans provisórios em preto e branco para fase de simulação."
-        },
-        {
-          "title": "Colagem dos kanbans provisórios nas caixas",
-          "time": "30 min",
-          "body": "<span class=\"role-badge role-tas\">TAS</span>"
-        },
-        {
-          "title": "Convidar Enfermeiro para validar simulação no arquivo",
-          "time": "1 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Ausência de resposta = aprovação tácita para avançar com produção definitiva.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('validacaosimulacao', event)\">✉ Ver template de e-mail</button>\n      "
-        },
-        {
-          "title": "Validação física com Enfermeiro + TAS armazém",
-          "time": "1 hora",
-          "body": "\n        <span class=\"role-badge role-sc\">SC</span><span class=\"role-badge role-tas\">TAS</span><br><br>\n        Verificar: tamanho de caixas, posições, organização por grupo funcional. Registar alterações.\n      "
-        },
-        {
-          "title": "Ajuste de kanbans (físicos e informáticos) se necessário",
-          "time": "30 min",
-          "body": "<span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span>"
-        },
-        {
-          "title": "Confirmação final da simulação por e-mail",
-          "time": "2 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Solicitar confirmação escrita ao Enfermeiro gestor sobre simulação aprovada.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('confirmacaosimulacao', event)\">✉ Ver template de e-mail</button>\n      "
-        }
-      ]
-    },
-    {
-      "title": "Montagem",
-      "duration": "⏱ ~1 semana",
-      "steps": [
-        {
-          "title": "Impressão definitiva de kanbans, costas, frentes, posições e identificações",
-          "time": "5 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Impressão a cores. Plastificar → Fita dupla face → Colocar nas respetivas caixas"
-        },
-        {
-          "title": "Colocação de etiquetas nas caixas (normas de colagem)",
-          "time": "8 horas",
-          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Etiquetas plastificadas com fita dupla face dentro das caixas. Colar etiqueta na caixa. Caixas nas posições definitivas.\n      "
-        },
-        {
-          "title": "Marcar posições nas prateleiras (fita preta + etiquetas de posição)",
-          "time": "30 min",
-          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Para armários de enfermaria: marcação feita no SC. Retirar papel de transporte das caixas.\n      "
-        },
-        {
-          "title": "Colagem de etiquetas LASA e HIGH ALERT (TSDT Farmácia)",
-          "time": "10 min",
-          "body": "\n        <span class=\"tag\">TSDT Farmácia</span><br><br>\n        Apenas medicamentos farmacêuticos. HIGH ALERT requer confirmação por 2 operadores.\n      "
-        },
-        {
-          "title": "Impressão de tags RFID em lote e saída pelo pórtico",
-          "time": "10 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Impressão Etiquetas → Caixa → Selecionar Supermercado → Localização → Selecionar todos → Imprimir Etiquetas.<br>\n        <em>Nota: só após validação do stock e posições no serviço, imprimir por posição sequencial</em>"
-        },
-        {
-          "title": "Colagem de tags RFID e validação pelo responsável",
+          "id": "3.5",
+          "title": "Informar TAS para montagem de estantes no arquivo",
+          "role": [
+            "TAS"
+          ],
           "time": "2 horas",
-          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Verificar número da etiqueta com posição da caixa. Para superfícies rugosas: fita dupla face antes da tag. Quando só existe uma caixa, colocar tag com número mais baixo.\n      "
+          "instructions": "TAS monta as estantes no arquivo conforme a planta do serviço.\n\nApós montagem: TAS coloca as caixas necessárias nas prateleiras conforme simulação (15 min).\n\nValidar as posições: verificar se as caixas cabem nas posições definidas.",
+          "emailKey": null
         },
         {
-          "title": "Inventário das tags RFID para validar existências",
-          "time": "15 min",
-          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        OPL de inventário RFID. Sempre precedido e sucedido por inventário ao criar, inativar ou eliminar tags.\n      "
+          "id": "3.6",
+          "title": "Carregamento de artigos no sistema Supermarket (Glintt)",
+          "role": [
+            "SF",
+            "SL"
+          ],
+          "time": "~2 min/artigo",
+          "instructions": "1. Abrir template importar supermercado\n2. Atualizar consulta dinâmica\n3. Filtrar pelo código do serviço\n4. Corrigir os dados\n5. Exportar CSV com código do supermercado\n6. Confirmar 'Ok' e 'Sim'\n7. Abrir Supermarket → Importar Ficheiro → Confirmar\n\nCriação de supermercado:\n• Pórtico: 1 para HPH / 2 para ACES\n• Descrição: letras maiúsculas sem acentos\n• AKA: máx. 8 caracteres, sem pontos\n• Cores: seguir tabela de cores por polo/especialidade",
+          "emailKey": null
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "code": "F04",
+      "color": "#ea9a3e",
+      "label": "Simulação",
+      "duration": "~2 dias",
+      "steps": [
+        {
+          "id": "4.1",
+          "title": "Impressão e corte de kanbans provisórios (p/b)",
+          "role": [
+            "TAS"
+          ],
+          "time": "10 min",
+          "instructions": "Imprimir kanbans em preto e branco para fase de simulação.\n\nNão usar cor — são provisórios para validação espacial.",
+          "emailKey": null
         },
         {
-          "title": "Validar data de montagem com Enfermeiro chefe",
+          "id": "4.2",
+          "title": "Colagem dos kanbans provisórios nas caixas",
+          "role": [
+            "TAS"
+          ],
+          "time": "30 min",
+          "instructions": "Colar kanbans provisórios nas caixas correspondentes às posições da simulação.",
+          "emailKey": null
+        },
+        {
+          "id": "4.3",
+          "title": "Convidar Enfermeiro para validar simulação no arquivo",
+          "role": [
+            "SF"
+          ],
           "time": "1 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><br><br>\n        Comunicar data prevista. Solicitar higienização prévia se necessário.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('datamontagem', event)\">✉ Ver template de e-mail</button>\n      "
+          "instructions": "E-mail padrão a solicitar presença do Enf. gestor no arquivo do Serviço de Logística.\n\n⚠️ Ausência de resposta = aprovação tácita para avançar com produção definitiva.",
+          "emailKey": "validacaosimulacao"
         },
         {
-          "title": "Deslocação e montagem no serviço clínico",
-          "time": "1 dia",
-          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><span class=\"role-badge role-sf\">SF</span><br><br>\n        Estantes: montar, caixas na posição, etiquetas de posição.<br>\n        Armários: fita cola preta, caixas na posição.<br>\n        Transferir medicação/materiais antigos. Verificar validades.<br>\n        Afixar: número prateleira/letra armário, index, normas de picking (Anexo V), indicadores visuais (Anexo IV).<br>\n        Caixas sem stock → zona \"Kanbans para repor\" (Anexo VI).\n      "
+          "id": "4.4",
+          "title": "Validação física com Enfermeiro + TAS armazém",
+          "role": [
+            "SC",
+            "TAS"
+          ],
+          "time": "1 hora",
+          "instructions": "Verificar:\n• Tamanho de caixas adequado a cada artigo\n• Posições fazem sentido para o utilizador\n• Organização por grupo funcional\n• Zona 'Kanbans para repor' adequada\n\nRegistar todas as alterações solicitadas.",
+          "emailKey": null
         },
         {
-          "title": "Afixar normas de utilização e indicadores visuais",
+          "id": "4.5",
+          "title": "Ajuste de kanbans (físicos e informáticos) se necessário",
+          "role": [
+            "SF",
+            "SL"
+          ],
+          "time": "30 min",
+          "instructions": "Atualizar no Supermarket as posições alteradas.\n\nReimprimir e recolocar kanbans provisórios nas posições corrigidas.",
+          "emailKey": null
+        },
+        {
+          "id": "4.6",
+          "title": "Confirmação final da simulação por e-mail",
+          "role": [
+            "SF"
+          ],
           "time": "2 min",
-          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Anexo IV (Indicadores Visuais) e Anexo V (Norma de Picking) afixados no local.\n      "
+          "instructions": "Solicitar confirmação escrita ao Enf. gestor sobre a simulação aprovada.\n\nAnexar listagem da disposição dos artigos.",
+          "emailKey": "confirmacaosimulacao"
         }
       ]
     },
     {
-      "title": "Comunicação<br>Final &amp; Devolução",
-      "duration": "⏱ ~2 dias",
+      "id": 5,
+      "code": "F05",
+      "color": "#e05252",
+      "label": "Montagem",
+      "duration": "~1 semana",
       "steps": [
         {
+          "id": "5.1",
+          "title": "Impressão definitiva de kanbans, costas, frentes, posições",
+          "role": [
+            "SF",
+            "SL"
+          ],
+          "time": "5 min",
+          "instructions": "Impressão a cores na impressora a cores.\n\nPlastificar → Cortar com guilhotina laser → Fita dupla face TESA → Inserir dentro das caixas ou colar por fora.\n\nRetirar etiqueta do papel de transporte das caixas.",
+          "emailKey": null
+        },
+        {
+          "id": "5.2",
+          "title": "Colocação das etiquetas nas caixas (normas de colagem)",
+          "role": [
+            "TAS"
+          ],
+          "time": "8 horas",
+          "instructions": "Processo de colagem:\n1. Plastificar as etiquetas\n2. Cortar\n3. Colocar fita dupla face (TESA)\n4. Colocar dentro das caixas\n5. Colar na caixa exterior\n6. Colocar caixas nas posições definitivas",
+          "emailKey": null
+        },
+        {
+          "id": "5.3",
+          "title": "Marcar posições nas prateleiras (fita preta + etiquetas de posição)",
+          "role": [
+            "TAS"
+          ],
+          "time": "30 min",
+          "instructions": "Estantes standard: colocar fita cola preta para marcar posições + etiquetas de posição nas prateleiras.\n\nArmários de enfermaria: marcação com fita cola preta e etiquetas de posição feita no serviço clínico (não no arquivo).",
+          "emailKey": null
+        },
+        {
+          "id": "5.4",
+          "title": "Colagem de etiquetas LASA e HIGH ALERT (TSDT Farmácia)",
+          "role": [
+            "TSDT"
+          ],
+          "time": "10 min",
+          "instructions": "Apenas para medicamentos farmacêuticos.\n\nLASA (Look Alike Sound Alike): assinalar na caixa e na etiqueta.\n\nHIGH ALERT: requer confirmação por 2 operadores na utilização.",
+          "emailKey": null
+        },
+        {
+          "id": "5.5",
+          "title": "Validar data de montagem com Enfermeiro chefe",
+          "role": [
+            "SF"
+          ],
+          "time": "1 min",
+          "instructions": "Comunicar data prevista ao Enf. gestor.\n\nSolicitar higienização prévia do espaço se necessário.\n\nSe a data causar perturbação, aguardar sugestão alternativa.",
+          "emailKey": "datamontagem"
+        },
+        {
+          "id": "5.6",
+          "title": "Deslocação e montagem no serviço clínico",
+          "role": [
+            "TAS",
+            "SF"
+          ],
+          "time": "1 dia",
+          "instructions": "Estantes:\n• Montar estantes\n• Caixas na posição certa\n• Colar etiqueta de posição\n\nArmários:\n• Fita cola preta para marcar posições\n• Caixas na posição certa\n\nTransferência:\n• Medicação/materiais antigos → novas caixas\n• Sem stock → virar caixa de baixo para baixo\n• Stock para 1 caixa → colocar e virar a outra\n\nVerificar prazos de validade e condições.\n\nAfixar:\n• Número prateleira/letra armário\n• Index (porta do armário ou sala)\n• Normas de picking (Anexo V)\n• Indicadores visuais (Anexo IV)\n\nCaixas sem stock → zona 'Kanbans para repor' (Anexo VI)",
+          "emailKey": null
+        },
+        {
+          "id": "5.7",
+          "title": "Impressão de tags RFID em lote e saída pelo pórtico",
+          "role": [
+            "SF",
+            "SL"
+          ],
+          "time": "10 min",
+          "instructions": "⚠️ Só imprimir depois de validado o stock e posições no serviço.\n\nImpressão Etiquetas → Caixa → selecionar supermercado → aumentar itens por página → filtrar → Localização → Selecionar todos → Imprimir Etiquetas → Sim\n\nAs tags geradas precisam de sair pelo pórtico para serem ativadas.",
+          "emailKey": null
+        },
+        {
+          "id": "5.8",
+          "title": "Colagem de tags RFID e validação pelo responsável",
+          "role": [
+            "TAS"
+          ],
+          "time": "2 horas",
+          "instructions": "Normas de colagem RFID:\n• Verificar número da etiqueta com posição da caixa\n• Para superfícies rugosas (envelopes, tubos): aplicar fita dupla face antes\n• Quando só existe uma caixa: colocar tag com número mais baixo\n• Quando há 2 caixas: cada uma tem a sua tag",
+          "emailKey": null
+        },
+        {
+          "id": "5.9",
+          "title": "Inventário das tags RFID para validar existências",
+          "role": [
+            "TAS"
+          ],
+          "time": "15 min",
+          "instructions": "OPL de inventário RFID.\n\nSempre precedido e sucedido por inventário ao:\n• Criar novas tags\n• Inativar tags\n• Eliminar tags\n\nGarantir que todas as tags criadas estão fisicamente no serviço.",
+          "emailKey": null
+        },
+        {
+          "id": "5.10",
+          "title": "Afixar normas de utilização e indicadores visuais",
+          "role": [
+            "TAS"
+          ],
+          "time": "2 min",
+          "instructions": "Afixar no local:\n• Anexo IV — Indicadores Visuais\n• Anexo V — Norma de Picking no Supermercado\n\nGarantir que estão visíveis e acessíveis para todos os utilizadores.",
+          "emailKey": null
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "code": "F06",
+      "color": "#0d9488",
+      "label": "Comunicação Final & Devolução",
+      "duration": "~2 dias",
+      "steps": [
+        {
+          "id": "6.1",
           "title": "E-mail de conclusão ao serviço clínico",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "1 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Informar: rotas, designações, cores das caixas, organização do stock, zonas de consolidação, esquema de reposição, regras RFID (exclusividade TAS/SL, pórticos piso -1). Enviar index em PDF.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('conclusaoSC', event)\">✉ Ver template de e-mail (SC)</button>\n      "
+          "instructions": "Informar:\n• Rotas e designações dos supermercados\n• Cores das caixas (stock vs SGICM)\n• Organização do stock por zonas\n• Zonas de consolidação (triângulo amarelo na planta)\n• Esquema de reposição farmacêutica\n• Regras RFID: exclusividade TAS/SL, pórticos piso -1\n\nAnexar Index em PDF.",
+          "emailKey": "conclusaoSC"
         },
         {
+          "id": "6.2",
           "title": "E-mail de conclusão aos SF e SL",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "1 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Para: TSDT, farmacêuticos. Informar rotas, cores, procedimento RSA por PDA (não satisfação de pedidos), responsáveis farmácia. Index disponível em TEAMS.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('conclusaoSFSL', event)\">✉ Ver template de e-mail (SF/SL)</button>\n      "
+          "instructions": "Para: TSDT + farmacêuticos.\n\nInformar:\n• Rotas, designações, cores\n• Procedimento RSA por PDA (não satisfação de pedidos)\n• Responsáveis para reporte de problemas\n• Index disponível em TEAMS: Geral > Ficheiros > STOCKS Serviços (pasta vermelha)",
+          "emailKey": "conclusaoSFSL"
         },
         {
+          "id": "6.3",
           "title": "Devolução de material excedente e limpeza de caixas/estantes",
+          "role": [
+            "TAS"
+          ],
           "time": "7 horas",
-          "body": "\n        <span class=\"role-badge role-tas\">TAS</span><br><br>\n        Artigos excedentes ou retirados → devolver aos armazéns respetivos.<br>\n        Artigos com prazo expirado ou sem condições → inutilizar.<br>\n        Registar no template de Devoluções (Registo de devolução de artigos do SC ao armazém).\n      "
+          "instructions": "Artigos excedentes ou retirados → devolver aos armazéns respetivos (SF ou SL).\n\nArtigos com prazo expirado ou sem condições → inutilizar.\n\nRegistar no template de Devoluções (Registo de devolução de artigos do SC ao armazém):\n• Excesso de stock\n• Fora do prazo / sem condições",
+          "emailKey": null
         },
         {
-          "title": "E-mail com resultados finais (excesso de stock e validades)",
+          "id": "6.4",
+          "title": "E-mail com resultados finais (devoluções e validades)",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "1 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Partilhar dados de devoluções por excesso e prazos expirados. Reforçar responsabilidades do SC na gestão de validades e armazenamento.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('resultadosfinais', event)\">✉ Ver template de e-mail</button>\n      "
+          "instructions": "Enviar dados consolidados das devoluções:\n• Quantidade e custo de artigos por excesso de stock\n• Quantidade e custo de artigos por prazo expirado\n\nReforçar responsabilidades do SC na gestão de validades e armazenamento.",
+          "emailKey": "resultadosfinais"
         }
       ]
     },
     {
-      "title": "Formação<br>&amp; Auditoria",
-      "duration": "⏱ contínuo",
+      "id": 7,
+      "code": "F07",
+      "color": "#8b5cf6",
+      "label": "Formação & Auditoria",
+      "duration": "contínuo",
       "steps": [
         {
+          "id": "7.1",
           "title": "Formação aos intervenientes do serviço clínico",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "40–60 min",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Apresentação PowerPoint. Serviço preenche formulário de formação interna. Enviar questionário de avaliação (Office Forms).\n      "
+          "instructions": "Apresentação em PowerPoint com:\n• Funcionamento do sistema dupla caixa\n• Normas de utilização (picking, kanbans para repor)\n• Regras RFID\n• Casos práticos\n\nServiço preenche formulário de formação interna.\n\nEnviar questionário de avaliação (Office Forms):\nhttps://forms.office.com/Pages/ResponsePage.aspx?id=CEbIIh3wxUaAJGPMli5fUbQH0K98ewFHk-G3-YoM3Z5UMUw3OVZaRFNXSkFIMTRET1U4WkI5UTdMVy4u",
+          "emailKey": null
         },
         {
+          "id": "7.2",
           "title": "Auditorias periódicas — verificação 5S",
+          "role": [
+            "SF",
+            "SL"
+          ],
           "time": "periódico",
-          "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Análise do cumprimento das normas. Verificar: Manutenção, Reposição e Utilização. Identificar Responsabilidades Partilhadas.<br>\n        Não conformidades → contactar responsáveis → ações corretivas → ações de melhoria.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('auditoria', event)\">✉ Ver template de e-mail (auditoria)</button>\n      "
+          "instructions": "Análise de cumprimento das normas do stock dupla caixa.\n\nVerificar:\n• Manutenção (SF/SL)\n• Reposição (TAS SL)\n• Utilização (SC)\n• Responsabilidades Partilhadas\n\nEnviar relatório com grelha de verificação ao Enf. gestor e chefias.\n\nNão conformidades detetadas:\n1. Contactar responsáveis dos intervenientes\n2. Definir ações corretivas\n3. Acompanhar implementação\n4. Registar na próxima auditoria",
+          "emailKey": "auditoria"
         }
       ]
     }
