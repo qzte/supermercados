@@ -209,6 +209,53 @@ if (emailRaw) {
   }
 }
 
+// ── 3b. Endereços de e-mail nominais ─────────────────────────────────────────
+// Este repositório é público e indexável. Endereços nominais de pessoas reais,
+// juntos com a estrutura do processo e os templates que acompanham cada etapa,
+// dão a um atacante o material para phishing dirigido a uma unidade de saúde:
+// consegue reproduzir a linguagem, os remetentes e o momento exacto em que cada
+// mensagem é esperada. É também uma questão de minimização de dados.
+//
+// A convenção do repositório já é identificar destinatários por função
+// ("Serviço Clínico: Enfermeiro(a) gestor(a)", "Diretor(a) SF · …"): 12 dos 13
+// templates faziam-no e dois eram a excepção. Esta verificação impede que a
+// excepção volte — o achado A5 do SECURITY_AUDIT.md.
+//
+// A lista abaixo é de **caixas de função**, não de pessoas. Acrescentar aqui um
+// endereço nominal derrota o propósito da verificação; o caminho certo é usar a
+// função ("Farmacêutico(a) da CCIRA") ou um campo <FILL> a preencher no envio.
+console.log('\nEndereços de e-mail');
+
+const FUNCTION_MAILBOXES = new Set([
+  'gestao.supermercados@ulsm.min-saude.pt',
+  'tsdt.farmacia@ulsm.min-saude.pt',
+  'farmacêuticos_ulsm@ulsm.min-saude.pt',
+]);
+
+// Inclui acentuados: os endereços do domínio usam-nos.
+const EMAIL_RE = /[\p{L}0-9._%+-]+@[\p{L}0-9.-]+\.[\p{L}]{2,}/gu;
+const nominalFound = new Map();
+
+for (const name of ['email-template.json', 'workflow-default.json']) {
+  const raw = await readFile(join(ROOT, name), 'utf8').catch(() => null);
+  if (raw === null) continue;
+  for (const addr of raw.match(EMAIL_RE) || []) {
+    if (FUNCTION_MAILBOXES.has(addr.toLowerCase())) continue;
+    if (!nominalFound.has(addr)) nominalFound.set(addr, name);
+  }
+}
+
+if (nominalFound.size) {
+  for (const [addr, where] of nominalFound) {
+    fail(`endereço de e-mail não reconhecido como caixa de função: ${addr}. ` +
+      `Se é de uma pessoa, substituir pela função (é o que os outros templates fazem) ` +
+      `ou por um campo <FILL>; se é mesmo uma caixa de função, acrescentar a ` +
+      `FUNCTION_MAILBOXES em tools/validate.mjs.`, where);
+  }
+} else {
+  ok(`só caixas de função (${FUNCTION_MAILBOXES.size} conhecidas), sem endereços nominais`);
+}
+
 // ── 4. ulsm_supermercados_backup.json ────────────────────────────────────────
 console.log('\nulsm_supermercados_backup.json');
 

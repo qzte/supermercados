@@ -1,14 +1,15 @@
 # Auditoria de Segurança — `qzte/supermercados`
 
-**Data:** 2026-08-04 · **Revisto:** 2026-08-04 (correcção de A2/A2b)
-**Versão auditada:** v3.15.1 (`ec2a05a`) · **A2 e A2b corrigidos em** v3.15.2
-
-> As referências a linhas (`ficheiro:linha`) são da revisão auditada `ec2a05a`.
-> A correcção do A2 acrescentou código, pelo que na versão actual estão
-> deslocadas — os nomes das funções continuam a ser o ponto de entrada fiável.
+**Data:** 2026-08-04
+**Versão auditada:** v3.15.1 (`ec2a05a`)
+**Corrigidos:** A2 e A2b em v3.15.2 · A5 em v3.15.3
 **Alvo:** `src/index.src.html` (fonte), `index.html` (servido), `tools/build.mjs`,
 `.github/workflows/build.yml`, `workflow-default.json`, `email-template.json`,
 `manifest.webmanifest`, histórico Git.
+
+> As referências a linhas (`ficheiro:linha`) são da revisão auditada `ec2a05a`.
+> As correcções acrescentaram código, pelo que na versão actual estão deslocadas
+> — os nomes das funções continuam a ser o ponto de entrada fiável.
 
 ---
 
@@ -45,7 +46,7 @@ o histórico do processo.
 | A2b | Execução via `blob:` no visualizador de PDF | **Alta** | Sim | ✅ v3.15.2 |
 | A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 | aberto |
 | A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | aberto |
-| A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim | aberto |
+| A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim | ✅ v3.15.3 (parcial) |
 | A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno | aberto |
 | A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | aberto |
 | A8 | `eval()` na geração de PDF | **Baixa** | Não (hoje) | aberto |
@@ -313,16 +314,22 @@ São **cinco** bibliotecas de terceiros a correr com plena confiança.
 
 ### A5 — Dados pessoais e institucionais em repositório público · **Média**
 
-**Evidência** — `email-template.json` (e as cópias inline no HTML) contêm
-endereços nominais reais:
+**Evidência** — `email-template.json`, `workflow-default.json` e a cópia inline
+no HTML continham **quatro** endereços nominais, concentrados em dois campos:
 
-```
-filipe.sousa@ulsm.min-saude.pt      marta.lourenco@ulsm.min-saude.pt
-vera.soares.lopes@ulsm.min-saude.pt tsdt.farmacia@ulsm.min-saude.pt
-gestao.supermercados@ulsm.min-saude.pt  uticos_ulsm@ulsm.min-saude.pt
-```
+| Onde | Conteúdo |
+|---|---|
+| `ccira.para` | `ana.durães@ulsm.min-saude.pt` |
+| `conclusaoSFSL.cc` | `filipe.sousa@` · `marta.lourenco@` · `vera.soares.lopes@` |
+| `workflow-default.json`, passo 2.7 | `ana.durães@ulsm.min-saude.pt` |
+| `conclusaoSFSL.body` | cinco nomes próprios de pessoas |
 
-Somam-se os cinco nomes próprios usados como PIN (A1).
+Os restantes endereços (`gestao.supermercados@`, `tsdt.farmacia@`,
+`farmacêuticos_ulsm@`) são **caixas de função**, não pessoas.
+
+Somam-se os cinco nomes próprios usados como PIN (A1) e os cinco nomes completos
+da constante `TEAM` (`:2424`) — estes últimos, ao contrário dos endereços, são
+funcionais: alimentam a lista de responsáveis por processo.
 
 **Impacto** — O repositório e o site são públicos e indexáveis. O conjunto
 "nomes + endereços + estrutura interna do processo + templates de e-mail reais"
@@ -331,16 +338,55 @@ atacante consegue reproduzir a linguagem, os remetentes e o momento exacto do
 processo em que cada mensagem é esperada. É também uma questão de minimização de
 dados à luz do RGPD.
 
-**Recomendação**
-- Substituir os endereços nominais por *placeholders* — o mecanismo já existe: o
-  `renderEmailBody()` (`:777`) trata `<FILL>…</FILL>` como campo a preencher.
-  `<FILL>endereço do gestor</FILL>` funciona sem qualquer código novo.
-- Manter apenas endereços genéricos de função (`gestao.supermercados@…`) se forem
-  mesmo necessários.
-- Se a substituição não for viável, **tornar o repositório privado** e publicar
-  por GitHub Pages privado ou por alojamento interno.
-- Notar que a remoção só resolve o futuro: os endereços permanecem no histórico
-  Git (ver A10) e podem já estar indexados.
+#### ✅ Corrigido em v3.15.3
+
+A correcção acabou por não ser uma redacção, mas uma **reposição da convenção que
+o próprio repositório já seguia**: 11 dos 13 templates identificam
+destinatários por função (`"Serviço Clínico: Enfermeiro(a) gestor(a)"`,
+`"Diretor(a) SF · Diretor(a) SL · …"`). Os dois campos com endereços nominais
+eram a excepção, não a regra. Passaram a:
+
+| Campo | Antes | Depois |
+|---|---|---|
+| `ccira.para` | endereço nominal | `Serviços Farmacêuticos: Farmacêutico(a) da CCIRA` |
+| `conclusaoSFSL.cc` | três endereços nominais | `Chefias dos SF e SL` |
+| passo 2.7 do workflow | `… CCIRA (endereço nominal)` | `… pela farmacêutica CCIRA` |
+| `conclusaoSFSL.body` | cinco nomes próprios | `<FILL>[indicar responsáveis]</FILL>` |
+
+Identificar por função é também mais robusto do que por pessoa: sobrevive a
+mudanças de equipa, que era o que fazia estes campos envelhecerem.
+
+**Deliberadamente não adivinhado** — os três endereços do `cc` pertenciam a
+pessoas cujos cargos exactos não constam do repositório. Em vez de inventar
+"Diretor(a) SF · Diretor(a) SL · Gestor(a) SF", ficou `Chefias dos SF e SL`. Se
+a lista precisa for útil, é uma edição de uma linha por quem sabe os cargos.
+
+**Guarda contra reintrodução** — `tools/validate.mjs` passa a falhar perante
+qualquer endereço nos JSON servidos que não esteja na lista de caixas de função.
+Acrescentar um endereço nominal à lista derrota o propósito; a mensagem de erro
+di-lo e aponta as alternativas. Testado: repondo o endereço removido, o
+validador falha com código 1.
+
+**Verificação** — 8 testes em Chromium contra a app servida por HTTP: os 13
+templates carregam do ficheiro servido (e não do fallback inline), os dois
+campos têm o valor novo, o modal de e-mail abre, o `<FILL>` do corpo renderiza
+como campo a preencher, e não sobra nenhum nome próprio nem endereço nominal no
+que o utilizador vê.
+
+**Fica por resolver** — três coisas que esta correcção não toca:
+- Os endereços **permanecem no histórico Git**, que é público. Remover de um
+  ficheiro não remove do histórico, e podem já estar indexados. Tratá-los como
+  divulgados.
+- A constante `TEAM` (`:2424`) tem cinco nomes completos. É funcional — alimenta
+  a atribuição de responsáveis — pelo que removê-la parte a aplicação. Decisão
+  de quem mantém: manter, mudar para iniciais, ou passar a dados carregados do
+  backup em vez de código.
+- Os PINs continuam a ser nomes próprios (A1).
+
+**Alternativa não seguida** — tornar o repositório privado resolveria os três
+pontos de uma vez, mas o GitHub Pages passaria a exigir plano pago e o site
+deixaria de estar acessível no URL público que a equipa usa. Fica registada como
+opção, não como recomendação.
 
 **Ponto positivo** — o `ulsm_supermercados_backup.json` versionado está vazio
 (`"data": []`) e, verificado em todo o histórico, **nunca** conteve registos
@@ -520,8 +566,9 @@ Registado por ser relevante para a avaliação e para não ser desfeito:
    durante a correcção, e uma guarda no `build.mjs` contra a regressão.
 2. **A1**: retirar os PINs em claro; hashes SHA-256 injectados em runtime, ou
    assumir a app como sem controlo de acesso e remover a fachada.
-3. **A5**: substituir os endereços nominais por `<FILL>`, ou tornar o
-   repositório privado.
+3. ~~**A5**~~ ✅ **feito em v3.15.3** — endereços nominais substituídos pela
+   função, guarda no `validate.mjs` contra a reintrodução. Continuam em aberto o
+   histórico Git (público e já divulgado) e a constante `TEAM`.
 
 **Prioridade 2 — próxima iteração**
 4. **A3**: acrescentar a `meta` CSP (idealmente com hash do script inline
