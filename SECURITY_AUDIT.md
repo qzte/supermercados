@@ -1,7 +1,11 @@
 # Auditoria de Segurança — `qzte/supermercados`
 
-**Data:** 2026-08-04
-**Versão auditada:** v3.15.1 (`ec2a05a`)
+**Data:** 2026-08-04 · **Revisto:** 2026-08-04 (correcção de A2/A2b)
+**Versão auditada:** v3.15.1 (`ec2a05a`) · **A2 e A2b corrigidos em** v3.15.2
+
+> As referências a linhas (`ficheiro:linha`) são da revisão auditada `ec2a05a`.
+> A correcção do A2 acrescentou código, pelo que na versão actual estão
+> deslocadas — os nomes das funções continuam a ser o ponto de entrada fiável.
 **Alvo:** `src/index.src.html` (fonte), `index.html` (servido), `tools/build.mjs`,
 `.github/workflows/build.yml`, `workflow-default.json`, `email-template.json`,
 `manifest.webmanifest`, histórico Git.
@@ -34,18 +38,19 @@ o histórico do processo.
 
 ## Resumo executivo
 
-| # | Achado | Severidade | Explorável por terceiros |
-|---|---|---|---|
-| A1 | PINs de editor em claro no ficheiro servido | **Alta** | Sim |
-| A2 | XSS armazenado via ficheiro de workflow/backup importado | **Alta** | Sim |
-| A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 |
-| A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim |
-| A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim |
-| A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno |
-| A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável |
-| A8 | `eval()` na geração de PDF | **Baixa** | Não (hoje) |
-| A9 | GitHub Actions com `contents: write` e actions não fixadas por SHA | **Baixa** | Interno |
-| A10 | **Regressão:** correcções de segurança anteriores foram perdidas | **Processo** | — |
+| # | Achado | Severidade | Explorável por terceiros | Estado |
+|---|---|---|---|---|
+| A1 | PINs de editor em claro no ficheiro servido | **Alta** | Sim | aberto |
+| A2 | XSS armazenado via ficheiro de workflow/backup importado | **Alta** | Sim | ✅ v3.15.2 |
+| A2b | Execução via `blob:` no visualizador de PDF | **Alta** | Sim | ✅ v3.15.2 |
+| A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 | aberto |
+| A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | aberto |
+| A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim | aberto |
+| A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno | aberto |
+| A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | aberto |
+| A8 | `eval()` na geração de PDF | **Baixa** | Não (hoje) | aberto |
+| A9 | GitHub Actions com `contents: write` e actions não fixadas por SHA | **Baixa** | Interno | parcial |
+| A10 | **Regressão:** correcções de segurança anteriores foram perdidas | **Processo** | — | parcial |
 
 Duas prioridades sobressaem: **A2** (única via de execução de código por um
 atacante externo) e **A10** (o repositório já teve estas correcções e perdeu-as;
@@ -146,28 +151,85 @@ para endereços `@ulsm.min-saude.pt`), e falsificar registos. A troca de ficheir
 JSON entre colegas é **o mecanismo normal de partilha desta aplicação**, o que
 torna o vector plausível, não teórico.
 
-**Recomendação — a correcção mais simples é também a mais forte.**
-Verifiquei o `workflow-default.json` publicado: **nenhum dos passos contém
-etiquetas HTML nas instruções** (0 em todos os passos das 7 fases). O
-`dangerouslySetInnerHTML` não está a servir nada que o texto simples não sirva.
-Portanto:
+#### ✅ Corrigido em v3.15.2
 
-1. Trocar ambos os sinks por texto — `{ph.label}` e `{step.instructions}` — com
-   `white-space: pre-wrap` no CSS para manter as quebras de linha que hoje se
-   obtêm via `.replace(/\n/g, '<br>')`. Isto **elimina a classe de vulnerabilidade**
-   em vez de a filtrar.
-2. Se o HTML rico for mesmo um requisito futuro do editor, então sanitizar com
-   DOMPurify (com SRI) antes de renderizar, e nunca confiar em `.replace()`.
-3. Complementarmente, validar o workflow importado com um `sanitizeWorkflow()`
-   equivalente ao `sanitizeProcs()` que já existe (`:2605`) e que — bem — já
-   protege o caminho dos processos com `toSafeText()`. O workflow é hoje a única
-   parte do backup que escapa a essa validação.
+**Correcção da recomendação original.** A primeira versão deste relatório
+recomendava trocar os dois sinks por texto simples, com o argumento de que o
+`workflow-default.json` publicado não tem uma única etiqueta HTML. O facto está
+certo, a conclusão estava errada: **as imagens e os PDFs anexados aos passos são
+guardados como HTML dentro das próprias `instructions`** — o editor insere-os no
+`.step-body` (`:1845`, `:2088`) e o `serializeWorkflow()` captura o `innerHTML`
+desse elemento. Passar a texto simples teria apagado silenciosamente todos os
+anexos de quem os usa. A recomendação válida era a segunda: sanitizar.
+
+O que foi feito:
+
+1. **`sanitizeRichText()`** — allowlist construída a partir do que o editor
+   realmente produz. O parse é feito com `DOMParser.parseFromString`, que cria um
+   documento inerte (os `<script>` não correm, os `src`/`href` não são pedidos à
+   rede), e depois a árvore é percorrida: tags fora da allowlist são
+   desembrulhadas (perde-se a tag, mantém-se o texto), tags cujo conteúdo é
+   código ou metadados (`script`, `style`, `iframe`, `svg`, `form`…) são
+   removidas com a subárvore, e todos os atributos `on*` e `style` caem. Filtrar
+   HTML com expressões regulares nunca é seguro; por isso o trabalho é do parser.
+2. **Aplicado no `buildPhasesFromData()`**, que é o ponto de passagem obrigatório
+   — verificou-se que **as oito atribuições a `window.__ULSM_PHASES` passam todas
+   por lá**, pelo que as quatro vias de entrada da tabela acima ficam cobertas
+   num só sítio.
+3. **Guarda no `tools/build.mjs`** que falha o build se o `sanitizeRichText`
+   desaparecer, se o `buildPhasesFromData` deixar de o chamar duas vezes, ou se
+   aparecer um `dangerouslySetInnerHTML` novo. É a resposta directa ao A10: a
+   correcção anterior perdeu-se por substituição de ficheiro, sem conflito e sem
+   aviso — agora o build dá o aviso.
+
+**Verificação.** Suite de 29 testes em Chromium (Playwright) contra a aplicação
+servida por HTTP, com o React carregado para o render ser mesmo exercitado: 13
+payloads bloqueados (`onerror`, `<script>`, `<svg onload>`, `srcdoc`,
+`ontoggle`, `formaction`, `javascript:`, variações de maiúsculas e sem aspas),
+9 casos de conteúdo legítimo preservados (listas, negrito, `<br>`, acentos,
+imagem anexada, pill de PDF com o seu `data-pdf-path`), e o ataque
+ponta-a-ponta. Como controlo negativo, a mesma prova corrida contra o código de
+`main` anterior à correcção: **os dois payloads executam**. Depois da correcção,
+nenhum.
 
 **Nota relacionada** — `serializeWorkflow()` lê `innerHTML` dos elementos
 `contenteditable` (`:1147`, `:1156`). Colar texto formatado (de Word, de uma
-página web) no editor grava markup arbitrário no template, que depois volta pelos
-mesmos sinks. Mesmo sem atacante, isto polui os dados; com a correcção acima,
-deve passar a `textContent`.
+página web) no editor continua a gravar markup no template. Deixou de ser um
+risco de segurança — tudo o que sai dali volta a passar pelo `sanitizeRichText`
+na leitura — mas continua a poluir os dados.
+
+---
+
+### A2b — Execução via `blob:` no visualizador de PDF · **Alta** · ✅ Corrigido em v3.15.2
+
+Achado durante a correcção do A2, e não identificado na primeira análise.
+
+**Evidência** — `openPdfPopup()` construía o Blob com o MIME lido do próprio
+`data:` URL e punha-o no `<embed>`:
+
+```js
+const mime = header.match(/:(.*?);/)[1];
+const blob = new Blob([arr], {type: mime});
+_pdfPopupBlobUrl = URL.createObjectURL(blob);
+document.getElementById('pdfPopupEmbed').src = _pdfPopupBlobUrl;
+```
+
+**Impacto** — Um `data-pdf-path` com `data:text/html;base64,…` produzia um
+`blob:` de tipo `text/html`. Os `blob:` herdam a origem de quem os cria, pelo que
+o conteúdo executava **na origem da aplicação**, com o mesmo alcance do A2. Era
+um segundo caminho para o mesmo resultado, e sobreviveria a uma correcção que
+tratasse apenas dos sinks de render.
+
+**Correcção** — O `sanitizeRichText` só aceita `data-pdf-path`/`data-pdf-src`
+com MIME `application/pdf`, e o `openPdfPopup` verifica o MIME outra vez antes de
+criar o Blob, recusando e avisando em vez de abrir. O `catch` de fallback também
+deixou de reencaminhar o `data:` URL original para o `<embed>` — passar ao
+browser exactamente o conteúdo que se acabou de rejeitar não é um fallback.
+
+**Nota menor, corrigida no mesmo passo** — o nome do ficheiro PDF era
+interpolado sem escape em `pill.innerHTML` (`:1850`). Um PDF chamado
+`<img src=x onerror=…>.pdf` injectava HTML, que o `serializeWorkflow` gravava
+depois nas `instructions`. Passou a `textContent`.
 
 ---
 
@@ -453,9 +515,9 @@ Registado por ser relevante para a avaliação e para não ser desfeito:
 ## Plano de remediação sugerido
 
 **Prioridade 1 — fazer já**
-1. **A2**: substituir os dois `dangerouslySetInnerHTML` por texto com
-   `white-space: pre-wrap`. Correcção pequena, sem perda funcional (o workflow
-   publicado não contém HTML), elimina a classe de vulnerabilidade.
+1. ~~**A2**~~ ✅ **feito em v3.15.2** — sanitização por allowlist no
+   `buildPhasesFromData`, mais o A2b (`blob:` no visualizador de PDF) encontrado
+   durante a correcção, e uma guarda no `build.mjs` contra a regressão.
 2. **A1**: retirar os PINs em claro; hashes SHA-256 injectados em runtime, ou
    assumir a app como sem controlo de acesso e remover a fachada.
 3. **A5**: substituir os endereços nominais por `<FILL>`, ou tornar o
