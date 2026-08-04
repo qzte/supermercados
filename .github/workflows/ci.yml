@@ -1,0 +1,88 @@
+name: CI
+
+# Verificação das alterações antes de irem para `main`. Complementa o `build.yml`
+# — não o substitui. A divisão é deliberada:
+#
+#   build.yml  compila e faz *commit* dos ficheiros gerados. Só corre em `push`
+#              e só quando muda `src/`, `tools/` ou `package*.json`.
+#   ci.yml     apenas *verifica*, sem escrever nada no repositório, e corre em
+#              todos os pull requests.
+#
+# A lacuna que este ficheiro fecha: uma alteração só a `workflow-default.json` ou
+# a `email-template.json` não aciona o `build.yml`, portanto hoje chega a `main`
+# sem qualquer verificação. São precisamente os ficheiros que falham em silêncio
+# — o `workflow-default.json` esteve meses em esquema legado, servido mas nunca
+# lido, sem ninguém dar por isso.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Só de leitura: este workflow nunca escreve no repositório. O `build.yml` é que
+# precisa de `contents: write`, e mantém-no isolado no ficheiro dele.
+permissions:
+  contents: read
+
+# Um push novo no mesmo PR torna a execução anterior irrelevante — cancelar
+# poupa tempo de fila sem perder informação.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validar:
+    name: Validar
+    runs-on: ubuntu-latest
+
+    steps:
+      # Actions fixadas por SHA e não por tag: uma tag pode ser reapontada para
+      # outro commit, o que faria o CI passar a executar código diferente sem
+      # que nada mudasse aqui.
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # O passo de push é do build.yml. Aqui as credenciais não fazem falta e
+          # ficariam expostas ao código que o build executa.
+          persist-credentials: false
+
+      - name: Node 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: npm
+
+      # `--ignore-scripts`: o build só precisa do Babel como biblioteca; nenhuma
+      # dependência tem scripts de instalação legítimos a correr aqui.
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      # Ficheiros que a app vai buscar por fetch() em runtime: nomes exactos
+      # (o Pages é case-sensitive), JSON válido, coerência interna e referências
+      # cruzadas entre o workflow e os templates de e-mail.
+      - name: Validar ficheiros servidos
+        run: npm run validate
+
+      # Compila o JSX. Falha se o JSX estiver partido, se a versão em
+      # `APP_VERSION` e no badge divergirem, ou se o `workflow-default.json`
+      # estiver em esquema legado. Escreve para o workspace, que é descartado —
+      # o commit dos ficheiros gerados é responsabilidade do build.yml.
+      - name: Compilar
+        run: npm run build
+
+      # Para PRs vindos de forks o build.yml não corre (o gatilho é `push` no
+      # repositório), pelo que os ficheiros gerados têm de vir já actualizados no
+      # próprio PR — é o que o README pede a quem contribui de fora. Em PRs deste
+      # repositório a verificação seria uma corrida com o commit do bot, que
+      # sincroniza os ficheiros um minuto depois; daí a condição.
+      - name: Ficheiros gerados actualizados (PRs de forks)
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          if ! npm run check --silent; then
+            echo "::error::Os ficheiros gerados não correspondem a src/index.src.html."
+            echo "::error::Corre \`npm ci && npm run build\` e faz commit de index.html e ulsm_supermercados_*.html."
+            exit 1
+          fi

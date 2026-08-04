@@ -6,7 +6,9 @@
   "description": "Build da aplicação ULSM · Gestão de Supermercados (compila o JSX de src/index.src.html)",
   "scripts": {
     "build": "node tools/build.mjs",
-    "check": "node tools/build.mjs --check"
+    "check": "node tools/build.mjs --check",
+    "validate": "node tools/validate.mjs",
+    "ci": "npm run validate && npm run check"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",

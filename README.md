@@ -28,6 +28,8 @@ supermercados/
 ├── ulsm_supermercados_3_12_0.html      # 🤖  cópia arquivada (idêntica)
 │
 ├── .github/workflows/build.yml         #     compila e faz commit no push
+├── .github/workflows/ci.yml            #     valida os pull requests
+├── tools/validate.mjs                  #     valida os ficheiros servidos
 ├── package.json                        #     dependências do build
 ├── .nojekyll                           #     desativa o processamento Jekyll
 └── README.md                           #     este ficheiro
@@ -63,9 +65,53 @@ O nome do ficheiro arquivado deriva de `APP_VERSION`, e a cópia da versão ante
 npm ci
 npm run build     # gera index.html + cópia versionada
 npm run check     # verifica se estão actualizados, sem escrever
+npm run validate  # valida os ficheiros JSON servidos
+npm run ci        # validate + check — o mesmo que corre no CI
 ```
 
 `npm run check` é o que evita que o `index.html` fique dessincronizado da fonte.
+
+---
+
+## Integração contínua
+
+Duas Actions, com papéis separados de propósito:
+
+| Workflow | Quando corre | O que faz | Permissões |
+|---|---|---|---|
+| `build.yml` | `push` que toque em `src/`, `tools/` ou `package*.json` | compila e **faz commit** dos ficheiros gerados | `contents: write` |
+| `ci.yml` | todos os **pull requests** e `push` para `main` | apenas **verifica**; não escreve nada | `contents: read` |
+
+O `ci.yml` existe para fechar uma lacuna concreta: uma alteração só a
+`workflow-default.json` ou a `email-template.json` **não aciona o `build.yml`**,
+porque não está nos caminhos do gatilho. Eram por isso os únicos ficheiros a
+chegar a `main` sem verificação nenhuma — e são precisamente os que falham em
+silêncio, porque a app cai num fallback inline em vez de dar erro. O
+`workflow-default.json` já esteve meses em esquema legado, servido mas nunca
+lido, sem ninguém dar por isso.
+
+O que o `ci.yml` verifica:
+
+1. **`npm run validate`** — os três ficheiros que a app vai buscar por `fetch()`:
+   nome exacto (o Pages é case-sensitive), JSON válido, ids de fase e de passo
+   únicos, campos obrigatórios dos templates de e-mail, e a **referência cruzada**
+   entre os dois — um `emailKey` sem template correspondente não dá erro nenhum
+   em runtime, o botão "Ver template de e-mail" simplesmente não faz nada.
+   Valida ainda o envelope do backup e os ícones do manifest.
+2. **`npm run build`** — compila o JSX. Falha se o JSX estiver partido, se
+   `APP_VERSION` e o badge do cabeçalho divergirem, ou se o `workflow-default.json`
+   estiver em esquema legado.
+3. **`npm run check`** — só em PRs vindos de **forks**, onde o `build.yml` não
+   corre e os ficheiros gerados têm de vir já actualizados no próprio PR. Em PRs
+   deste repositório a verificação seria uma corrida com o commit do bot, que
+   sincroniza os ficheiros um minuto depois.
+
+Correr `npm run ci` localmente reproduz os pontos 1 e 3.
+
+As actions estão fixadas por SHA em vez de tag: uma tag pode ser reapontada para
+outro commit, o que faria o CI passar a executar código diferente sem que nada
+mudasse no repositório. Ao actualizar, trocar o SHA **e** o comentário com a
+versão que fica ao lado.
 
 ---
 
