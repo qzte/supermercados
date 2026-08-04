@@ -90,6 +90,43 @@ need(workflowIsFullFormat,
 const workflowSteps = workflow.phases.reduce((n, ph) => n + (ph.steps || []).length, 0);
 need(workflowSteps > 0, 'workflow-default.json não tem passos.');
 
+// ── 1c. Sanitização do HTML do workflow ──────────────────────────────────────
+// O `label` das fases e as `instructions` dos passos são renderizados com
+// dangerouslySetInnerHTML a partir de ficheiros JSON que o utilizador importa.
+// Sem sanitização, um ficheiro preparado por terceiros executa JavaScript na
+// origem da aplicação e fica gravado no localStorage.
+//
+// Esta guarda existe porque a auditoria mostrou que correcções de segurança
+// deste repositório já se perderam duas vezes — não por alguém as reverter, mas
+// por o ficheiro ser substituído por uma cópia local mais antiga ("Add files via
+// upload"), sem conflito e sem aviso. Falhar o build é o que dá o aviso.
+
+need(/function sanitizeRichText\s*\(/.test(source),
+  'não encontrei a função `sanitizeRichText`. É ela que impede que um workflow ' +
+  'importado execute JavaScript — ver o achado A2 do SECURITY_AUDIT.md.');
+
+const buildPhasesBody = source.match(
+  /function buildPhasesFromData\s*\([\s\S]*?\n\}/);
+need(buildPhasesBody, 'não encontrei a função `buildPhasesFromData`.');
+
+const sanitizedFields = (buildPhasesBody[0].match(/sanitizeRichText\s*\(/g) || []).length;
+need(sanitizedFields >= 2,
+  `o \`buildPhasesFromData\` só chama sanitizeRichText ${sanitizedFields} vez(es), esperava 2 ` +
+  '(um para `label`, outro para `instructions`). É o ponto de passagem obrigatório de todos ' +
+  'os workflows — importados, obtidos por fetch ou vindos do localStorage — e sem esses dois ' +
+  'filtros a aplicação volta a ficar vulnerável a XSS armazenado (achado A2 do SECURITY_AUDIT.md).');
+
+// Tripwire: qualquer sink de HTML novo tem de ser uma decisão consciente. Se
+// este número mudar, verificar que o conteúdo do novo sink passa por
+// sanitizeRichText antes de actualizar o valor esperado aqui.
+// `dangerouslySetInnerHTML={{` e não só o nome: a palavra também aparece em
+// comentários, que não são sinks.
+const htmlSinks = (source.match(/dangerouslySetInnerHTML\s*=\s*\{\{/g) || []).length;
+need(htmlSinks === 2,
+  `encontrei ${htmlSinks} usos de \`dangerouslySetInnerHTML\`, esperava 2 (label da fase e ` +
+  'instruções do passo). Se acrescentaste um sink novo, garante que o conteúdo passa por ' +
+  '`sanitizeRichText` e actualiza o número esperado em tools/build.mjs.');
+
 // ── 2. Compilar o bloco JSX ──────────────────────────────────────────────────
 const jsxBlock = /<script type="text\/babel"[^>]*>([\s\S]*?)<\/script>/;
 const jsxMatch = source.match(jsxBlock);
