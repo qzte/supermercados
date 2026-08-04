@@ -18,7 +18,7 @@
     },
     "ccira": {
       "title": "Validação de Antimicrobianos — Farmacêutica CCIRA",
-      "para": "ana.durães@ulsm.min-saude.pt",
+      "para": "Serviços Farmacêuticos: Farmacêutico(a) da CCIRA",
       "cc": "—",
       "rem": "gestao.supermercados@ulsm.min-saude.pt",
       "assunto": "Validação Antimicrobianos — [Nome do Serviço]",
@@ -83,10 +83,10 @@
     "conclusaoSFSL": {
       "title": "Conclusão da Revisão — E-mail aos SF e SL",
       "para": "tsdt.farmacia@ulsm.min-saude.pt · farmacêuticos_ulsm@ulsm.min-saude.pt",
-      "cc": "filipe.sousa@ulsm.min-saude.pt · marta.lourenco@ulsm.min-saude.pt · vera.soares.lopes@ulsm.min-saude.pt",
+      "cc": "Chefias dos SF e SL",
       "rem": "gestao.supermercados@ulsm.min-saude.pt",
       "assunto": "Revisão Concluída SF/SL — [Nome do Serviço]",
-      "body": "Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa de <FILL>[inserir serviço]</FILL> se encontra terminada.\n\nA rota passa a ter os supermercados <FILL>_________</FILL>, com as designações <FILL>____________</FILL>. As caixas do stock são <FILL>___cor___</FILL>. As caixas dos pedidos SGICM estão identificadas com a cor <FILL>__________</FILL>.\n\nO stock está organizado da seguinte forma:\n<FILL>[Mencionar as zonas existentes]</FILL>\n\nA organização do stock de dupla caixa está simulada na seguinte planta:\n[COLAR IMAGEM DA PLANTA]\n\nA reposição de material farmacêutico ocorre <FILL>[esquema de reposição]</FILL>.\n\nRelembro que o stock está equipado com etiquetas RFID, assim a rota tem de ser transportada exclusivamente pelos TAS do Serviço de Logística, que devem passar pelos pórticos sitos no piso -1. O procedimento de enviar caixas/kanbans através de TAS do próprio serviço passa a ser proibido. A rota deve ser debitada com recurso a PDA, com movimento do tipo RSA (não deve ser consolidado pedido através do menu \"satisfação de pedidos\").\n\nNo caso dos Serviços Farmacêuticos, a existência de problemas deve ser reportada aos responsáveis (Ana Correia, Andreia, Rafaela, Marta Figueiredo e Flávia). O Index de material farmacêutico está disponível no TEAMS: Geral > Ficheiros > STOCKS Serviços (pasta vermelha).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
+      "body": "Bom dia/Boa tarde,\n\nVimos por este meio informar que a revisão do stock de dupla caixa de <FILL>[inserir serviço]</FILL> se encontra terminada.\n\nA rota passa a ter os supermercados <FILL>_________</FILL>, com as designações <FILL>____________</FILL>. As caixas do stock são <FILL>___cor___</FILL>. As caixas dos pedidos SGICM estão identificadas com a cor <FILL>__________</FILL>.\n\nO stock está organizado da seguinte forma:\n<FILL>[Mencionar as zonas existentes]</FILL>\n\nA organização do stock de dupla caixa está simulada na seguinte planta:\n[COLAR IMAGEM DA PLANTA]\n\nA reposição de material farmacêutico ocorre <FILL>[esquema de reposição]</FILL>.\n\nRelembro que o stock está equipado com etiquetas RFID, assim a rota tem de ser transportada exclusivamente pelos TAS do Serviço de Logística, que devem passar pelos pórticos sitos no piso -1. O procedimento de enviar caixas/kanbans através de TAS do próprio serviço passa a ser proibido. A rota deve ser debitada com recurso a PDA, com movimento do tipo RSA (não deve ser consolidado pedido através do menu \"satisfação de pedidos\").\n\nNo caso dos Serviços Farmacêuticos, a existência de problemas deve ser reportada aos responsáveis (<FILL>[indicar responsáveis]</FILL>). O Index de material farmacêutico está disponível no TEAMS: Geral > Ficheiros > STOCKS Serviços (pasta vermelha).\n\nAo dispor para qualquer esclarecimento,\nGestão de Supermercados"
     },
     "resultadosfinais": {
       "title": "Notificação com Resultados Finais (Devoluções e Validades)",
