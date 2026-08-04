@@ -108,10 +108,31 @@ O que o `ci.yml` verifica:
 
 Correr `npm run ci` localmente reproduz os pontos 1 e 3.
 
-As actions estão fixadas por SHA em vez de tag: uma tag pode ser reapontada para
-outro commit, o que faria o CI passar a executar código diferente sem que nada
-mudasse no repositório. Ao actualizar, trocar o SHA **e** o comentário com a
-versão que fica ao lado.
+### Endurecimento
+
+Aplica-se aos **dois** workflows:
+
+- **Actions fixadas por SHA**, não por tag — uma tag pode ser reapontada para
+  outro commit, e o CI passaria a executar código diferente sem que nada mudasse
+  no repositório. Ao actualizar, trocar o SHA **e** o comentário com a versão que
+  fica ao lado.
+- **`npm ci --ignore-scripts`** — o build só precisa do Babel como biblioteca.
+- **`persist-credentials: false`** no `checkout`. Sem isto o token fica gravado
+  em `.git/config` durante todo o job, incluindo enquanto correm o `npm ci` e o
+  `tools/build.mjs` — passos que executam código do repositório e das suas
+  dependências.
+
+No `build.yml`, que é o único que escreve, o token existe apenas no ambiente do
+passo de commit e o URL vai como argumento do `git push` (que, ao contrário do
+`git remote add`, não grava nada). O refspec é explícito porque, sem credenciais
+persistidas, não há upstream configurado.
+
+> ⚠️ O passo de commit do `build.yml` **nunca chegou a correr** neste
+> repositório: quem edita tem sempre feito o build localmente, pelo que o
+> workflow encontra "nada a fazer" e sai antes do push. Para o exercitar, editar
+> `src/index.src.html` pela interface web do GitHub sem fazer o build — que é o
+> cenário para o qual esta rede de segurança existe. Se falhar, falha de forma
+> visível: o passo dá erro e o workflow fica vermelho.
 
 ---
 
