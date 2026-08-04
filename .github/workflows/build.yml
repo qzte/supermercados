@@ -37,16 +37,27 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      # Actions fixadas por SHA e não por tag: uma tag pode ser reapontada para
+      # outro commit, e o CI passava a executar código diferente sem que nada
+      # mudasse aqui. Ao actualizar, mudar o SHA **e** o comentário ao lado.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.ref_name }}
+          # Sem isto, o token de escrita fica gravado em .git/config durante todo
+          # o job — incluindo enquanto corre o `npm ci` e o `tools/build.mjs`,
+          # que executam código do repositório e das suas dependências. Uma
+          # dependência comprometida bastava para o ler. O push abaixo passa a
+          # autenticar-se explicitamente, no único passo que precisa.
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: '20'
           cache: npm
 
-      - run: npm ci
+      # `--ignore-scripts`: o build só precisa do Babel como biblioteca; nenhuma
+      # dependência tem scripts de instalação legítimos a correr aqui.
+      - run: npm ci --ignore-scripts
 
       - name: Compilar
         run: npm run build
@@ -73,13 +84,27 @@ jobs:
           echo "index.html e $archive gerados e coerentes ($(wc -c < index.html) bytes)."
 
       - name: Fazer commit dos ficheiros gerados
+        env:
+          # Único passo com acesso ao token. Passá-lo pelo ambiente, e não pelo
+          # .git/config, mantém-no fora do alcance dos passos que executam código.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+
           if git diff --quiet -- index.html 'ulsm_supermercados_*.html'; then
             echo "Nada a fazer — os ficheiros gerados já estão actualizados."
             exit 0
           fi
+
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html 'ulsm_supermercados_*.html'
           git commit -m "build: regenerar index.html a partir de src/index.src.html [skip ci]"
-          git push
+
+          # O URL com o token vai como argumento e não fica gravado em lado
+          # nenhum — `git push <url>` não escreve no .git/config. O Actions
+          # mascara o GITHUB_TOKEN nos logs.
+          # O refspec é explícito porque o checkout foi feito por `ref`, e sem
+          # credenciais persistidas não há upstream configurado.
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/${GITHUB_REF_NAME}"

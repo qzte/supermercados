@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-04
 **Versão auditada:** v3.15.1 (`ec2a05a`)
-**Corrigidos:** A2 e A2b em v3.15.2 · A5 em v3.15.3
+**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3
 **Alvo:** `src/index.src.html` (fonte), `index.html` (servido), `tools/build.mjs`,
 `.github/workflows/build.yml`, `workflow-default.json`, `email-template.json`,
 `manifest.webmanifest`, histórico Git.
@@ -50,7 +50,7 @@ o histórico do processo.
 | A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno | aberto |
 | A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | aberto |
 | A8 | `eval()` na geração de PDF | **Baixa** | Não (hoje) | aberto |
-| A9 | GitHub Actions com `contents: write` e actions não fixadas por SHA | **Baixa** | Interno | parcial |
+| A9 | GitHub Actions com `contents: write` e actions não fixadas por SHA | **Baixa** | Interno | ✅ v3.15.3 |
 | A10 | **Regressão:** correcções de segurança anteriores foram perdidas | **Processo** | — | parcial |
 
 Duas prioridades sobressaem: **A2** (única via de execução de código por um
@@ -480,12 +480,42 @@ que qualquer pessoa com permissão de escrita possa executar código arbitrário
 com um token de escrita, alterando `tools/build.mjs` ou um script de
 `package.json`. Quem tem escrita já pode escrever, pelo que a escalada é mínima.
 
-**Recomendação** (endurecimento, não urgência)
-- Fixar as actions por SHA em vez de tag móvel: `actions/checkout@v4` →
-  `actions/checkout@<sha>`. Uma tag pode ser reapontada.
-- `actions/checkout` com `persist-credentials: false` e usar um token explícito
-  apenas no passo de push.
-- Considerar `npm ci --ignore-scripts` (o build só precisa do Babel).
+#### ✅ Corrigido em v3.15.3
+
+O `ci.yml` já tinha nascido endurecido; o que faltava era o `build.yml`, que é o
+workflow com `contents: write`. Os três pontos aplicados:
+
+| | |
+|---|---|
+| Actions fixadas por SHA | uma tag pode ser reapontada para outro commit, e o CI passaria a executar código diferente sem que nada mudasse no repositório |
+| `persist-credentials: false` | o token deixa de estar em `.git/config` enquanto correm o `npm ci` e o `tools/build.mjs` — passos que executam código do repositório e das suas dependências |
+| `npm ci --ignore-scripts` | nenhuma dependência tem scripts de instalação legítimos a correr aqui |
+
+O passo de push passa a autenticar-se sozinho, com o token só no ambiente desse
+passo e o URL passado como argumento — `git push <url>` não escreve nada no
+`.git/config`. O refspec é explícito (`HEAD:refs/heads/$GITHUB_REF_NAME`) porque
+sem credenciais persistidas não há upstream configurado.
+
+**O que fica por verificar, e porquê.** O passo de commit/push do `build.yml`
+**nunca correu neste repositório** — não existe um único commit de
+`github-actions[bot]` nem nenhum com a mensagem `build: regenerar index.html`
+em todo o histórico. Na prática quem edita tem sempre feito o build localmente e
+commitado o resultado, pelo que o workflow encontra sempre "nada a fazer" e sai
+antes do push. Isto é anterior a esta alteração: o caminho já era código morto.
+
+A mecânica de git foi verificada localmente contra um repositório *bare* — o
+refspec funciona sem remote configurado e nada fica gravado no `.git/config`. O
+que não foi exercitado é a autenticação por token, que é o padrão mais comum do
+GitHub Actions. Continua a falhar de forma ruidosa (o passo dá erro e o workflow
+fica vermelho) e não em silêncio.
+
+Para o exercitar de propósito: editar `src/index.src.html` pela interface web do
+GitHub sem fazer o build — que é exactamente o cenário para o qual esta rede de
+segurança existe, e está documentado no README.
+
+**Não alterado, deliberadamente** — o `permissions: contents: write` fica: é o
+mínimo para um workflow que faz commit. E o gatilho continua a ser só `push`,
+que é o que impede forks de accionarem o workflow.
 
 ---
 
@@ -581,7 +611,9 @@ Registado por ser relevante para a avaliação e para não ser desfeito:
 **Prioridade 3 — quando houver oportunidade**
 7. **A8**: eliminar o `eval()` da exportação de PDF.
 8. **A7**: actualizar `jspdf`/`html2canvas`; rastrear as dependências de CDN.
-9. **A9**: fixar as actions por SHA; `persist-credentials: false`.
+9. ~~**A9**~~ ✅ **feito em v3.15.3** — `build.yml` com actions fixadas por SHA,
+   `persist-credentials: false` e `--ignore-scripts`; o token só existe no passo
+   de push.
 10. **A6**: decidir e documentar o modelo de confiança dos registos.
 
 ---
