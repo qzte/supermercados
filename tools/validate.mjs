@@ -25,6 +25,7 @@
 import { readFile, readdir, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { createHash } from 'node:crypto';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CI = !!process.env.GITHUB_ACTIONS;
@@ -254,6 +255,48 @@ if (nominalFound.size) {
   }
 } else {
   ok(`só caixas de função (${FUNCTION_MAILBOXES.size} conhecidas), sem endereços nominais`);
+}
+
+// ── 3c. Biblioteca de terceiros alojada localmente ───────────────────────────
+// O SheetJS é servido pela própria aplicação em vez de vir de uma CDN (ver o
+// comentário no `exportExcel`). A troca elimina o terceiro capaz de substituir o
+// ficheiro, mas transfere para aqui a responsabilidade de saber que versão está
+// a ser servida e de dar por uma substituição.
+//
+// Ao actualizar: descarregar de https://cdn.sheetjs.com, correr
+// `sha256sum xlsx.full.min.js` e actualizar as duas constantes abaixo **no mesmo
+// commit** que o ficheiro. Um hash que não bate não é necessariamente ataque —
+// é, com muito mais frequência, uma actualização feita a meio — mas em qualquer
+// dos casos é uma alteração que merece ser vista por alguém.
+console.log('\nBibliotecas alojadas localmente');
+
+const VENDORED = [
+  {
+    file: 'xlsx.full.min.js',
+    name: 'SheetJS (xlsx)',
+    version: '0.20.3',
+    // Anterior à 0.19.3 havia prototype pollution (CVE-2023-30533) e anterior à
+    // 0.20.2 um ReDoS (CVE-2024-22363). A versão fixada aqui é posterior às duas.
+    sha256: 'cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41',
+  },
+];
+
+for (const lib of VENDORED) {
+  const buf = await readFile(join(ROOT, lib.file)).catch(() => null);
+  if (buf === null) {
+    fail(`${lib.file} não existe — a exportação para Excel carrega-o desta origem.`, lib.file);
+    continue;
+  }
+  const actual = createHash('sha256').update(buf).digest('hex');
+  if (actual !== lib.sha256) {
+    fail(`${lib.file} não corresponde ao hash esperado.\n` +
+      `        esperado: ${lib.sha256}\n` +
+      `        obtido:   ${actual}\n` +
+      `        Se a biblioteca foi actualizada de propósito, actualizar \`version\` e ` +
+      `\`sha256\` em tools/validate.mjs no mesmo commit.`, lib.file);
+  } else {
+    ok(`${lib.name} ${lib.version} · ${(buf.length / 1024).toFixed(0)} KB · hash confere`);
+  }
 }
 
 // ── 4. ulsm_supermercados_backup.json ────────────────────────────────────────

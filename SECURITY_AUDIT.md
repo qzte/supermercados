@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-04
 **Versão auditada:** v3.15.1 (`ec2a05a`)
-**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3
+**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3 · A7 (SheetJS) em v3.15.4 · A3 em v3.15.5
 **Alvo:** `src/index.src.html` (fonte), `index.html` (servido), `tools/build.mjs`,
 `.github/workflows/build.yml`, `workflow-default.json`, `email-template.json`,
 `manifest.webmanifest`, histórico Git.
@@ -44,11 +44,11 @@ o histórico do processo.
 | A1 | PINs de editor em claro no ficheiro servido | **Alta** | Sim | aberto |
 | A2 | XSS armazenado via ficheiro de workflow/backup importado | **Alta** | Sim | ✅ v3.15.2 |
 | A2b | Execução via `blob:` no visualizador de PDF | **Alta** | Sim | ✅ v3.15.2 |
-| A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 | aberto |
-| A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | aberto |
+| A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 | ✅ v3.15.5 (sem `'unsafe-inline'` fica por fazer) |
+| A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | parcial (1 de 5 alojada) |
 | A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim | ✅ v3.15.3 (parcial) |
 | A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno | aberto |
-| A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | aberto |
+| A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | ✅ v3.15.4 (SheetJS; restantes abertas) |
 | A8 | `eval()` na geração de PDF | **Baixa** | Não (hoje) | aberto |
 | A9 | GitHub Actions com `contents: write` e actions não fixadas por SHA | **Baixa** | Interno | ✅ v3.15.3 |
 | A10 | **Regressão:** correcções de segurança anteriores foram perdidas | **Processo** | — | parcial |
@@ -261,17 +261,64 @@ corrige A2, mas transforma "exfiltração silenciosa de todos os dados" em
   object-src 'none'">
 ```
 
-Observações de implementação:
-- `'unsafe-inline'` em `script-src` é hoje inevitável — o `build.mjs` emite o
-  código compilado num `<script>` inline. É preferível calcular o **hash SHA-256
-  do bloco** no build e emitir `'sha256-…'`, eliminando o `'unsafe-inline'`; a
-  alteração cabe em poucas linhas de `tools/build.mjs`.
-- `connect-src 'self'` é suficiente: os únicos `fetch()` da app são os três JSON
-  relativos.
-- `frame-src blob: data:` é necessário para o visualizador de PDF (`:1873`) e
-  para o `iframe.srcdoc` da exportação (`:7366`).
-- **`'unsafe-eval'` foi deliberadamente omitido** — vai colidir com A8; ver ali.
-- Validar em `file://`, cenário que o README documenta como suportado.
+#### ✅ Corrigido em v3.15.5 — mas leia-se o que esta política *não* faz
+
+A política aplicada é a acima, com duas diferenças face ao rascunho: leva também
+`'unsafe-eval'`, e o `frame-src` é `'self' blob:` em vez de `blob: data:`.
+
+**A limitação, dita sem rodeios.** O `script-src` leva `'unsafe-inline'` e
+`'unsafe-eval'` por necessidade: a aplicação tem **30 handlers em atributos**
+(`onclick=`, `onchange=`, `ondrop=`, `onkeydown=`) — que **nenhum hash cobre**,
+porque hashes não se aplicam a handlers inline — e a exportação de PDF usa
+`eval()` (A8). Enquanto for assim, **esta CSP não impede um `<script>` ou um
+`onerror=` injectado de executar**. Quem a leia à distância pode assumir que
+impede; não impede.
+
+O rascunho original desta secção dizia que o `'unsafe-inline'` vinha do bloco
+compilado pelo build e que hashes o resolviam. Estava incompleto: o bloqueador
+real são os 30 handlers em atributos, e esses não têm solução por hash — só
+convertendo-os para `addEventListener`.
+
+**O que a política entrega mesmo:**
+
+| | |
+|---|---|
+| `connect-src 'self'` | corta a **exfiltração** — é o que um XSS faz a seguir a executar, e agora não tem para onde enviar |
+| `script-src` com origens fixas | nenhum script carrega de uma origem que não seja esta ou o cdnjs |
+| `object-src 'none'` | sem `<object>`/`<embed>`, que a app não usa |
+| `base-uri 'none'` | impede reescrever a resolução de todos os URLs relativos da página |
+| `form-action 'none'` | não há formulários; um injectado não consegue submeter |
+| `default-src 'none'` | tudo o que não está enumerado é negado por omissão |
+
+**Escolha de âmbito.** A alternativa — converter os 30 handlers, remover o
+`eval()` e passar a hashes — foi ponderada e **adiada por decisão de quem
+mantém**, por tocar em 30 pontos de interface e na geração de PDF. Fica como o
+passo que torna esta CSP eficaz de facto.
+
+**Notas de implementação, verificadas e não presumidas:**
+- `frame-ancestors` **não está** na política: é ignorado numa meta CSP, só
+  funciona em cabeçalho. Incluí-lo daria uma falsa sensação de protecção.
+- `frame-src 'self' blob:` — o `blob:` é para o visualizador de PDF; o `'self'`
+  para o `iframe.srcdoc` dos relatórios. Confirmado que o `srcdoc` carrega.
+- `img-src 'self' data: blob:` — o favicon é um `data:` URI e as imagens
+  anexadas aos passos também.
+- `manifest-src 'self'` é preciso: com `default-src 'none'`, o
+  `manifest.webmanifest` era bloqueado.
+
+**Verificação** — 23 testes em Chromium com a política activa, a escutar
+`securitypolicyviolation` (uma CSP mal calibrada não dá erro ao utilizador,
+bloqueia o recurso em silêncio): arranque, render do React, `fetch` dos JSON,
+modal de e-mail, visualizador de PDF, exportação Excel, e a exportação de PDF
+completa — `srcdoc` + `eval` + html2canvas + jsPDF, que era o caminho mais
+frágil. **Zero violações inesperadas.** Confirmado também que um script de outra
+origem e um `fetch` para fora são efectivamente bloqueados, e que a app continua
+a arrancar em `file://`.
+
+**Guardas no `build.mjs`** — falha se a meta desaparecer, se aparecer **depois**
+do primeiro `<script>`/`<link>` (nessa posição não governa o carregamento
+inicial, e seria uma falha silenciosa), ou se faltar uma das directivas
+essenciais. As três foram testadas. É a resposta ao A10: a CSP do commit
+`2071ee1` já se tinha perdido uma vez por substituição de ficheiro.
 
 ---
 
@@ -435,9 +482,50 @@ ficheiros; a aplicação só usa `aoa_to_sheet`/`writeFile`, isto é, **escreve*
 resultado que diz respeito apenas ao Babel do build). Não existe hoje nenhum
 processo que sinalize CVE nestas cinco bibliotecas.
 
-**Recomendação** — Actualizar `jspdf` e `html2canvas`; para o SheetJS, notar que
-saiu do npm e é distribuído em `cdn.sheetjs.com`. Ao alojar as bibliotecas
-localmente (A4), passam a ser rastreáveis por ferramentas de dependências.
+#### ✅ SheetJS corrigido em v3.15.4 — as restantes continuam em aberto
+
+O `xlsx` passou de **0.18.5 para 0.20.3**, que é posterior às correcções dos dois
+CVE (0.19.3 e 0.20.2). Deixou de vir do cdnjs e é **servido pela própria
+aplicação** (`xlsx.full.min.js`, 930 KB). Não foi uma escolha estética: o cdnjs
+está congelado na 0.18.5 porque o SheetJS **saiu do npm e do cdnjs**, e as
+versões corrigidas só existem fora deles. Alojar era a única forma de actualizar.
+
+Três efeitos, além de fechar os CVE:
+- deixa de haver um terceiro capaz de substituir o ficheiro — é o que o
+  `integrity` daria numa CDN, e resolve uma das cinco entradas do A4;
+- a exportação para Excel passa a funcionar **sem rede**, incluindo em `file://`;
+- a versão passa a estar declarada e verificada, em vez de implícita num URL.
+
+**Verificação de proveniência — o que consegui e o que não.** O ficheiro foi
+fornecido directamente, e o `cdn.sheetjs.com` está inacessível a partir deste
+ambiente, pelo que **não foi possível comparar hashes com a origem**. O que foi
+feito em substituição:
+
+| | |
+|---|---|
+| Inspecção estática | zero `fetch`/`XMLHttpRequest`/`WebSocket`/`sendBeacon`, zero `eval`/`Function`, zero acesso a cookies ou storage; os únicos URLs externos são *namespaces* XML do OOXML/ODF |
+| Teste funcional | gera um `.xlsx` que é um zip OOXML válido (`[Content_Types].xml`, `xl/workbook.xml`), relê-o correctamente e preserva acentos |
+| Superfície de API | `book_new`, `aoa_to_sheet`, `book_append_sheet`, `writeFile` — exactamente o que o `exportExcel` usa |
+| No browser | carrega por caminho relativo, reporta `0.20.3` e não faz nenhum pedido à cdnjs |
+
+Isto é evidência forte de que é um build funcional do SheetJS, **não é uma prova
+criptográfica de proveniência**. Quem tiver acesso à rede deve confirmar o
+`sha256` contra o `cdn.sheetjs.com`:
+`cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41`.
+
+**Guarda** — o `tools/validate.mjs` fixa esse hash e falha se o ficheiro servido
+divergir. Uma substituição silenciosa da biblioteca deixa de passar despercebida;
+uma actualização legítima obriga a mexer na versão e no hash no mesmo commit.
+
+**Continua em aberto** — `jspdf` 2.5.1 e `html2canvas` 1.4.1 continuam a vir do
+cdnjs, sem `integrity` (A4) e desactualizados. Nenhum tem CVE conhecido, o que os
+torna menos urgentes, mas o mesmo tratamento resolvia-os. O `react`/`react-dom`
+18.2.0 idem.
+
+**A nota do `npm audit` mantém-se** — estas bibliotecas não constam do
+`package.json`, pelo que nenhuma ferramenta de dependências as vê. O
+`validate.mjs` passa a cobrir a única que está alojada; as outras três continuam
+sem processo que sinalize um CVE novo.
 
 ---
 
@@ -601,8 +689,10 @@ Registado por ser relevante para a avaliação e para não ser desfeito:
    histórico Git (público e já divulgado) e a constante `TEAM`.
 
 **Prioridade 2 — próxima iteração**
-4. **A3**: acrescentar a `meta` CSP (idealmente com hash do script inline
-   calculado no build).
+4. ~~**A3**~~ ✅ **feito em v3.15.5** — meta CSP com `default-src 'none'`,
+   `connect-src 'self'` e guardas no build. Continua a precisar de
+   `'unsafe-inline'`/`'unsafe-eval'`: para a tornar eficaz é preciso converter os
+   30 handlers inline e remover o `eval()` (A8).
 5. **A4**: `integrity` nas cinco bibliotecas de CDN, ou alojá-las localmente —
    o que também resolve o arranque sem rede.
 6. **A10**: guarda no `build.mjs` contra padrões proibidos; abandonar o fluxo de
@@ -610,7 +700,9 @@ Registado por ser relevante para a avaliação e para não ser desfeito:
 
 **Prioridade 3 — quando houver oportunidade**
 7. **A8**: eliminar o `eval()` da exportação de PDF.
-8. **A7**: actualizar `jspdf`/`html2canvas`; rastrear as dependências de CDN.
+8. **A7**: ~~SheetJS~~ ✅ **feito em v3.15.4** (0.20.3, alojado localmente, hash
+   fixado). Faltam `jspdf` e `html2canvas` — sem CVE conhecido, mas o mesmo
+   tratamento resolvia-os e fechava o A4 de vez.
 9. ~~**A9**~~ ✅ **feito em v3.15.3** — `build.yml` com actions fixadas por SHA,
    `persist-credentials: false` e `--ignore-scripts`; o token só existe no passo
    de push.
