@@ -584,22 +584,24 @@ passo e o URL passado como argumento — `git push <url>` não escreve nada no
 `.git/config`. O refspec é explícito (`HEAD:refs/heads/$GITHUB_REF_NAME`) porque
 sem credenciais persistidas não há upstream configurado.
 
-**O que fica por verificar, e porquê.** O passo de commit/push do `build.yml`
-**nunca correu neste repositório** — não existe um único commit de
-`github-actions[bot]` nem nenhum com a mensagem `build: regenerar index.html`
-em todo o histórico. Na prática quem edita tem sempre feito o build localmente e
-commitado o resultado, pelo que o workflow encontra sempre "nada a fazer" e sai
-antes do push. Isto é anterior a esta alteração: o caminho já era código morto.
+**Verificação do passo de push — feita em v3.15.6.** Quando esta correcção foi
+aplicada, o passo de commit/push do `build.yml` **nunca tinha corrido**: não
+existia um único commit de `github-actions[bot]` em todo o histórico, porque
+quem edita fazia sempre o build localmente e o workflow encontrava "nada a
+fazer". O caminho era código morto, e ficou por exercitar.
 
-A mecânica de git foi verificada localmente contra um repositório *bare* — o
-refspec funciona sem remote configurado e nada fica gravado no `.git/config`. O
-que não foi exercitado é a autenticação por token, que é o padrão mais comum do
-GitHub Actions. Continua a falhar de forma ruidosa (o passo dá erro e o workflow
-fica vermelho) e não em silêncio.
+Foi exercitado depois, de propósito, com um commit que alterava **só** o
+`src/index.src.html` — o mesmo estado em que fica quem edita pela interface web
+do GitHub, que é o cenário para o qual esta rede de segurança existe. Resultado:
 
-Para o exercitar de propósito: editar `src/index.src.html` pela interface web do
-GitHub sem fazer o build — que é exactamente o cenário para o qual esta rede de
-segurança existe, e está documentado no README.
+| | |
+|---|---|
+| Autenticação por token | funcionou — commit `ef1df62` por `github-actions[bot]` |
+| Regeneração | `index.html` reconstruído, **byte a byte igual** ao de um build local |
+| Remoção do arquivo antigo | o `git add index.html 'ulsm_supermercados_*.html'` estagiou o rename `_3_15_5 → _3_15_6`; se não estagiasse a remoção, ficavam dois ficheiros e o `npm run check` passaria a falhar |
+
+Antes disso a mecânica de git já tinha sido validada localmente contra um
+repositório *bare*. O caminho está agora confirmado de ponta a ponta.
 
 **Não alterado, deliberadamente** — o `permissions: contents: write` fica: é o
 mínimo para um workflow que faz commit. E o gatilho continua a ser só `push`,

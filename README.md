@@ -1,6 +1,6 @@
 # ULSM · Gestão de Supermercados — GitHub Pages
 
-**Versão da aplicação:** v3.15.5
+**Versão da aplicação:** v3.15.6
 **URL de produção:** https://qzte.github.io/supermercados/
 
 ---
@@ -28,7 +28,7 @@ supermercados/
 │
 │  ── GERADO — não editar ──────────────────────────────────
 ├── index.html                          # 🤖  aplicação servida
-├── ulsm_supermercados_3_15_5.html      # 🤖  cópia arquivada (idêntica)
+├── ulsm_supermercados_3_15_6.html      # 🤖  cópia arquivada (idêntica)
 │
 ├── .github/workflows/build.yml         #     compila e faz commit no push
 ├── .github/workflows/ci.yml            #     valida os pull requests
@@ -130,12 +130,15 @@ passo de commit e o URL vai como argumento do `git push` (que, ao contrário do
 `git remote add`, não grava nada). O refspec é explícito porque, sem credenciais
 persistidas, não há upstream configurado.
 
-> ⚠️ O passo de commit do `build.yml` **nunca chegou a correr** neste
-> repositório: quem edita tem sempre feito o build localmente, pelo que o
-> workflow encontra "nada a fazer" e sai antes do push. Para o exercitar, editar
-> `src/index.src.html` pela interface web do GitHub sem fazer o build — que é o
-> cenário para o qual esta rede de segurança existe. Se falhar, falha de forma
-> visível: o passo dá erro e o workflow fica vermelho.
+O passo de commit/push esteve muitos meses sem nunca correr — quem edita tem
+feito sempre o build localmente, pelo que o workflow encontrava "nada a fazer" e
+saía antes do push. Foi **exercitado de propósito em v3.15.6**, com um commit que
+alterava só o `src/index.src.html`: a Action regenerou o `index.html`, renomeou a
+cópia arquivada e fez commit como `github-actions[bot]`, e o resultado ficou byte
+a byte igual ao de um build local. O caminho está confirmado a funcionar.
+
+> Se um dia falhar, falha de forma visível: o passo dá erro e o workflow fica
+> vermelho — nunca deixa os ficheiros gerados dessincronizados em silêncio.
 
 ---
 
