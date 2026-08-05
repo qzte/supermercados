@@ -236,6 +236,18 @@ O **`SheetJS` é servido pela própria aplicação** (`xlsx.full.min.js`, 930 KB
 
 Se existir uma versão editada em `localStorage` (`workflowTemplate`), esta tem precedência sobre o `workflow-default.json` servido — o editor local não é sobrescrito por uma versão potencialmente mais antiga do repositório.
 
+### Precedência dos templates de e-mail
+
+Os templates seguem a mesma regra, e pela mesma razão. O editor grava-os **dentro** de `workflowTemplate` (`{ emailTemplates, phases }`), pelo que a ordem no arranque é:
+
+1. `workflowTemplate.emailTemplates` no `localStorage` — as edições do utilizador;
+2. `email-template.json` servido pelo repositório;
+3. `emailTemplates` embutidos no workflow (inline default, usado em `file://`).
+
+São lidos independentemente das `phases`: um workflow guardado que seja rejeitado por inválido não leva os templates editados atrás.
+
+Consequência prática: **num browser onde já se editaram templates, uma actualização de `email-template.json` no repositório não é apanhada.** É o comportamento pretendido (uma edição local nunca é desfeita em silêncio); para voltar à versão publicada, usar `↺ Repor original` no editor de workflow, que limpa o `localStorage`.
+
 ---
 
 ## Persistência dos dados

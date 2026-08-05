@@ -329,7 +329,15 @@ body.view-kpis #view-workflow { display: none; }
   .template-form label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);font-family:var(--mono);}
   .template-form input,.template-form textarea,.template-form select{background:#eef2f7;border:1px solid #d8e0ea;border-radius:6px;color:#334155;padding:8px 10px;font-size:12px;font-family:var(--sans);}
   .template-form textarea{min-height:170px;resize:vertical;line-height:1.5;}
+  .template-form textarea#tplBody{min-height:220px;font-family:var(--mono);font-size:11.5px;}
   .template-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+  /* Estado do editor de templates: por gravar, gravado, erro. Ocupa sempre a
+     mesma linha para o formulário não saltar quando a mensagem muda. */
+  .tpl-status{flex:1;min-height:16px;margin:0;align-self:center;text-align:left;font-size:11px;font-family:var(--mono);color:var(--muted);line-height:1.4;}
+  .tpl-status[data-tone="warn"]{color:#ea9a3e;}
+  .tpl-status[data-tone="ok"]{color:#0d9488;}
+  .tpl-status[data-tone="error"]{color:#e05252;}
+  .template-form button[disabled]{opacity:.4;cursor:not-allowed;}
 
   @media(max-width:640px){.phase,.connector-line{grid-template-columns:100px 1fr;}.phase-label{padding:16px 12px 16px 0;}.phase-content{padding-left:16px;}}
 
@@ -501,7 +509,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.6</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.16.0</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -659,7 +667,7 @@ html, body { max-width: 100%; }
       <form class="template-form" id="templateEditorForm">
         <div style="display:flex;gap:8px;align-items:flex-end;">
           <label style="flex:1">Template
-            <select id="tplKey" onchange="loadTemplateFields(this.value)"></select>
+            <select id="tplKey" onchange="selectTemplateForEdit(this.value)"></select>
           </label>
           <button type="button" onclick="newTemplateEditor()" style="padding:8px 12px;border:1px solid rgba(13,148,136,.4);border-radius:6px;background:rgba(13,148,136,.12);color:#0d9488;font-family:var(--mono);font-size:11px;cursor:pointer;white-space:nowrap;margin-bottom:0;">+ Novo</button>
           <button type="button" id="tplDeleteBtn" onclick="deleteTemplateEditor()" style="padding:8px 12px;border:1px solid rgba(224,82,82,.3);border-radius:6px;background:rgba(224,82,82,.08);color:#e05252;font-family:var(--mono);font-size:11px;cursor:pointer;white-space:nowrap;">🗑 Eliminar</button>
@@ -687,6 +695,9 @@ html, body { max-width: 100%; }
         </label>
       </form>
       <div class="template-actions">
+        <!-- O estado vive ao lado do botão de guardar: é onde o olhar está
+             quando a mensagem aparece, e acompanha-o na rolagem do modal. -->
+        <p id="tplStatus" class="tpl-status" role="status" aria-live="polite"></p>
         <button class="btn-copy" type="button" onclick="saveTemplateEditor()">💾 Guardar template</button>
         <button class="btn-close-footer" type="button" onclick="closeTemplateEditor()">Fechar</button>
       </div>
@@ -759,14 +770,51 @@ function toggle(el){
 const DEFAULT_TEMPLATES_FALLBACK = {};
 let T = {};
 
+/** Um mapa de templates só serve se for um objecto com pelo menos uma entrada. */
+function isTemplateMap(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0;
+}
+
+/**
+ * Templates guardados pelo editor, lidos de `workflowTemplate` no localStorage.
+ *
+ * O editor grava as edições dentro do workflow (`{ emailTemplates, phases }`) e
+ * é essa a única cópia das alterações do utilizador. Sem esta leitura, o boot
+ * ia buscar os templates ao `email-template.json` publicado e as edições
+ * desapareciam no recarregamento seguinte — que era exactamente o sintoma de
+ * "a edição de templates não guarda nada".
+ *
+ * É lido de forma independente das `phases`: mesmo que o workflow guardado
+ * esteja inválido (e portanto descartado no arranque), os templates editados
+ * continuam a ser válidos e não se perdem com ele.
+ */
+function readStoredEmailTemplates() {
+  try {
+    const raw = localStorage.getItem('workflowTemplate');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return isTemplateMap(parsed?.emailTemplates) ? parsed.emailTemplates : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Carrega email-template.json. Chamado no boot; em file:// usa window.__ULSM_INLINE_EMAIL_TEMPLATES.
 async function loadEmailTemplates() {
-  // 1. Já carregados anteriormente na sessão (cache in-memory)
+  // 1. Edições guardadas pelo utilizador — têm sempre prioridade sobre o
+  //    ficheiro publicado, senão cada recarregamento desfazia-as.
+  const stored = readStoredEmailTemplates();
+  if (stored) {
+    window.__ULSM_INLINE_EMAIL_TEMPLATES = stored;
+    T = JSON.parse(JSON.stringify(stored));
+    return;
+  }
+  // 2. Já carregados anteriormente na sessão (cache in-memory)
   if (window.__ULSM_INLINE_EMAIL_TEMPLATES && Object.keys(window.__ULSM_INLINE_EMAIL_TEMPLATES).length > 0) {
     T = JSON.parse(JSON.stringify(window.__ULSM_INLINE_EMAIL_TEMPLATES));
     return;
   }
-  // 2. Via HTTP(S): buscar email-template.json
+  // 3. Via HTTP(S): buscar email-template.json
   if (location.protocol !== 'file:') {
     try {
       const r = await fetch('email-template.json?v=' + Date.now());
@@ -782,14 +830,14 @@ async function loadEmailTemplates() {
       }
     } catch(e) {}
   }
-  // 3. Fallback file://: usar emailTemplates embutido em __ULSM_INLINE_DEFAULT
+  // 4. Fallback file://: usar emailTemplates embutido em __ULSM_INLINE_DEFAULT
   const inlineEmail = window.__ULSM_INLINE_DEFAULT?.emailTemplates;
-  if (inlineEmail && typeof inlineEmail === 'object' && Object.keys(inlineEmail).length > 0) {
+  if (isTemplateMap(inlineEmail)) {
     window.__ULSM_INLINE_EMAIL_TEMPLATES = inlineEmail;
     T = JSON.parse(JSON.stringify(inlineEmail));
     return;
   }
-  // 4. Fallback final: objeto vazio (evita crash — editor pode criar templates)
+  // 5. Fallback final: objeto vazio (evita crash — editor pode criar templates)
   T = {};
 }
 
@@ -885,52 +933,171 @@ function copyEmail(){
 }
 
 
+// ── Editor de templates de e-mail ────────────────────────────────────────────
+// Campos do formulário, na ordem em que aparecem, e a propriedade do template
+// que cada um representa. `key` é tratado à parte: é o identificador, não um
+// campo de conteúdo.
+const TPL_FIELDS = [
+  ['tplTitle',   'title'],
+  ['tplRem',     'rem'],
+  ['tplPara',    'para'],
+  ['tplCc',      'cc'],
+  ['tplAssunto', 'assunto'],
+  ['tplBody',    'body'],
+];
+
+// Chave que está aberta no formulário, e se o formulário tem alterações por
+// gravar. Sem este registo, mudar de template no <select> ou fechar o modal
+// deitava fora o que tinha acabado de ser escrito sem uma palavra — o motivo
+// mais comum para a edição "não funcionar".
+let _tplCurrentKey = null;
+let _tplDirty = false;
+// Chave criada por "+ Novo" que ainda não foi gravada. Existe em T para o
+// formulário a poder mostrar, mas é removida se o utilizador sair sem gravar,
+// para não ficarem "novo_template" fantasma no ficheiro.
+let _tplPendingNewKey = null;
+
+function _tplStatus(message, tone){
+  const el = document.getElementById('tplStatus');
+  if(!el) return;
+  el.textContent = message || '';
+  el.dataset.tone = message ? (tone || 'info') : '';
+}
+
+function _tplMarkDirty(){
+  _tplDirty = true;
+  _tplStatus('Alterações por guardar.', 'warn');
+}
+
+/** Descarta um "+ Novo" que nunca chegou a ser gravado. */
+function _tplDropPendingNew(){
+  if(_tplPendingNewKey && T[_tplPendingNewKey]){
+    delete T[_tplPendingNewKey];
+  }
+  _tplPendingNewKey = null;
+}
+
+/**
+ * Confirma a saída de um formulário com alterações por gravar.
+ * Devolve true quando é seguro continuar.
+ */
+function _tplConfirmDiscard(){
+  if(!_tplDirty) return true;
+  const nome = document.getElementById('tplTitle')?.value || _tplCurrentKey || 'este template';
+  return confirm(`"${nome}" tem alterações por guardar.\n\nSair sem guardar?`);
+}
+
+/**
+ * Aponta para `newKey` todas as referências a `oldKey` — em memória e no DOM.
+ *
+ * O `serializeWorkflow()` lê o `data-email-key` do DOM antes de olhar para o
+ * `__ULSM_PHASES`, portanto actualizar só a memória não chegava: a gravação
+ * seguinte repunha a chave antiga e o passo voltava a apontar para um template
+ * que já não existe (o botão de e-mail deixa de fazer nada). `newKey` a null
+ * remove a associação.
+ */
+function _tplRemapRefs(oldKey, newKey){
+  if(!oldKey || oldKey === newKey) return;
+  if(Array.isArray(window.__ULSM_PHASES)){
+    window.__ULSM_PHASES.forEach(ph => {
+      (ph.steps||[]).forEach(s => { if(s.emailKey === oldKey) s.emailKey = newKey; });
+    });
+  }
+  document.querySelectorAll(`#workflow-render .step[data-email-key="${CSS.escape(oldKey)}"]`)
+    .forEach(el => {
+      if(newKey) el.dataset.emailKey = newKey;
+      else el.dataset.emailKey = '';
+    });
+}
+
+/** Quantos passos do workflow usam este template. */
+function _tplUsageCount(key){
+  if(!key || !Array.isArray(window.__ULSM_PHASES)) return 0;
+  return window.__ULSM_PHASES.reduce((n, ph) =>
+    n + (ph.steps||[]).filter(s => s.emailKey === key).length, 0);
+}
+
 function _rebuildTplSelect(selectKey) {
   const keySelect = document.getElementById('tplKey');
-  keySelect.replaceChildren(...Object.keys(T).map((key)=>{
+  const keys = Object.keys(T).sort((a, b) =>
+    (T[a].title || a).localeCompare(T[b].title || b, 'pt'));
+  keySelect.replaceChildren(...keys.map((key)=>{
     const o=document.createElement('option');
     o.value=key;
-    o.textContent=`${key} — ${T[key].title||''}`;
+    const usos = _tplUsageCount(key);
+    o.textContent = `${T[key].title || key} — ${key}${usos ? ` (${usos} passo${usos>1?'s':''})` : ''}`;
     return o;
   }));
   if(selectKey && T[selectKey]) keySelect.value = selectKey;
+  const del = document.getElementById('tplDeleteBtn');
+  if(del) del.disabled = keys.length === 0;
 }
 
 function openTemplateEditor(initialKey){
   const modal = document.getElementById('templateEditorModal');
+  _tplDirty = false;
   _rebuildTplSelect(initialKey);
   const keySelect = document.getElementById('tplKey');
-  loadTemplateFields(keySelect.value);
+  // Sem templates nenhuns o formulário abria vazio e desligado de tudo: começar
+  // já com um novo é a única acção possível a partir daqui.
+  if(keySelect.options.length === 0){
+    newTemplateEditor();
+  } else {
+    loadTemplateFields(keySelect.value);
+  }
   modal.classList.add('active');
 }
 
-function closeTemplateEditor(event){
-  if(!event || event.target===document.getElementById('templateEditorModal')){
-    document.getElementById('templateEditorModal').classList.remove('active');
+/** Chamado pelo <select>: guarda-rails antes de trocar de template. */
+function selectTemplateForEdit(key){
+  if(key === _tplCurrentKey) return;
+  if(!_tplConfirmDiscard()){
+    document.getElementById('tplKey').value = _tplCurrentKey;
+    return;
   }
+  _tplDropPendingNew();
+  _rebuildTplSelect(key);
+  loadTemplateFields(key);
+}
+
+function closeTemplateEditor(event){
+  if(event && event.target !== document.getElementById('templateEditorModal')) return;
+  if(!_tplConfirmDiscard()) return;
+  _tplDropPendingNew();
+  _tplDirty = false;
+  _tplCurrentKey = null;
+  _tplStatus('');
+  document.getElementById('templateEditorModal').classList.remove('active');
+  // O select ficou com uma entrada a menos se havia um "+ Novo" por gravar.
+  if(document.getElementById('tplKey')) _rebuildTplSelect();
 }
 
 function loadTemplateFields(key){
   const tpl = T[key];
   if(!tpl) return;
+  _tplCurrentKey = key;
+  _tplDirty = false;
   document.getElementById('tplKeyEdit').value = key;
-  document.getElementById('tplTitle').value = tpl.title || '';
-  document.getElementById('tplRem').value = tpl.rem || '';
-  document.getElementById('tplPara').value = tpl.para || '';
-  document.getElementById('tplCc').value = tpl.cc || '';
-  document.getElementById('tplAssunto').value = tpl.assunto || '';
-  document.getElementById('tplBody').value = tpl.body || '';
+  TPL_FIELDS.forEach(([id, prop]) => { document.getElementById(id).value = tpl[prop] || ''; });
   document.getElementById('tplModalTitle').textContent = tpl.title || key;
+  const usos = _tplUsageCount(key);
+  _tplStatus(usos
+    ? `Usado em ${usos} passo${usos>1?'s':''} do workflow.`
+    : 'Não está associado a nenhum passo do workflow.', 'info');
 }
 
 function newTemplateEditor(){
+  if(!_tplConfirmDiscard()) return;
+  _tplDropPendingNew();
   // Generate a unique key
   let base = 'novo_template', key = base, n = 2;
   while(T[key]) key = base + '_' + (n++);
   T[key] = { title:'Novo Template', rem:'gestao.supermercados@ulsm.min-saude.pt',
     para:'', cc:'', assunto:'', body:'' };
+  _tplPendingNewKey = key;
   _rebuildTplSelect(key);
   loadTemplateFields(key);
+  _tplStatus('Template novo — só fica guardado depois de "Guardar template".', 'warn');
   // Focus the key field for immediate editing
   const ki = document.getElementById('tplKeyEdit');
   ki.select(); ki.focus();
@@ -939,57 +1106,92 @@ function newTemplateEditor(){
 function deleteTemplateEditor(){
   const key = document.getElementById('tplKey').value;
   if(!T[key]) return;
-  if(!confirm(`Eliminar o template "${T[key].title || key}"?\nOs passos do workflow que usem este template ficarão sem e-mail associado.`)) return;
-  // Remove from all steps that reference this key in __ULSM_PHASES
-  if(Array.isArray(window.__ULSM_PHASES)){
-    window.__ULSM_PHASES.forEach(ph => {
-      (ph.steps||[]).forEach(s => { if(s.emailKey === key) s.emailKey = null; });
-    });
-  }
+  const usos = _tplUsageCount(key);
+  const aviso = usos
+    ? `\n\n${usos} passo${usos>1?'s':''} do workflow deixa${usos>1?'m':''} de ter e-mail associado.`
+    : '';
+  if(!confirm(`Eliminar o template "${T[key].title || key}"?${aviso}`)) return;
+  const eraNovo = key === _tplPendingNewKey;
+  _tplPendingNewKey = null;
+  // Remove as referências em memória e no DOM (ver _tplRemapRefs)
+  _tplRemapRefs(key, null);
   delete T[key];
-  saveToLocalStorage();
+  _tplDirty = false;
+  // Um "+ Novo" nunca gravado não precisa de tocar no armazenamento.
+  if(!eraNovo && !saveToLocalStorage()){
+    _tplStatus('Eliminado, mas a gravação local falhou — use "Guardar template" para exportar.', 'error');
+  }
+  _refreshWorkflowAfterTemplateChange();
   _rebuildTplSelect();
   const keySelect = document.getElementById('tplKey');
-  if(keySelect.options.length > 0) loadTemplateFields(keySelect.value);
-  else { ['tplKeyEdit','tplTitle','tplRem','tplPara','tplCc','tplAssunto','tplBody'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
+  if(keySelect.options.length > 0){
+    loadTemplateFields(keySelect.value);
+  } else {
+    _tplCurrentKey = null;
+    ['tplKeyEdit', ...TPL_FIELDS.map(f=>f[0])].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('tplModalTitle').textContent = 'Template de e-mail';
+    _tplStatus('Não há templates. Use "+ Novo" para criar um.', 'info');
+  }
+}
+
+/**
+ * Repinta o workflow depois de mexer nos templates.
+ *
+ * O `saveToLocalStorage()` não dispara `workflowChanged` em modo de edição — de
+ * propósito, para o React não escrever por cima do que está a ser editado nos
+ * contenteditable. Mas mudar de template altera os passos (o ✉ aparece ou
+ * desaparece), e sem este empurrão a lista só reflectia a mudança no
+ * recarregamento seguinte.
+ */
+function _refreshWorkflowAfterTemplateChange(){
+  if(window.__isWorkflowEditMode) return;
+  window.dispatchEvent(new CustomEvent('workflowChanged', { detail: { phases: window.__ULSM_PHASES } }));
 }
 
 function saveTemplateEditor(){
-  const oldKey = document.getElementById('tplKey').value;
+  const oldKey = _tplCurrentKey || document.getElementById('tplKey').value;
   const newKey = (document.getElementById('tplKeyEdit').value||'').trim().replace(/\s+/g,'_');
-  if(!newKey){ alert('A chave interna não pode estar vazia.'); return; }
+  if(!newKey){ _tplStatus('A chave interna não pode estar vazia.', 'error'); return; }
   // Validate key format
-  if(!/^[a-zA-Z0-9_]+$/.test(newKey)){ alert('A chave só pode conter letras, números e underscore (_).'); return; }
+  if(!/^[a-zA-Z0-9_]+$/.test(newKey)){
+    _tplStatus('A chave só pode conter letras, números e underscore (_) — sem espaços nem acentos.', 'error');
+    return;
+  }
 
-  const data = {
-    title: document.getElementById('tplTitle').value,
-    rem: document.getElementById('tplRem').value,
-    para: document.getElementById('tplPara').value,
-    cc: document.getElementById('tplCc').value,
-    assunto: document.getElementById('tplAssunto').value,
-    body: document.getElementById('tplBody').value
-  };
+  const data = {};
+  TPL_FIELDS.forEach(([id, prop]) => { data[prop] = document.getElementById(id).value; });
+
+  if(!data.title.trim()){ _tplStatus('O título é obrigatório — é o que identifica o template na lista.', 'error'); return; }
+  if(!data.assunto.trim() || !data.body.trim()){
+    // Não é bloqueante: um template pode ser preenchido em várias passagens.
+    // Mas convém dizê-lo, porque o modal de e-mail fica meio vazio.
+    if(!confirm('O assunto ou o corpo estão vazios — o e-mail vai aparecer incompleto.\n\nGuardar mesmo assim?')) return;
+  }
 
   if(newKey !== oldKey && T[newKey]){
     if(!confirm(`Já existe um template com a chave "${newKey}". Sobrescrever?`)) return;
   }
 
-  // If key changed, update references in __ULSM_PHASES and delete old key
+  // If key changed, update references in __ULSM_PHASES + DOM and delete old key
   if(newKey !== oldKey){
-    if(Array.isArray(window.__ULSM_PHASES)){
-      window.__ULSM_PHASES.forEach(ph => {
-        (ph.steps||[]).forEach(s => { if(s.emailKey === oldKey) s.emailKey = newKey; });
-      });
-    }
+    _tplRemapRefs(oldKey, newKey);
     delete T[oldKey];
   }
 
   T[newKey] = data;
-  saveToLocalStorage();
+  _tplPendingNewKey = null;
+  _tplDirty = false;
+  const guardado = saveToLocalStorage();
+  _refreshWorkflowAfterTemplateChange();
   _rebuildTplSelect(newKey);
   loadTemplateFields(newKey);
   document.getElementById('tplModalTitle').textContent = data.title || newKey;
 
+  if(!guardado){
+    _tplStatus('Não foi possível guardar localmente (armazenamento cheio). Exporte com "Guardar template".', 'error');
+    return;
+  }
+  _tplStatus('✓ Guardado.', 'ok');
   // Flash save confirmation
   const btn = document.querySelector('#templateEditorForm ~ .template-actions .btn-copy');
   if(btn){ const orig=btn.textContent; btn.textContent='✓ Guardado!'; btn.style.color='#0d9488'; setTimeout(()=>{ btn.textContent=orig; btn.style.color=''; },1800); }
@@ -1158,19 +1360,47 @@ function buildPhasesFromData(phasesData) {
   }));
 }
 
-function saveToLocalStorage(){
-  const serialized = serializeWorkflow();
-  const payload = JSON.stringify(serialized);
-  // Manter cache de templates sincronizado (sobrevive a refresh via loadEmailTemplates)
-  if (serialized.emailTemplates) window.__ULSM_INLINE_EMAIL_TEMPLATES = serialized.emailTemplates;
+/**
+ * Grava o workflow, preservando sempre os templates de e-mail.
+ *
+ * Vários caminhos de arranque gravavam só `{ phases }` — carregar um workflow
+ * do disco, ou repetir a última escolha do ecrã de arranque — e essa gravação
+ * apagava em silêncio os templates que o utilizador tinha editado. Concentrar
+ * aqui a escrita torna a preservação a regra, em vez de depender de cada
+ * chamador se lembrar dela.
+ *
+ * Devolve `false` quando nem o localStorage nem o armazenamento assíncrono
+ * aceitaram a gravação, para que quem chama possa avisar o utilizador em vez de
+ * o deixar convencido de que ficou guardado.
+ */
+function persistWorkflow(data){
+  const templates = isTemplateMap(data?.emailTemplates)
+    ? data.emailTemplates
+    : (isTemplateMap(T) ? T : readStoredEmailTemplates());
+  const full = Object.assign({}, data);
+  if (isTemplateMap(templates)) {
+    full.emailTemplates = templates;
+    // Cache in-memory que sobrevive ao refresh via loadEmailTemplates()
+    window.__ULSM_INLINE_EMAIL_TEMPLATES = templates;
+  }
+  const payload = JSON.stringify(full);
+  let ok = true;
   try { localStorage.setItem('workflowTemplate', payload); } catch(e) {
+    ok = false;
     if(e.name === 'QuotaExceededError') {
       console.warn('localStorage quota exceeded — workflow guardado apenas em memória. Use "Guardar template" para persistir.');
     }
   }
   if(window.storage && typeof window.storage.set === 'function'){
+    ok = true; // o armazenamento assíncrono não tem o limite de quota do localStorage
     window.storage.set('ulsm:workflowTemplate', payload, true).catch(()=>{});
   }
+  return ok;
+}
+
+function saveToLocalStorage(){
+  const serialized = serializeWorkflow();
+  const ok = persistWorkflow(serialized);
   // Update __ULSM_PHASES silently (no React re-render while editor is active)
   if(Array.isArray(serialized.phases)) {
     window.__ULSM_PHASES = buildPhasesFromData(serialized.phases);
@@ -1180,6 +1410,7 @@ function saveToLocalStorage(){
   if(!window.__isWorkflowEditMode) {
     window.dispatchEvent(new CustomEvent('workflowChanged', { detail: { phases: window.__ULSM_PHASES } }));
   }
+  return ok;
 }
 
 async function loadFromStorage(){
@@ -1305,6 +1536,16 @@ function syncTrackingToWorkflow(processes, oldWorkflow, newWorkflow) {
 function serializeWorkflow(){
   // Read current state from DOM (React-rendered phases with contenteditable)
   const phaseDivs = [...document.querySelectorAll('#workflow-render .phase')];
+  // O DOM é a fonte de verdade só enquanto o workflow está montado. Guardar
+  // templates de e-mail é possível a partir de ecrãs onde não está (o modal de
+  // gestão de templates abre de qualquer lado) e, sem esta guarda, a gravação
+  // escrevia `phases: []` — apagando o workflow inteiro, que no arranque
+  // seguinte era rejeitado por inválido e caía nos valores de origem.
+  if (phaseDivs.length === 0) {
+    // __ULSM_PHASES já tem exactamente a forma gravada (é o resultado de
+    // buildPhasesFromData), pelo que serve directamente de substituto.
+    return { emailTemplates: T, phases: window.__ULSM_PHASES || [] };
+  }
   const phases = phaseDivs.map((phase, phIdx) => {
     const ph = (window.__ULSM_PHASES || [])[phIdx] || {};
     return {
@@ -1331,20 +1572,21 @@ function serializeWorkflow(){
 }
 
 function applyTemplate(data){
-  if(data?.emailTemplates) {
+  if(isTemplateMap(data?.emailTemplates)) {
     T = JSON.parse(JSON.stringify(data.emailTemplates));
-    window.__ULSM_INLINE_EMAIL_TEMPLATES = T; // cache para sobreviver a refresh
   }
-  if(!data?.phases) return;
+  // Um ficheiro só com templates (sem `phases`) é um caso legítimo do botão
+  // "Carregar template": gravar na mesma, senão a importação durava só até ao
+  // recarregamento seguinte.
+  if(!data?.phases) {
+    persistWorkflow({ emailTemplates: T, phases: window.__ULSM_PHASES || [] });
+    return;
+  }
   // Build normalized phases array and update window.__ULSM_PHASES
   const normalized = buildPhasesFromData(data.phases);
   window.__ULSM_PHASES = normalized;
   // Save to localStorage directly (don't rely on DOM serialization)
-  const payload = JSON.stringify({ emailTemplates: T, phases: data.phases });
-  localStorage.setItem('workflowTemplate', payload);
-  if(window.storage && typeof window.storage.set === 'function'){
-    window.storage.set('ulsm:workflowTemplate', payload, true).catch(()=>{});
-  }
+  persistWorkflow({ emailTemplates: T, phases: data.phases });
   // Trigger React re-render
   window.dispatchEvent(new CustomEvent('workflowChanged', { detail: { phases: normalized, raw: data.phases } }));
 }
@@ -1547,9 +1789,19 @@ function attachStepControls(step){
   emailAssocBtn.className = 'email-assoc-btn';
   function _updateEmailAssocLabel(){
     const key = step.dataset.emailKey || null;
-    emailAssocBtn.textContent = key ? `✉ ${key}` : '✉ e-mail';
-    emailAssocBtn.style.color = key ? '#0d9488' : '#7b8794';
-    emailAssocBtn.style.borderColor = key ? 'rgba(13,148,136,.4)' : '#d8e0ea';
+    // Uma chave que já não existe em T é assinalada em vez de passar por
+    // associação válida: o botão "Ver template de e-mail" do passo não faria
+    // nada, e sem aviso isso só se descobre a usar.
+    const orfa = !!key && !T[key];
+    const nome = key ? (T[key]?.title || key) : '';
+    emailAssocBtn.textContent = key
+      ? (orfa ? `✉ ${key} (em falta)` : `✉ ${nome.length > 24 ? nome.slice(0, 23) + '…' : nome}`)
+      : '✉ e-mail';
+    emailAssocBtn.title = key
+      ? (orfa ? `O template "${key}" já não existe — associe outro.` : `Template: ${nome} (${key})`)
+      : 'Associar template de e-mail a este passo';
+    emailAssocBtn.style.color = orfa ? '#e05252' : (key ? '#0d9488' : '#7b8794');
+    emailAssocBtn.style.borderColor = orfa ? 'rgba(224,82,82,.45)' : (key ? 'rgba(13,148,136,.4)' : '#d8e0ea');
   }
   _updateEmailAssocLabel();
   emailAssocBtn.addEventListener('click', e => {
@@ -1653,19 +1905,13 @@ function openEmailAssocPicker(step, onUpdate) {
     })()
   );
 
-  const keys = Object.keys(T);
-  const optionsHtml = `
-    <option value="">— sem template de e-mail —</option>
-    ${keys.map(k=>`<option value="${k}" ${currentKey===k?'selected':''}>${k} — ${T[k].title||''}</option>`).join('')}
-  `;
-
   overlay.innerHTML = `
     <div style="background:#ffffff;border:1px solid #d8e0ea;border-radius:12px;padding:28px;width:100%;max-width:440px;font-family:'Plus Jakarta Sans',sans-serif;animation:modalIn .18s ease;">
       <div style="font-family:monospace;font-size:10px;letter-spacing:.15em;color:#7b8794;margin-bottom:10px;">ASSOCIAR TEMPLATE DE E-MAIL</div>
       <div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:6px;">Passo: <span id="eap-step-title" style="color:#0284c7;"></span></div>
       <div style="font-size:12px;color:#7b8794;margin-bottom:18px;line-height:1.5;">Seleciona o template de e-mail a associar a este passo.<br>Escolhe "sem template" para remover a associação.</div>
       <label style="font-size:10px;color:#7b8794;font-family:monospace;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">Template</label>
-      <select id="eap-select" style="width:100%;background:#eef2f7;border:1px solid #d8e0ea;border-radius:6px;color:#1e293b;padding:9px 10px;font-size:13px;font-family:inherit;outline:none;margin-bottom:16px;">${optionsHtml}</select>
+      <select id="eap-select" style="width:100%;background:#eef2f7;border:1px solid #d8e0ea;border-radius:6px;color:#1e293b;padding:9px 10px;font-size:13px;font-family:inherit;outline:none;margin-bottom:16px;"></select>
       <div id="eap-reply-wrap" style="margin-bottom:16px;">
         <label style="font-size:10px;color:#7b8794;font-family:monospace;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">Prazo de resposta (dias úteis)</label>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -1686,6 +1932,24 @@ function openEmailAssocPicker(step, onUpdate) {
   `;
 
   document.body.appendChild(overlay);
+
+  // Opções construídas com nós DOM: o título do template é escrito pelo
+  // utilizador no editor (ou vem de um JSON importado) e interpolá-lo em HTML
+  // partia o <select> ao primeiro aspas — ou pior, injectava markup.
+  const eapSelect = document.getElementById('eap-select');
+  const semTemplate = document.createElement('option');
+  semTemplate.value = '';
+  semTemplate.textContent = '— sem template de e-mail —';
+  eapSelect.appendChild(semTemplate);
+  Object.keys(T)
+    .sort((a, b) => (T[a].title || a).localeCompare(T[b].title || b, 'pt'))
+    .forEach(k => {
+      const o = document.createElement('option');
+      o.value = k;
+      o.textContent = `${T[k].title || k} — ${k}`;
+      if(currentKey === k) o.selected = true;
+      eapSelect.appendChild(o);
+    });
 
   // Set step title
   const titleEl = document.getElementById('eap-step-title');
@@ -1722,8 +1986,10 @@ function openEmailAssocPicker(step, onUpdate) {
   // Create new template shortcut
   document.getElementById('eap-new-btn').addEventListener('click', () => {
     overlay.remove();
-    newTemplateEditor();
+    // Abrir primeiro: o openTemplateEditor repõe o estado do formulário, e a
+    // ordem inversa descartava o template acabado de criar.
     openTemplateEditor();
+    newTemplateEditor();
   });
 }
 
@@ -2158,11 +2424,7 @@ function deactivateWorkflowEditor(){
   setEditableState(false);
   // Save current state and sync React with final state
   const serialized = serializeWorkflow();
-  const payload = JSON.stringify(serialized);
-  localStorage.setItem('workflowTemplate', payload);
-  if(window.storage && typeof window.storage.set === 'function'){
-    window.storage.set('ulsm:workflowTemplate', payload, true).catch(()=>{});
-  }
+  persistWorkflow(serialized);
   if(Array.isArray(serialized.phases)) {
     window.__ULSM_PHASES = buildPhasesFromData(serialized.phases);
     window.dispatchEvent(new CustomEvent('workflowChanged', { detail: { phases: window.__ULSM_PHASES } }));
@@ -2209,9 +2471,16 @@ function doResetTemplate(){
     if(!wf || !Array.isArray(wf.phases)) return false;
     window.__ULSM_PHASES = buildPhasesFromData(wf.phases);
     window.__ULSM_DEFAULT_WORKFLOW = wf;
-    if(wf.emailTemplates) {
-      window.__ULSM_DEFAULT_TEMPLATES = wf.emailTemplates;
-      T = JSON.parse(JSON.stringify(wf.emailTemplates));
+    // Repor também os templates: sem isto, o `applyTemplate` a seguir voltava a
+    // gravar os templates editados que este botão diz ter apagado. Se o workflow
+    // reposto não trouxer templates, vale o inline default — nunca a versão
+    // editada que estamos precisamente a descartar.
+    const originais = isTemplateMap(wf.emailTemplates)
+      ? wf.emailTemplates
+      : window.__ULSM_INLINE_DEFAULT?.emailTemplates;
+    if(isTemplateMap(originais)) {
+      window.__ULSM_DEFAULT_TEMPLATES = originais;
+      T = JSON.parse(JSON.stringify(originais));
     }
     applyTemplate({ phases: wf.phases });
     window.dispatchEvent(new CustomEvent('workflowChanged', { detail: { phases: window.__ULSM_PHASES } }));
@@ -2256,6 +2525,22 @@ function initEditorMode(){
     document.getElementById('templateInput').click();
   });
   document.getElementById('editEmailsBtn2').addEventListener('click', () => openTemplateEditor());
+
+  // Marcar o formulário de templates como sujo a cada tecla: é o que permite
+  // avisar antes de trocar de template ou fechar o modal sem gravar.
+  const tplForm = document.getElementById('templateEditorForm');
+  if(tplForm){
+    tplForm.addEventListener('input', (e) => {
+      if(e.target && e.target.id !== 'tplKey') _tplMarkDirty();
+    });
+    // Enter num campo de uma linha grava, em vez de não fazer nada.
+    tplForm.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' && e.target.tagName === 'INPUT'){
+        e.preventDefault();
+        saveTemplateEditor();
+      }
+    });
+  }
   document.getElementById('resetTemplateBtn2').addEventListener('click', doResetTemplate);
 
   document.getElementById('templateInput').addEventListener('change', async (event) => {
@@ -2563,7 +2848,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.15.6";
+const APP_VERSION = "3.16.0";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
@@ -5617,11 +5902,14 @@ function BootScreen({ onReady }) {
       window.__ULSM_DEFAULT_WORKFLOW = wf;
       if (wf.emailTemplates) window.__ULSM_DEFAULT_TEMPLATES = wf.emailTemplates;
       window.__ULSM_PHASES = buildPhasesFromData(wf.phases);
+      // Um workflow escolhido pelo utilizador traz normalmente os seus próprios
+      // templates — passam a ser os activos. Se não trouxer nenhum, o
+      // persistWorkflow mantém os que já lá estavam em vez de os apagar.
+      if (isTemplateMap(wf.emailTemplates)) {
+        T = JSON.parse(JSON.stringify(wf.emailTemplates));
+      }
       // Persistir em localStorage para que o editor o use
-      try {
-        const serial = { phases: wf.phases };
-        localStorage.setItem('workflowTemplate', JSON.stringify(serial));
-      } catch(e) {}
+      persistWorkflow({ phases: wf.phases });
     }
 
     // Aplicar backup
@@ -5634,7 +5922,10 @@ function BootScreen({ onReady }) {
       filename = window.__ULSM_BOOT_BACKUP_NAME || BACKUP_FILENAME;
       // Sync workflow from backup if present
       if (bk.workflow && Object.keys(bk.workflow).length > 0) {
-        try { localStorage.setItem('workflowTemplate', JSON.stringify(bk.workflow)); } catch(e) {}
+        if (isTemplateMap(bk.workflow.emailTemplates)) {
+          T = JSON.parse(JSON.stringify(bk.workflow.emailTemplates));
+        }
+        persistWorkflow(bk.workflow);
       }
     }
 
@@ -8222,8 +8513,11 @@ function KpisPanel() {
       window.__ULSM_DEFAULT_WORKFLOW = defaultWF;
       if (defaultWF.emailTemplates) window.__ULSM_DEFAULT_TEMPLATES = defaultWF.emailTemplates;
       window.__ULSM_PHASES = buildPhasesFromData(defaultWF.phases);
-      // Sincronizar templates de e-mail se o workflow os contém
-      if (defaultWF.emailTemplates && Object.keys(defaultWF.emailTemplates).length > 0) {
+      // Sincronizar templates de e-mail se o workflow os contém — mas sem
+      // sobrepor os que o `loadEmailTemplates()` já carregou. Os templates
+      // embutidos no workflow são o fallback mais fraco: as edições guardadas
+      // pelo utilizador e o `email-template.json` publicado vêm primeiro.
+      if (isTemplateMap(defaultWF.emailTemplates) && !isTemplateMap(window.__ULSM_INLINE_EMAIL_TEMPLATES)) {
         window.__ULSM_INLINE_EMAIL_TEMPLATES = defaultWF.emailTemplates;
       }
     } else {
@@ -8395,10 +8689,14 @@ Promise.all([loadEmailTemplates().catch(() => {}), loadWorkflow()]).then(async (
         if (replayed.workflow) {
           window.__ULSM_DEFAULT_WORKFLOW = replayed.workflow;
           if (replayed.workflow.emailTemplates) window.__ULSM_DEFAULT_TEMPLATES = replayed.workflow.emailTemplates;
+          if (isTemplateMap(replayed.workflow.emailTemplates) && !readStoredEmailTemplates()) {
+            T = JSON.parse(JSON.stringify(replayed.workflow.emailTemplates));
+          }
           window.__ULSM_PHASES = buildPhasesFromData(replayed.workflow.phases);
-          try {
-            localStorage.setItem('workflowTemplate', JSON.stringify({ phases: replayed.workflow.phases }));
-          } catch(e) {}
+          // Sem passar por persistWorkflow, esta gravação ficava com `phases` e
+          // mais nada — e as edições de templates desapareciam ao repetir a
+          // última escolha de arranque.
+          persistWorkflow({ phases: replayed.workflow.phases });
         }
         let procs = [];
         let filename = BACKUP_FILENAME;
