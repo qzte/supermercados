@@ -501,7 +501,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.5</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.6</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2563,7 +2563,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.15.5";
+const APP_VERSION = "3.15.6";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
@@ -7373,6 +7373,10 @@ function KpisPanel() {
     if (check()) return;
     await new Promise((resolve, reject) => {
       const s = document.createElement('script');
+      // As tags <script> estáticas do cabeçalho já levam
+      // referrerpolicy="no-referrer"; estas, carregadas só no momento da
+      // exportação, não levavam — e enviavam ao cdnjs o URL completo da página.
+      s.referrerPolicy = 'no-referrer';
       s.src = url; s.onload = resolve; s.onerror = reject;
       document.head.appendChild(s);
     });
