@@ -90,6 +90,41 @@ need(workflowIsFullFormat,
 const workflowSteps = workflow.phases.reduce((n, ph) => n + (ph.steps || []).length, 0);
 need(workflowSteps > 0, 'workflow-default.json não tem passos.');
 
+// ── 1b-bis. Content-Security-Policy ──────────────────────────────────────────
+// O commit `2071ee1` endureceu uma CSP que depois se perdeu por substituição de
+// ficheiro (ver A10 no SECURITY_AUDIT.md). Como o GitHub Pages não permite
+// cabeçalhos, a política só existe enquanto esta meta existir — e uma meta que
+// apareça *depois* de um <link> ou <script> não governa o que veio antes, o que
+// a tornaria silenciosamente inútil. Daí as duas verificações.
+const cspMatch = source.match(/<meta\s+http-equiv="Content-Security-Policy"[\s\S]*?>/i);
+need(cspMatch,
+  'não encontrei a <meta http-equiv="Content-Security-Policy"> — ver o achado A3 ' +
+  'do SECURITY_AUDIT.md. O Pages não permite cabeçalhos, portanto sem esta meta ' +
+  'a aplicação fica sem política nenhuma.');
+
+// Os comentários são apagados (preservando o comprimento, para as posições
+// continuarem a bater certo) antes de procurar as tags: o próprio comentário que
+// documenta a meta fala de `<script>` e `<link>`, e sem isto era ele o "primeiro
+// recurso" encontrado.
+const sourceNoComments = source.replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length));
+const cspPos = sourceNoComments.indexOf('<meta http-equiv="Content-Security-Policy"');
+const firstResource = Math.min(
+  ...[/<script[\s>]/i, /<link[\s>]/i].map(re => {
+    const m = re.exec(sourceNoComments);
+    return m ? m.index : Number.MAX_SAFE_INTEGER;
+  }));
+need(cspPos < firstResource,
+  'a <meta> da CSP aparece depois do primeiro <script>/<link>. Uma meta CSP só ' +
+  'governa o que vem a seguir, pelo que nessa posição não protege o carregamento ' +
+  'inicial. Mover para logo a seguir ao <meta charset>.');
+
+// Directivas cuja ausência passaria despercebida mas que são o que esta política
+// de facto entrega — sobretudo `connect-src`, que é o que corta a exfiltração.
+for (const directive of ['default-src', 'script-src', 'connect-src', 'object-src', 'base-uri']) {
+  need(cspMatch[0].includes(directive + ' '),
+    `a CSP não define \`${directive}\`. Ver o comentário da meta em src/index.src.html.`);
+}
+
 // ── 1c. Sanitização do HTML do workflow ──────────────────────────────────────
 // O `label` das fases e as `instructions` dos passos são renderizados com
 // dangerouslySetInnerHTML a partir de ficheiros JSON que o utilizador importa.

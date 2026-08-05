@@ -2,6 +2,46 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
+<!-- ── Content-Security-Policy ──────────────────────────────────────────────
+     Tem de vir antes de qualquer <link> ou <script>: uma meta CSP só governa o
+     que aparece depois dela. O GitHub Pages não permite configurar cabeçalhos
+     HTTP, por isso a meta é a única via disponível.
+
+     `script-src` leva 'unsafe-inline' e 'unsafe-eval' por necessidade, não por
+     escolha: a aplicação tem 30 handlers em atributos (onclick=, onchange=, …),
+     que nenhum hash cobre, e a exportação de PDF usa eval() para injectar a
+     função de preenchimento no iframe. Enquanto assim for, esta política **não
+     impede um <script> ou onerror= injectado de executar** — é honesto dizê-lo.
+     O que ela impede:
+       · carregar script de qualquer origem que não seja esta e o cdnjs;
+       · exfiltrar dados para fora desta origem (connect-src 'self') — que é o
+         que um XSS faria a seguir a executar;
+       · <object>/<embed>, <base> e submissão de formulários, todos sem uso aqui.
+     Para a tornar realmente eficaz é preciso converter os handlers inline para
+     addEventListener e remover o eval() — ver A3 e A8 no SECURITY_AUDIT.md.
+
+     Notas de manutenção:
+       · `frame-ancestors` é ignorado numa meta CSP (só funciona em cabeçalho),
+         por isso não está aqui — não daria a protecção que aparentava dar.
+       · `frame-src` precisa de blob: para o visualizador de PDF e de 'self'
+         para o iframe srcdoc que gera os relatórios.
+       · `font-src` aponta ao gstatic porque é de lá que o CSS do Google Fonts
+         carrega os ficheiros .woff2.
+       · Ao acrescentar uma biblioteca ou uma origem nova, esta lista tem de ser
+         actualizada, senão o recurso é bloqueado em silêncio para o utilizador.
+-->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+  img-src 'self' data: blob:;
+  connect-src 'self';
+  frame-src 'self' blob:;
+  manifest-src 'self';
+  object-src 'none';
+  base-uri 'none';
+  form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gestão de Supermercados — ULSM</title>
 <!-- Ícone da aplicação (SKz). O favicon vai embutido em data URI para que o
@@ -461,7 +501,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.4</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.5</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2523,7 +2563,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.15.4";
+const APP_VERSION = "3.15.5";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 

@@ -1,6 +1,6 @@
 # ULSM · Gestão de Supermercados — GitHub Pages
 
-**Versão da aplicação:** v3.15.4
+**Versão da aplicação:** v3.15.5
 **URL de produção:** https://qzte.github.io/supermercados/
 
 ---
@@ -28,7 +28,7 @@ supermercados/
 │
 │  ── GERADO — não editar ──────────────────────────────────
 ├── index.html                          # 🤖  aplicação servida
-├── ulsm_supermercados_3_15_4.html      # 🤖  cópia arquivada (idêntica)
+├── ulsm_supermercados_3_15_5.html      # 🤖  cópia arquivada (idêntica)
 │
 ├── .github/workflows/build.yml         #     compila e faz commit no push
 ├── .github/workflows/ci.yml            #     valida os pull requests
@@ -195,6 +195,29 @@ A sessão persiste em `sessionStorage` — um refresh não regressa ao ecrã de 
 O `workflow-default.json` é a via para alterar o processo para toda a gente sem tocar no código: editar no editor de workflow, exportar, e fazer commit do ficheiro. O `loadWorkflow` dá-lhe precedência sobre a versão embutida na app (e o `localStorage` tem precedência sobre ambos, para não sobrescrever edições locais em curso).
 
 > ⚠️ O ficheiro tem de estar no **esquema actual** — fases com `id`/`code`/`color`/`label` e passos com `role`/`instructions`/`emailKey`. Um ficheiro em esquema legado é **ignorado em silêncio**: parece estar a ser servido, mas a app usa a versão embutida. Foi o que aconteceu durante meses. O `npm run build` passa a **falhar** nesse caso, com a indicação do que corrigir.
+
+### Content-Security-Policy
+
+O `index.html` traz uma `<meta http-equiv="Content-Security-Policy">` logo a
+seguir ao `<meta charset>`. Tem de ficar aí: uma meta CSP **só governa o que
+aparece depois dela**, e o GitHub Pages não permite configurar cabeçalhos HTTP.
+O `npm run build` falha se a meta desaparecer, se descer para depois do primeiro
+`<script>`/`<link>`, ou se lhe faltar uma directiva essencial.
+
+O que a política entrega: nenhum script carrega de origem que não seja esta ou o
+cdnjs; `connect-src 'self'` corta a exfiltração de dados para fora da origem;
+`object-src`, `base-uri` e `form-action` fechados; e `default-src 'none'` a negar
+por omissão tudo o que não esteja enumerado.
+
+> ⚠️ **O que a política não faz.** O `script-src` leva `'unsafe-inline'` e
+> `'unsafe-eval'` por necessidade — a aplicação tem 30 handlers em atributos
+> (`onclick=`, `onchange=`, …), que nenhum hash cobre, e a exportação de PDF usa
+> `eval()`. Enquanto for assim, **um `<script>` ou `onerror=` injectado continua
+> a executar**. Para a tornar eficaz é preciso converter os handlers para
+> `addEventListener` e remover o `eval()` — ver A3 e A8 no `SECURITY_AUDIT.md`.
+
+Ao acrescentar uma biblioteca ou uma origem nova, a lista de directivas tem de
+ser actualizada, senão o recurso é bloqueado **em silêncio** para o utilizador.
 
 ### Dependências externas
 

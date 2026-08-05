@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-04
 **Versão auditada:** v3.15.1 (`ec2a05a`)
-**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3 · A7 (SheetJS) em v3.15.4
+**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3 · A7 (SheetJS) em v3.15.4 · A3 em v3.15.5
 **Alvo:** `src/index.src.html` (fonte), `index.html` (servido), `tools/build.mjs`,
 `.github/workflows/build.yml`, `workflow-default.json`, `email-template.json`,
 `manifest.webmanifest`, histórico Git.
@@ -44,7 +44,7 @@ o histórico do processo.
 | A1 | PINs de editor em claro no ficheiro servido | **Alta** | Sim | aberto |
 | A2 | XSS armazenado via ficheiro de workflow/backup importado | **Alta** | Sim | ✅ v3.15.2 |
 | A2b | Execução via `blob:` no visualizador de PDF | **Alta** | Sim | ✅ v3.15.2 |
-| A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 | aberto |
+| A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 | ✅ v3.15.5 (sem `'unsafe-inline'` fica por fazer) |
 | A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | parcial (1 de 5 alojada) |
 | A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim | ✅ v3.15.3 (parcial) |
 | A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno | aberto |
@@ -261,17 +261,64 @@ corrige A2, mas transforma "exfiltração silenciosa de todos os dados" em
   object-src 'none'">
 ```
 
-Observações de implementação:
-- `'unsafe-inline'` em `script-src` é hoje inevitável — o `build.mjs` emite o
-  código compilado num `<script>` inline. É preferível calcular o **hash SHA-256
-  do bloco** no build e emitir `'sha256-…'`, eliminando o `'unsafe-inline'`; a
-  alteração cabe em poucas linhas de `tools/build.mjs`.
-- `connect-src 'self'` é suficiente: os únicos `fetch()` da app são os três JSON
-  relativos.
-- `frame-src blob: data:` é necessário para o visualizador de PDF (`:1873`) e
-  para o `iframe.srcdoc` da exportação (`:7366`).
-- **`'unsafe-eval'` foi deliberadamente omitido** — vai colidir com A8; ver ali.
-- Validar em `file://`, cenário que o README documenta como suportado.
+#### ✅ Corrigido em v3.15.5 — mas leia-se o que esta política *não* faz
+
+A política aplicada é a acima, com duas diferenças face ao rascunho: leva também
+`'unsafe-eval'`, e o `frame-src` é `'self' blob:` em vez de `blob: data:`.
+
+**A limitação, dita sem rodeios.** O `script-src` leva `'unsafe-inline'` e
+`'unsafe-eval'` por necessidade: a aplicação tem **30 handlers em atributos**
+(`onclick=`, `onchange=`, `ondrop=`, `onkeydown=`) — que **nenhum hash cobre**,
+porque hashes não se aplicam a handlers inline — e a exportação de PDF usa
+`eval()` (A8). Enquanto for assim, **esta CSP não impede um `<script>` ou um
+`onerror=` injectado de executar**. Quem a leia à distância pode assumir que
+impede; não impede.
+
+O rascunho original desta secção dizia que o `'unsafe-inline'` vinha do bloco
+compilado pelo build e que hashes o resolviam. Estava incompleto: o bloqueador
+real são os 30 handlers em atributos, e esses não têm solução por hash — só
+convertendo-os para `addEventListener`.
+
+**O que a política entrega mesmo:**
+
+| | |
+|---|---|
+| `connect-src 'self'` | corta a **exfiltração** — é o que um XSS faz a seguir a executar, e agora não tem para onde enviar |
+| `script-src` com origens fixas | nenhum script carrega de uma origem que não seja esta ou o cdnjs |
+| `object-src 'none'` | sem `<object>`/`<embed>`, que a app não usa |
+| `base-uri 'none'` | impede reescrever a resolução de todos os URLs relativos da página |
+| `form-action 'none'` | não há formulários; um injectado não consegue submeter |
+| `default-src 'none'` | tudo o que não está enumerado é negado por omissão |
+
+**Escolha de âmbito.** A alternativa — converter os 30 handlers, remover o
+`eval()` e passar a hashes — foi ponderada e **adiada por decisão de quem
+mantém**, por tocar em 30 pontos de interface e na geração de PDF. Fica como o
+passo que torna esta CSP eficaz de facto.
+
+**Notas de implementação, verificadas e não presumidas:**
+- `frame-ancestors` **não está** na política: é ignorado numa meta CSP, só
+  funciona em cabeçalho. Incluí-lo daria uma falsa sensação de protecção.
+- `frame-src 'self' blob:` — o `blob:` é para o visualizador de PDF; o `'self'`
+  para o `iframe.srcdoc` dos relatórios. Confirmado que o `srcdoc` carrega.
+- `img-src 'self' data: blob:` — o favicon é um `data:` URI e as imagens
+  anexadas aos passos também.
+- `manifest-src 'self'` é preciso: com `default-src 'none'`, o
+  `manifest.webmanifest` era bloqueado.
+
+**Verificação** — 23 testes em Chromium com a política activa, a escutar
+`securitypolicyviolation` (uma CSP mal calibrada não dá erro ao utilizador,
+bloqueia o recurso em silêncio): arranque, render do React, `fetch` dos JSON,
+modal de e-mail, visualizador de PDF, exportação Excel, e a exportação de PDF
+completa — `srcdoc` + `eval` + html2canvas + jsPDF, que era o caminho mais
+frágil. **Zero violações inesperadas.** Confirmado também que um script de outra
+origem e um `fetch` para fora são efectivamente bloqueados, e que a app continua
+a arrancar em `file://`.
+
+**Guardas no `build.mjs`** — falha se a meta desaparecer, se aparecer **depois**
+do primeiro `<script>`/`<link>` (nessa posição não governa o carregamento
+inicial, e seria uma falha silenciosa), ou se faltar uma das directivas
+essenciais. As três foram testadas. É a resposta ao A10: a CSP do commit
+`2071ee1` já se tinha perdido uma vez por substituição de ficheiro.
 
 ---
 
@@ -642,8 +689,10 @@ Registado por ser relevante para a avaliação e para não ser desfeito:
    histórico Git (público e já divulgado) e a constante `TEAM`.
 
 **Prioridade 2 — próxima iteração**
-4. **A3**: acrescentar a `meta` CSP (idealmente com hash do script inline
-   calculado no build).
+4. ~~**A3**~~ ✅ **feito em v3.15.5** — meta CSP com `default-src 'none'`,
+   `connect-src 'self'` e guardas no build. Continua a precisar de
+   `'unsafe-inline'`/`'unsafe-eval'`: para a tornar eficaz é preciso converter os
+   30 handlers inline e remover o `eval()` (A8).
 5. **A4**: `integrity` nas cinco bibliotecas de CDN, ou alojá-las localmente —
    o que também resolve o arranque sem rede.
 6. **A10**: guarda no `build.mjs` contra padrões proibidos; abandonar o fluxo de
