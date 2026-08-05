@@ -1,6 +1,6 @@
 # ULSM · Gestão de Supermercados — GitHub Pages
 
-**Versão da aplicação:** v3.13.0
+**Versão da aplicação:** v3.15.4
 **URL de produção:** https://qzte.github.io/supermercados/
 
 ---
@@ -23,9 +23,12 @@ supermercados/
 ├── email-template.json                 #     templates de e-mail  ⚠ minúsculas
 ├── ulsm_supermercados_backup.json      #     dados dos processos
 │
+│  ── TERCEIROS — substituir, não editar ───────────────────
+├── xlsx.full.min.js                    # 📦  SheetJS 0.20.3 (hash fixado no validate)
+│
 │  ── GERADO — não editar ──────────────────────────────────
 ├── index.html                          # 🤖  aplicação servida
-├── ulsm_supermercados_3_12_0.html      # 🤖  cópia arquivada (idêntica)
+├── ulsm_supermercados_3_15_4.html      # 🤖  cópia arquivada (idêntica)
 │
 ├── .github/workflows/build.yml         #     compila e faz commit no push
 ├── .github/workflows/ci.yml            #     valida os pull requests
@@ -197,7 +200,11 @@ O `workflow-default.json` é a via para alterar o processo para toda a gente sem
 
 React, ReactDOM e Babel são carregados de `cdnjs.cloudflare.com`. Se essas bibliotecas não carregarem (sem internet, bloqueio de rede/proxy), a app mostra um ecrã de erro explícito com botão de recarregar — em vez de uma página em branco. O mesmo acontece se o arranque falhar por outro motivo ou demorar mais de 12 s.
 
-Os relatórios em PDF/Excel carregam `jsPDF`, `html2canvas` e `SheetJS` da mesma CDN, mas só no momento da exportação.
+Os relatórios em PDF carregam `jsPDF` e `html2canvas` da mesma CDN, só no momento da exportação.
+
+O **`SheetJS` é servido pela própria aplicação** (`xlsx.full.min.js`, 930 KB), e não por CDN. A versão publicada no cdnjs está congelada na 0.18.5, que tem duas vulnerabilidades conhecidas (CVE-2023-30533, prototype pollution; CVE-2024-22363, ReDoS) — o SheetJS saiu do npm e do cdnjs, e as versões corrigidas só existem fora deles. Ao ser servido do mesmo sítio que a app, deixa também de haver um terceiro capaz de substituir o ficheiro, e a exportação passa a funcionar sem rede, incluindo em `file://`.
+
+> Para actualizar: descarregar de <https://cdn.sheetjs.com>, correr `sha256sum xlsx.full.min.js` e actualizar `version` e `sha256` em `tools/validate.mjs` **no mesmo commit**. O `npm run validate` falha se o ficheiro e o hash divergirem — uma troca silenciosa da biblioteca não passa despercebida.
 
 ### Precedência do workflow
 

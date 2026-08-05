@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-04
 **Versão auditada:** v3.15.1 (`ec2a05a`)
-**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3
+**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3 · A7 (SheetJS) em v3.15.4
 **Alvo:** `src/index.src.html` (fonte), `index.html` (servido), `tools/build.mjs`,
 `.github/workflows/build.yml`, `workflow-default.json`, `email-template.json`,
 `manifest.webmanifest`, histórico Git.
@@ -45,10 +45,10 @@ o histórico do processo.
 | A2 | XSS armazenado via ficheiro de workflow/backup importado | **Alta** | Sim | ✅ v3.15.2 |
 | A2b | Execução via `blob:` no visualizador de PDF | **Alta** | Sim | ✅ v3.15.2 |
 | A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 | aberto |
-| A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | aberto |
+| A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | parcial (1 de 5 alojada) |
 | A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim | ✅ v3.15.3 (parcial) |
 | A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno | aberto |
-| A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | aberto |
+| A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | ✅ v3.15.4 (SheetJS; restantes abertas) |
 | A8 | `eval()` na geração de PDF | **Baixa** | Não (hoje) | aberto |
 | A9 | GitHub Actions com `contents: write` e actions não fixadas por SHA | **Baixa** | Interno | ✅ v3.15.3 |
 | A10 | **Regressão:** correcções de segurança anteriores foram perdidas | **Processo** | — | parcial |
@@ -435,9 +435,50 @@ ficheiros; a aplicação só usa `aoa_to_sheet`/`writeFile`, isto é, **escreve*
 resultado que diz respeito apenas ao Babel do build). Não existe hoje nenhum
 processo que sinalize CVE nestas cinco bibliotecas.
 
-**Recomendação** — Actualizar `jspdf` e `html2canvas`; para o SheetJS, notar que
-saiu do npm e é distribuído em `cdn.sheetjs.com`. Ao alojar as bibliotecas
-localmente (A4), passam a ser rastreáveis por ferramentas de dependências.
+#### ✅ SheetJS corrigido em v3.15.4 — as restantes continuam em aberto
+
+O `xlsx` passou de **0.18.5 para 0.20.3**, que é posterior às correcções dos dois
+CVE (0.19.3 e 0.20.2). Deixou de vir do cdnjs e é **servido pela própria
+aplicação** (`xlsx.full.min.js`, 930 KB). Não foi uma escolha estética: o cdnjs
+está congelado na 0.18.5 porque o SheetJS **saiu do npm e do cdnjs**, e as
+versões corrigidas só existem fora deles. Alojar era a única forma de actualizar.
+
+Três efeitos, além de fechar os CVE:
+- deixa de haver um terceiro capaz de substituir o ficheiro — é o que o
+  `integrity` daria numa CDN, e resolve uma das cinco entradas do A4;
+- a exportação para Excel passa a funcionar **sem rede**, incluindo em `file://`;
+- a versão passa a estar declarada e verificada, em vez de implícita num URL.
+
+**Verificação de proveniência — o que consegui e o que não.** O ficheiro foi
+fornecido directamente, e o `cdn.sheetjs.com` está inacessível a partir deste
+ambiente, pelo que **não foi possível comparar hashes com a origem**. O que foi
+feito em substituição:
+
+| | |
+|---|---|
+| Inspecção estática | zero `fetch`/`XMLHttpRequest`/`WebSocket`/`sendBeacon`, zero `eval`/`Function`, zero acesso a cookies ou storage; os únicos URLs externos são *namespaces* XML do OOXML/ODF |
+| Teste funcional | gera um `.xlsx` que é um zip OOXML válido (`[Content_Types].xml`, `xl/workbook.xml`), relê-o correctamente e preserva acentos |
+| Superfície de API | `book_new`, `aoa_to_sheet`, `book_append_sheet`, `writeFile` — exactamente o que o `exportExcel` usa |
+| No browser | carrega por caminho relativo, reporta `0.20.3` e não faz nenhum pedido à cdnjs |
+
+Isto é evidência forte de que é um build funcional do SheetJS, **não é uma prova
+criptográfica de proveniência**. Quem tiver acesso à rede deve confirmar o
+`sha256` contra o `cdn.sheetjs.com`:
+`cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41`.
+
+**Guarda** — o `tools/validate.mjs` fixa esse hash e falha se o ficheiro servido
+divergir. Uma substituição silenciosa da biblioteca deixa de passar despercebida;
+uma actualização legítima obriga a mexer na versão e no hash no mesmo commit.
+
+**Continua em aberto** — `jspdf` 2.5.1 e `html2canvas` 1.4.1 continuam a vir do
+cdnjs, sem `integrity` (A4) e desactualizados. Nenhum tem CVE conhecido, o que os
+torna menos urgentes, mas o mesmo tratamento resolvia-os. O `react`/`react-dom`
+18.2.0 idem.
+
+**A nota do `npm audit` mantém-se** — estas bibliotecas não constam do
+`package.json`, pelo que nenhuma ferramenta de dependências as vê. O
+`validate.mjs` passa a cobrir a única que está alojada; as outras três continuam
+sem processo que sinalize um CVE novo.
 
 ---
 
@@ -610,7 +651,9 @@ Registado por ser relevante para a avaliação e para não ser desfeito:
 
 **Prioridade 3 — quando houver oportunidade**
 7. **A8**: eliminar o `eval()` da exportação de PDF.
-8. **A7**: actualizar `jspdf`/`html2canvas`; rastrear as dependências de CDN.
+8. **A7**: ~~SheetJS~~ ✅ **feito em v3.15.4** (0.20.3, alojado localmente, hash
+   fixado). Faltam `jspdf` e `html2canvas` — sem CVE conhecido, mas o mesmo
+   tratamento resolvia-os e fechava o A4 de vez.
 9. ~~**A9**~~ ✅ **feito em v3.15.3** — `build.yml` com actions fixadas por SHA,
    `persist-credentials: false` e `--ignore-scripts`; o token só existe no passo
    de push.

@@ -461,7 +461,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.3</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.15.4</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2523,7 +2523,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.15.3";
+const APP_VERSION = "3.15.4";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
@@ -7555,7 +7555,14 @@ function KpisPanel() {
     setIsExporting(true);
     setExportFeedback('loading', 'A gerar Excel…', 0);
     try {
-      await loadLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', () => !!window.XLSX);
+      // Servido da própria aplicação, não de CDN. Três razões:
+      //   · a versão do cdnjs está congelada em 0.18.5, com duas
+      //     vulnerabilidades conhecidas (CVE-2023-30533, CVE-2024-22363); o
+      //     SheetJS saiu do npm/cdnjs e a 0.20.3 só existe fora deles;
+      //   · sendo do mesmo sítio que a app, deixa de haver um terceiro capaz de
+      //     substituir o ficheiro — o que o `integrity` faria por uma CDN;
+      //   · a exportação passa a funcionar sem rede, incluindo em file://.
+      await loadLib('xlsx.full.min.js', () => !!window.XLSX);
       const wb = window.XLSX.utils.book_new();
       const summaryRows = [
         ['Relatório', 'KPIs Supermercados ULSM'],
