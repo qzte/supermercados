@@ -3163,6 +3163,19 @@ function getEffectivePlannedEnd(entry, procs) {
   return (linked && linked.targetDate) ? linked.targetDate : entry.plannedEndDate;
 }
 
+// entry.responsavelClinico/responsavelFarmacia sofrem do mesmo problema de SNAPSHOT
+// que o Fim previsto acima: são copiados do processo quando a entrada é criada/ligada
+// (ver "▶ Iniciar" e "⬇ Importar processos"), mas atribuir ou trocar o responsável no
+// processo (separador RESPONSÁVEIS) não escreve de volta nesse snapshot. Resultado: o
+// Plano Anual podia continuar a mostrar "—" para uma entrada já com responsável
+// atribuído no processo ligado. Tal como a Data Alvo, para uma entrada ligada o
+// processo passa a ser a fonte de verdade.
+function getEffectiveResponsavel(entry, role, procs) {
+  const linked = procs.find(p => p.id === entry.linkedProcessId);
+  if (linked) return linked[role]?.responsible || "";
+  return (role === "clinico" ? entry.responsavelClinico : entry.responsavelFarmacia) || "";
+}
+
 // Um processo está concluído quando TODOS os percursos activos estão concluídos.
 // Mesma regra do cartão CONCLUÍDOS (`isDone`) e do Plano Anual; existe também ao
 // nível do módulo para que as funções de data abaixo possam aplicá-la.
@@ -6329,8 +6342,8 @@ function AnnualPlanPanel({ plan, onPlanChange, isEditor, procs, onCreateProcess 
         if (!db) return -1;
         return new Date(da) - new Date(db);
       }
-      case "responsavelClinico": return (a.responsavelClinico||"").localeCompare(b.responsavelClinico||"");
-      case "responsavelFarmacia": return (a.responsavelFarmacia||"").localeCompare(b.responsavelFarmacia||"");
+      case "responsavelClinico": return getEffectiveResponsavel(a,"clinico",procs).localeCompare(getEffectiveResponsavel(b,"clinico",procs));
+      case "responsavelFarmacia": return getEffectiveResponsavel(a,"farmacia",procs).localeCompare(getEffectiveResponsavel(b,"farmacia",procs));
       case "status": {
         const la = (STATUS_PLAN[entryStatus(a)]||STATUS_PLAN.planned).label;
         const lb = (STATUS_PLAN[entryStatus(b)]||STATUS_PLAN.planned).label;
@@ -6641,8 +6654,18 @@ function AnnualPlanPanel({ plan, onPlanChange, isEditor, procs, onCreateProcess 
                     <td style={{...colStyle, fontFamily:"monospace", fontSize:10, color:"#7b8794"}}>{entry.costCenter||"—"}</td>
                     <td style={{...colStyle, fontFamily:"monospace", fontSize:11, color:"#7b8794"}}>{entry.plannedStartDate ? fmtDate(entry.plannedStartDate) : "—"}</td>
                     <td style={{...colStyle, fontFamily:"monospace", fontSize:11, color:"#7b8794"}}>{(()=>{ const pe=getEffectivePlannedEnd(entry,procs); return pe ? fmtDate(pe) : "—"; })()}</td>
-                    <td style={{...colStyle, fontSize:11, color:"#ea9a3e"}}>{entry.responsavelClinico||<span style={{color:"#7b8794"}}>—</span>}</td>
-                    <td style={{...colStyle, fontSize:11, color:"#0284c7"}}>{entry.responsavelFarmacia||<span style={{color:"#7b8794"}}>—</span>}</td>
+                    {["clinico","farmacia"].map(role => {
+                      const inactive = linked && linked.roles?.[role] === false;
+                      const val = getEffectiveResponsavel(entry, role, procs);
+                      const c = role === "clinico" ? "#ea9a3e" : "#0284c7";
+                      return (
+                        <td key={role} style={{...colStyle, fontSize:11, color:c}}>
+                          {inactive
+                            ? <span style={{color:"#7b8794"}}>inativo</span>
+                            : val || <span style={{color: linked ? "#e05252" : "#7b8794", fontWeight: linked ? 700 : 400}}>—</span>}
+                        </td>
+                      );
+                    })}
                     <td style={colStyle}>
                       <span style={{ display:"inline-block", padding:"2px 9px", borderRadius:99, fontSize:10,
                         fontFamily:"monospace", fontWeight:600,
