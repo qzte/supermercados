@@ -510,7 +510,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.17.2</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.18.0</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2940,7 +2940,7 @@ const ROLE_COLORS = {
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.17.2";
+const APP_VERSION = "3.18.0";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 function isObj(v) {
@@ -9805,7 +9805,7 @@ function App() {
   }, []);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
-  const [sortBy, setSortBy] = useState("criacao"); // "criacao"|"prazo"|"progresso"|"servico"
+  const [sortBy, setSortBy] = useState("progresso"); // "criacao"|"prazo"|"progresso"|"servico"
   const [filterRole, setFilterRole] = useState("all"); // "all"|"clinico"|"farmacia"
   const [filterResponsavel, setFilterResponsavel] = useState(""); // nome ou ""
   const [filterTags, setFilterTags] = useState([]); // array de tag ids
@@ -10629,13 +10629,13 @@ function App() {
       fontWeight: 600,
       whiteSpace: "nowrap"
     }
-  }, l))), (search || filterStatus !== "active" || filterResponsavel || filterRole !== "all" || sortBy !== "criacao" || filterTags.length > 0) && /*#__PURE__*/React.createElement("button", {
+  }, l))), (search || filterStatus !== "active" || filterResponsavel || filterRole !== "all" || sortBy !== "progresso" || filterTags.length > 0) && /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       setSearch("");
       setFilterStatus("active");
       setFilterResponsavel("");
       setFilterRole("all");
-      setSortBy("criacao");
+      setSortBy("progresso");
       setFilterTags([]);
     },
     style: {
