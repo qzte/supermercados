@@ -510,7 +510,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.16.0</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.17.0</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2940,7 +2940,7 @@ const ROLE_COLORS = {
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.16.0";
+const APP_VERSION = "3.17.0";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 function isObj(v) {
@@ -11099,6 +11099,14 @@ function KpisPanel() {
   });
   const [isExporting, setIsExporting] = React.useState(false);
   const [modalProc, setModalProc] = React.useState(null);
+  const [desviosSortKey, setDesviosSortKey] = React.useState('plannedStartDate');
+  const [desviosSortDir, setDesviosSortDir] = React.useState('asc');
+  function toggleDesviosSort(key) {
+    if (desviosSortKey === key) setDesviosSortDir(d => d === 'asc' ? 'desc' : 'asc');else {
+      setDesviosSortKey(key);
+      setDesviosSortDir('asc');
+    }
+  }
 
   // Refresh when view is activated or data changes
   React.useEffect(() => {
@@ -11316,6 +11324,65 @@ function KpisPanel() {
       desvioFim,
       status: entryExecStatus(entry)
     };
+  });
+  function compareDesvios(a, b, key) {
+    switch (key) {
+      case 'service':
+        return (a.entry.service || '').localeCompare(b.entry.service || '');
+      case 'realStart':
+        {
+          if (!a.realStart && !b.realStart) return 0;
+          if (!a.realStart) return 1;
+          if (!b.realStart) return -1;
+          return new Date(a.realStart) - new Date(b.realStart);
+        }
+      case 'desvioInicio':
+        {
+          if (a.desvioInicio == null && b.desvioInicio == null) return 0;
+          if (a.desvioInicio == null) return 1;
+          if (b.desvioInicio == null) return -1;
+          return a.desvioInicio - b.desvioInicio;
+        }
+      case 'plannedEnd':
+        {
+          if (!a.plannedEnd && !b.plannedEnd) return 0;
+          if (!a.plannedEnd) return 1;
+          if (!b.plannedEnd) return -1;
+          return new Date(a.plannedEnd) - new Date(b.plannedEnd);
+        }
+      case 'realEnd':
+        {
+          if (!a.realEnd && !b.realEnd) return 0;
+          if (!a.realEnd) return 1;
+          if (!b.realEnd) return -1;
+          return new Date(a.realEnd) - new Date(b.realEnd);
+        }
+      case 'desvioFim':
+        {
+          if (a.desvioFim == null && b.desvioFim == null) return 0;
+          if (a.desvioFim == null) return 1;
+          if (b.desvioFim == null) return -1;
+          return a.desvioFim - b.desvioFim;
+        }
+      case 'status':
+        {
+          const la = execStatusLabel[a.status] || a.status;
+          const lb = execStatusLabel[b.status] || b.status;
+          return la.localeCompare(lb);
+        }
+      case 'plannedStartDate':
+      default:
+        {
+          if (!a.entry.plannedStartDate && !b.entry.plannedStartDate) return 0;
+          if (!a.entry.plannedStartDate) return 1;
+          if (!b.entry.plannedStartDate) return -1;
+          return new Date(a.entry.plannedStartDate) - new Date(b.entry.plannedStartDate);
+        }
+    }
+  }
+  const sortedDesviosData = [...desviosData].sort((a, b) => {
+    const cmp = compareDesvios(a, b, desviosSortKey);
+    return desviosSortDir === 'asc' ? cmp : -cmp;
   });
 
   // ── EXPORTAÇÃO ────────────────────────────────────────────────────────────
@@ -12459,8 +12526,9 @@ function KpisPanel() {
     style: {
       borderBottom: '2px solid #d8e0ea'
     }
-  }, ['Serviço', 'Início previsto', 'Início real', 'Δ início', 'Fim previsto', 'Fim real', 'Δ fim', 'Estado'].map(h => /*#__PURE__*/React.createElement("th", {
-    key: h,
+  }, [['service', 'Serviço'], ['plannedStartDate', 'Início previsto'], ['realStart', 'Início real'], ['desvioInicio', 'Δ início'], ['plannedEnd', 'Fim previsto'], ['realEnd', 'Fim real'], ['desvioFim', 'Δ fim'], ['status', 'Estado']].map(([key, h]) => /*#__PURE__*/React.createElement("th", {
+    key: key,
+    onClick: () => toggleDesviosSort(key),
     style: {
       padding: '6px 10px',
       textAlign: 'left',
@@ -12468,9 +12536,17 @@ function KpisPanel() {
       fontFamily: 'monospace',
       color: '#7b8794',
       letterSpacing: '.08em',
-      whiteSpace: 'nowrap'
+      whiteSpace: 'nowrap',
+      cursor: 'pointer',
+      userSelect: 'none'
     }
-  }, h)))), /*#__PURE__*/React.createElement("tbody", null, desviosData.map(({
+  }, h, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 8,
+      marginLeft: 4,
+      opacity: desviosSortKey === key ? 1 : .35
+    }
+  }, desviosSortKey === key ? desviosSortDir === 'asc' ? '▲' : '▼' : '↕'))))), /*#__PURE__*/React.createElement("tbody", null, sortedDesviosData.map(({
     entry,
     linked,
     realStart,
