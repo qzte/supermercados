@@ -6280,7 +6280,14 @@ function AnnualPlanPanel({ plan, onPlanChange, isEditor, procs, onCreateProcess 
   const [draftEntry, setDraftEntry] = useState(null); // entrada em edição
   const [showNewForm, setShowNewForm] = useState(false);
   const [newEntry, setNewEntry] = useState(() => EMPTY_PLAN_ENTRY(plan.year || new Date().getFullYear()));
+  const [sortKey, setSortKey] = useState("plannedStartDate");
+  const [sortDir, setSortDir] = useState("asc");
   const planFileRef = React.useRef();
+
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  }
 
   const years = Array.from(new Set([
     new Date().getFullYear() - 1,
@@ -6312,6 +6319,41 @@ function AnnualPlanPanel({ plan, onPlanChange, isEditor, procs, onCreateProcess 
     return procOverallPct(linked);
   }
 
+  function compareEntries(a, b, key) {
+    switch (key) {
+      case "service": return (a.service||"").localeCompare(b.service||"");
+      case "costCenter": return (a.costCenter||"").localeCompare(b.costCenter||"");
+      case "plannedEndDate": {
+        const da = getEffectivePlannedEnd(a, procs), db = getEffectivePlannedEnd(b, procs);
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return new Date(da) - new Date(db);
+      }
+      case "responsavelClinico": return (a.responsavelClinico||"").localeCompare(b.responsavelClinico||"");
+      case "responsavelFarmacia": return (a.responsavelFarmacia||"").localeCompare(b.responsavelFarmacia||"");
+      case "status": {
+        const la = (STATUS_PLAN[entryStatus(a)]||STATUS_PLAN.planned).label;
+        const lb = (STATUS_PLAN[entryStatus(b)]||STATUS_PLAN.planned).label;
+        return la.localeCompare(lb);
+      }
+      case "pct": {
+        const pa = entryPct(a), pb = entryPct(b);
+        if (pa === null && pb === null) return 0;
+        if (pa === null) return 1;
+        if (pb === null) return -1;
+        return pa - pb;
+      }
+      case "plannedStartDate":
+      default: {
+        if (!a.plannedStartDate && !b.plannedStartDate) return 0;
+        if (!a.plannedStartDate) return 1;
+        if (!b.plannedStartDate) return -1;
+        return new Date(a.plannedStartDate) - new Date(b.plannedStartDate);
+      }
+    }
+  }
+
   const visibleEntries = (plan.entries||[])
     .filter(e => e.year === filterYear)
     .filter(e => {
@@ -6320,10 +6362,8 @@ function AnnualPlanPanel({ plan, onPlanChange, isEditor, procs, onCreateProcess 
     })
     .slice()
     .sort((a, b) => {
-      if (!a.plannedStartDate && !b.plannedStartDate) return 0;
-      if (!a.plannedStartDate) return 1;
-      if (!b.plannedStartDate) return -1;
-      return new Date(a.plannedStartDate) - new Date(b.plannedStartDate);
+      const cmp = compareEntries(a, b, sortKey);
+      return sortDir === "asc" ? cmp : -cmp;
     });
 
   // KPIs do ano
@@ -6536,16 +6576,28 @@ function AnnualPlanPanel({ plan, onPlanChange, isEditor, procs, onCreateProcess 
           <table style={{ width:"100%", borderCollapse:"collapse", minWidth:720 }}>
             <thead>
               <tr>
-                <th style={thStyle}>Serviço</th>
-                <th style={thStyle}>CC</th>
-                <th style={thStyle}>Início previsto</th>
-                <th style={thStyle}>Fim previsto</th>
-                <th style={thStyle}>🏥 Clínico</th>
-                <th style={thStyle}>💊 Farmácia</th>
-                <th style={thStyle}>Estado</th>
-                <th style={thStyle}>Execução</th>
-                <th style={thStyle}>Notas</th>
-                <th style={thStyle}></th>
+                {(() => {
+                  const sortableTh = (key, label) => (
+                    <th key={key} style={{...thStyle, cursor:"pointer", userSelect:"none"}} onClick={()=>toggleSort(key)}>
+                      {label}
+                      <span style={{ fontSize:8, marginLeft:4, opacity: sortKey===key ? 1 : .35 }}>
+                        {sortKey===key ? (sortDir==="asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </th>
+                  );
+                  return <>
+                    {sortableTh("service", "Serviço")}
+                    {sortableTh("costCenter", "CC")}
+                    {sortableTh("plannedStartDate", "Início previsto")}
+                    {sortableTh("plannedEndDate", "Fim previsto")}
+                    {sortableTh("responsavelClinico", "🏥 Clínico")}
+                    {sortableTh("responsavelFarmacia", "💊 Farmácia")}
+                    {sortableTh("status", "Estado")}
+                    {sortableTh("pct", "Execução")}
+                    <th style={thStyle}>Notas</th>
+                    <th style={thStyle}></th>
+                  </>;
+                })()}
               </tr>
             </thead>
             <tbody>

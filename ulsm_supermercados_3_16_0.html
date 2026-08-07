@@ -8884,7 +8884,15 @@ function AnnualPlanPanel({
   const [draftEntry, setDraftEntry] = useState(null); // entrada em edição
   const [showNewForm, setShowNewForm] = useState(false);
   const [newEntry, setNewEntry] = useState(() => EMPTY_PLAN_ENTRY(plan.year || new Date().getFullYear()));
+  const [sortKey, setSortKey] = useState("plannedStartDate");
+  const [sortDir, setSortDir] = useState("asc");
   const planFileRef = React.useRef();
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
   const years = Array.from(new Set([new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1, ...(plan.entries || []).map(e => e.year)])).sort((a, b) => a - b);
 
   // Calcular estado de cada entrada — FIX v3.4.0: apenas roles activos
@@ -8914,14 +8922,56 @@ function AnnualPlanPanel({
     if (!linked) return null;
     return procOverallPct(linked);
   }
+  function compareEntries(a, b, key) {
+    switch (key) {
+      case "service":
+        return (a.service || "").localeCompare(b.service || "");
+      case "costCenter":
+        return (a.costCenter || "").localeCompare(b.costCenter || "");
+      case "plannedEndDate":
+        {
+          const da = getEffectivePlannedEnd(a, procs),
+            db = getEffectivePlannedEnd(b, procs);
+          if (!da && !db) return 0;
+          if (!da) return 1;
+          if (!db) return -1;
+          return new Date(da) - new Date(db);
+        }
+      case "responsavelClinico":
+        return (a.responsavelClinico || "").localeCompare(b.responsavelClinico || "");
+      case "responsavelFarmacia":
+        return (a.responsavelFarmacia || "").localeCompare(b.responsavelFarmacia || "");
+      case "status":
+        {
+          const la = (STATUS_PLAN[entryStatus(a)] || STATUS_PLAN.planned).label;
+          const lb = (STATUS_PLAN[entryStatus(b)] || STATUS_PLAN.planned).label;
+          return la.localeCompare(lb);
+        }
+      case "pct":
+        {
+          const pa = entryPct(a),
+            pb = entryPct(b);
+          if (pa === null && pb === null) return 0;
+          if (pa === null) return 1;
+          if (pb === null) return -1;
+          return pa - pb;
+        }
+      case "plannedStartDate":
+      default:
+        {
+          if (!a.plannedStartDate && !b.plannedStartDate) return 0;
+          if (!a.plannedStartDate) return 1;
+          if (!b.plannedStartDate) return -1;
+          return new Date(a.plannedStartDate) - new Date(b.plannedStartDate);
+        }
+    }
+  }
   const visibleEntries = (plan.entries || []).filter(e => e.year === filterYear).filter(e => {
     if (filterStatus === "all") return true;
     return entryStatus(e) === filterStatus;
   }).slice().sort((a, b) => {
-    if (!a.plannedStartDate && !b.plannedStartDate) return 0;
-    if (!a.plannedStartDate) return 1;
-    if (!b.plannedStartDate) return -1;
-    return new Date(a.plannedStartDate) - new Date(b.plannedStartDate);
+    const cmp = compareEntries(a, b, sortKey);
+    return sortDir === "asc" ? cmp : -cmp;
   });
 
   // KPIs do ano
@@ -9344,27 +9394,28 @@ function AnnualPlanPanel({
       borderCollapse: "collapse",
       minWidth: 720
     }
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "Servi\xE7o"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "CC"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "In\xEDcio previsto"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "Fim previsto"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "\uD83C\uDFE5 Cl\xEDnico"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "\uD83D\uDC8A Farm\xE1cia"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "Estado"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "Execu\xE7\xE3o"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }, "Notas"), /*#__PURE__*/React.createElement("th", {
-    style: thStyle
-  }))), /*#__PURE__*/React.createElement("tbody", null, visibleEntries.map(entry => {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, (() => {
+    const sortableTh = (key, label) => /*#__PURE__*/React.createElement("th", {
+      key: key,
+      style: {
+        ...thStyle,
+        cursor: "pointer",
+        userSelect: "none"
+      },
+      onClick: () => toggleSort(key)
+    }, label, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 8,
+        marginLeft: 4,
+        opacity: sortKey === key ? 1 : .35
+      }
+    }, sortKey === key ? sortDir === "asc" ? "▲" : "▼" : "↕"));
+    return /*#__PURE__*/React.createElement(React.Fragment, null, sortableTh("service", "Serviço"), sortableTh("costCenter", "CC"), sortableTh("plannedStartDate", "Início previsto"), sortableTh("plannedEndDate", "Fim previsto"), sortableTh("responsavelClinico", "🏥 Clínico"), sortableTh("responsavelFarmacia", "💊 Farmácia"), sortableTh("status", "Estado"), sortableTh("pct", "Execução"), /*#__PURE__*/React.createElement("th", {
+      style: thStyle
+    }, "Notas"), /*#__PURE__*/React.createElement("th", {
+      style: thStyle
+    }));
+  })())), /*#__PURE__*/React.createElement("tbody", null, visibleEntries.map(entry => {
     const st = entryStatus(entry);
     const cfg = STATUS_PLAN[st] || STATUS_PLAN.planned;
     const pct = entryPct(entry);
