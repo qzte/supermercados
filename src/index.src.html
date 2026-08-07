@@ -509,7 +509,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.17.0</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.17.1</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2848,7 +2848,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.17.0";
+const APP_VERSION = "3.17.1";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
@@ -5316,26 +5316,6 @@ function ProcessCard({ proc, onClick }) {
             <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{proc.service||"Serviço sem nome"}</span>
           </div>
           {proc.costCenter && <div style={{ fontSize:10, color:"#7b8794", fontFamily:"monospace" }}>CC {proc.costCenter}</div>}
-          {/* Contacto SC pill */}
-          {(proc.serviceContact?.name || proc.serviceContact?.phone || proc.serviceContact?.email) && (
-            <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:5, marginTop:6 }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:6,
-                background:"rgba(125,133,144,.1)", border:"1px solid rgba(125,133,144,.25)",
-                borderRadius:6, padding:"3px 8px", fontSize:10, fontFamily:"monospace", color:"#7b8794",
-                maxWidth:"100%" }}>
-                <span style={{ color:"#7b8794", flexShrink:0 }}>👤</span>
-                {proc.serviceContact.name && <span style={{ color:"#334155", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:120 }}>{proc.serviceContact.name}</span>}
-                {proc.serviceContact.phone && <>
-                  <span style={{ color:"#d8e0ea" }}>·</span>
-                  <span style={{ color:"#7b8794", whiteSpace:"nowrap" }}>📞 {proc.serviceContact.phone}</span>
-                </>}
-                {proc.serviceContact.email && <>
-                  <span style={{ color:"#d8e0ea" }}>·</span>
-                  <span style={{ color:"#0284c7", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:140 }}>✉ {proc.serviceContact.email}</span>
-                </>}
-              </div>
-            </div>
-          )}
         </div>
         <div style={{ textAlign:"right", flexShrink:0, minWidth:48 }}>
           <div style={{ fontSize:9,color:"#7b8794",fontFamily:"monospace",marginBottom:2 }}>GERAL</div>
@@ -5345,6 +5325,25 @@ function ProcessCard({ proc, onClick }) {
           </div>
         </div>
       </div>
+
+      {/* Contacto SC pill — largura total do cartão */}
+      {(proc.serviceContact?.name || proc.serviceContact?.phone || proc.serviceContact?.email) && (
+        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10,
+          width:"100%", boxSizing:"border-box",
+          background:"rgba(125,133,144,.1)", border:"1px solid rgba(125,133,144,.25)",
+          borderRadius:6, padding:"3px 8px", fontSize:10, fontFamily:"monospace", color:"#7b8794" }}>
+          <span style={{ color:"#7b8794", flexShrink:0 }}>👤</span>
+          {proc.serviceContact.name && <span style={{ color:"#334155", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0, flexShrink:1 }}>{proc.serviceContact.name}</span>}
+          {proc.serviceContact.phone && <>
+            <span style={{ color:"#d8e0ea", flexShrink:0 }}>·</span>
+            <span style={{ color:"#7b8794", whiteSpace:"nowrap", flexShrink:0 }}>📞 {proc.serviceContact.phone}</span>
+          </>}
+          {proc.serviceContact.email && <>
+            <span style={{ color:"#d8e0ea", flexShrink:0 }}>·</span>
+            <span style={{ color:"#0284c7", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0, flex:"1 1 auto" }}>✉ {proc.serviceContact.email}</span>
+          </>}
+        </div>
+      )}
 
       {/* Dual tracking rows — apenas roles activos */}
       <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:10 }}>
