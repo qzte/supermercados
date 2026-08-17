@@ -509,7 +509,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.18.0</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.18.1</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2848,7 +2848,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.18.0";
+const APP_VERSION = "3.18.1";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
@@ -3358,6 +3358,26 @@ async function loadPlanFromFile(file) {
   });
 }
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DISPONIBILIDADE DO ARMAZENAMENTO LOCAL
+// localStorage/sessionStorage podem estar bloqueados por política de grupo,
+// modo privado ou definições de cookies "bloquear tudo". Todos os pontos que
+// lá escrevem já vinham envoltos em try/catch, mas a falha ficava muda: a
+// escolha de arranque parecia nunca ficar guardada, sem qualquer indicação do
+// motivo. Testado uma vez (é estável durante a sessão do browser) e exposto
+// para o ecrã de arranque poder avisar em vez de falhar em silêncio.
+// ─────────────────────────────────────────────────────────────────────────────
+function storageAvailable(kind) {
+  try {
+    const s = window[kind];
+    const probeKey = '__ulsm_storage_probe__';
+    s.setItem(probeKey, '1');
+    s.removeItem(probeKey);
+    return true;
+  } catch (e) { return false; }
+}
+const STORAGE_BLOCKED = !storageAvailable('localStorage') || !storageAvailable('sessionStorage');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MEMÓRIA DA ESCOLHA DE ARRANQUE
@@ -5983,6 +6003,17 @@ function BootScreen({ onReady }) {
               color:'#7b8794' }}>v{APP_VERSION}</span>
           </div>
         </div>
+
+        {/* Aviso de armazenamento bloqueado — sem isto a escolha "esquece-se"
+            em cada refresh sem qualquer explicação. */}
+        {STORAGE_BLOCKED && (
+          <div role="alert" style={{ background:'rgba(234,154,62,.1)', border:'1px solid rgba(234,154,62,.45)',
+            borderRadius:8, padding:'10px 14px', marginBottom:14, fontSize:12, color:'#8a5a1e', lineHeight:1.6 }}>
+            ⚠️ Este browser está a bloquear o armazenamento local (cookies/dados de site) para esta
+            página. A escolha feita aqui não vai ficar guardada — este ecrã vai voltar a aparecer em
+            cada recarregamento. Pede ao suporte de TI para permitir armazenamento local para este site.
+          </div>
+        )}
 
         {/* Two file slots */}
         <div className="rg-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
