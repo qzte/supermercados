@@ -525,7 +525,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.18.1</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.19.0</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2955,7 +2955,7 @@ const ROLE_COLORS = {
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.18.1";
+const APP_VERSION = "3.19.0";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 function isObj(v) {
@@ -11246,6 +11246,44 @@ function KpisPanel() {
     const fr = p.roles?.farmacia !== false ? calcAwaitingReply(p.farmacia) : null;
     return cr?.waiting && cr.overdue || fr?.waiting && fr.overdue;
   }).length;
+
+  // Carga por serviço responsável (SF/SL/SC/TAS/TSDT): para cada processo com
+  // role activo e não concluído/pausado, os passos da fase actual dizem quais
+  // serviços têm ali trabalho pendente — um processo conta uma vez por serviço
+  // em que aparece, mesmo que os dois roles (clínico/farmácia) o levem lá.
+  const roleWorkload = React.useMemo(() => {
+    const byRole = new Map();
+    procs.forEach(p => {
+      ['clinico', 'farmacia'].forEach(role => {
+        if (p.roles?.[role] === false) return;
+        if (!isRoleEffectivelyActive(p, role)) return;
+        const status = calcStatus(p[role], p.targetDate);
+        if (status === 'done' || status === 'paused') return;
+        const phase = phases.find(ph => ph.id === p[role]?.currentPhase);
+        if (!phase) return;
+        const stepRoles = new Set();
+        (phase.steps || []).forEach(s => (s.role || []).forEach(r => stepRoles.add(r)));
+        stepRoles.forEach(r => {
+          if (!byRole.has(r)) byRole.set(r, {
+            procs: new Set(),
+            late: new Set()
+          });
+          const entry = byRole.get(r);
+          entry.procs.add(p.id);
+          if (status === 'late') entry.late.add(p.id);
+        });
+      });
+    });
+    return [...byRole.entries()].map(([role, {
+      procs: ps,
+      late
+    }]) => ({
+      role,
+      total: ps.size,
+      late: late.size
+    })).sort((a, b) => b.total - a.total);
+  }, [procs, phases]);
+
   // Tempo médio total de ciclo — apenas roles activos
   const ciclosDone = procs.map(proc => {
     const roleDurations = ['clinico', 'farmacia'].flatMap(role => {
@@ -11848,6 +11886,43 @@ function KpisPanel() {
     }
   }
 
+  // Screenshot do painel "carga por serviço" pronto a colar numa mensagem do
+  // Teams (ou qualquer outro chat) — mais directo do que um link ou um PDF de
+  // várias páginas para uma actualização de estado pontual.
+  async function exportServiceStatusImage() {
+    if (isExporting) return;
+    setIsExporting(true);
+    setExportFeedback('loading', 'A gerar imagem…', 0);
+    try {
+      await loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', () => !!window.html2canvas);
+      const el = document.getElementById('painel-carga-servico');
+      if (!el) {
+        setExportFeedback('error', 'Painel não encontrado — muda para a vista Operacional.');
+        return;
+      }
+      const canvas = await window.html2canvas(el, {
+        backgroundColor: '#ffffff',
+        scale: 2
+      });
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('canvas vazio');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ulsm_carga_servico_${buildStampForFilename()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setExportFeedback('success', '✓ Imagem exportada!');
+    } catch (e) {
+      setExportFeedback('error', 'Erro ao exportar imagem: ' + e.message);
+      console.error(e);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   // ── STYLES ────────────────────────────────────────────────────────────────
   const cardBase = {
     background: '#ffffff',
@@ -11961,7 +12036,23 @@ function KpisPanel() {
       color: '#0284c7',
       opacity: isExporting ? .65 : 1
     }
-  }, "\u2B07 PDF"))), /*#__PURE__*/React.createElement("div", {
+  }, "\u2B07 PDF"), vista === 'operacional' && roleWorkload.length > 0 && /*#__PURE__*/React.createElement("button", {
+    onClick: exportServiceStatusImage,
+    disabled: isExporting,
+    title: "Imagem da carga por servi\xE7o, pronta a colar numa mensagem do Teams",
+    style: {
+      padding: '6px 14px',
+      borderRadius: 6,
+      fontSize: 11,
+      fontFamily: 'monospace',
+      cursor: isExporting ? 'not-allowed' : 'pointer',
+      fontWeight: 600,
+      border: '1px solid rgba(139,92,246,.4)',
+      background: 'rgba(139,92,246,.12)',
+      color: '#8b5cf6',
+      opacity: isExporting ? .65 : 1
+    }
+  }, "\uD83D\uDDBC Imagem"))), /*#__PURE__*/React.createElement("div", {
     id: "kpis-export-area",
     className: "rp-pad",
     style: {
@@ -12349,7 +12440,92 @@ function KpisPanel() {
         color: '#7b8794'
       }
     }, n > 0 ? n : '—'));
-  }))))), top3Slow.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }))))), roleWorkload.length > 0 && /*#__PURE__*/React.createElement("div", {
+    id: "painel-carga-servico",
+    style: {
+      ...cardBase,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: '#7b8794',
+      fontFamily: 'monospace',
+      letterSpacing: '.12em',
+      marginBottom: 16
+    }
+  }, "CARGA POR SERVI\xC7O RESPONS\xC1VEL \u2014 PENDENTE AGORA"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }
+  }, roleWorkload.map(({
+    role,
+    total,
+    late
+  }) => {
+    const color = ROLE_COLORS[role] || '#7b8794';
+    const maxTotal = roleWorkload[0].total || 1;
+    const pct = Math.round(total / maxTotal * 100);
+    return /*#__PURE__*/React.createElement("div", {
+      key: role,
+      style: {
+        display: 'grid',
+        gridTemplateColumns: '64px 1fr 40px 110px',
+        gap: 10,
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: 'inline-block',
+        textAlign: 'center',
+        padding: '3px 0',
+        borderRadius: 4,
+        fontSize: 11,
+        fontFamily: 'monospace',
+        fontWeight: 700,
+        background: color + '22',
+        border: `1px solid ${color}55`,
+        color
+      }
+    }, role), /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'relative',
+        height: 16,
+        background: 'rgba(30,45,70,.05)',
+        borderRadius: 99,
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        height: '100%',
+        width: pct + '%',
+        background: color,
+        borderRadius: 99,
+        transition: 'width .4s',
+        opacity: .85
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: 'monospace',
+        fontSize: 13,
+        fontWeight: 700,
+        color,
+        textAlign: 'right'
+      }
+    }, total), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: 'monospace',
+        fontSize: 10,
+        color: late > 0 ? '#e05252' : '#7b8794',
+        textAlign: 'right'
+      }
+    }, late > 0 ? `⚠ ${late} atrasado${late > 1 ? 's' : ''}` : '—'));
+  }))), top3Slow.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       ...cardBase,
       marginBottom: 20
