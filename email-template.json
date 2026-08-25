@@ -103,6 +103,22 @@
       "rem": "gestao.supermercados@ulsm.min-saude.pt",
       "assunto": "Relatório de Auditoria 5S — Supermercado [Nome do Serviço]",
       "body": "Bom dia/Boa tarde,\n\nNo âmbito da Verificação 5S realizada, foi efetuada uma análise ao cumprimento das normas estabelecidas no \"Supermercado | stock dupla caixa\", tendo em conta as responsabilidades específicas de cada interveniente no processo, nomeadamente os responsáveis pela Manutenção, pela Reposição e pela Utilização do \"Supermercado\". No mesmo processo foram identificados pontos de contacto entre diferentes funções, os quais se traduzem em Responsabilidades Partilhadas, especialmente entre os Utilizadores e os responsáveis pela Reposição, e encontram-se devidamente assinalados na grelha de verificação.\n\nO principal objetivo desta análise é identificar o grau de conformidade com os procedimentos estabelecidos, promovendo a melhoria contínua e a responsabilidade clara dos intervenientes. A partilha feita em anexo dos resultados com os gestores do Serviço/Supermercado visa apoiar a tomada de decisões, corrigir eventuais não conformidades e reforçar o alinhamento entre as equipas, contribuindo para uma gestão mais eficiente e sustentável de todos os recursos.\n\nFico ao dispor para qualquer esclarecimento adicional ou dúvidas que possam surgir entretanto.\n\nCom os melhores cumprimentos,\nGestão de Supermercados"
+    },
+    "Questionario": {
+      "title": "Questionário de Satisfação",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "",
+      "assunto": "Questionário de Satisfação",
+      "body": "Estamos a realizar uma recolha de informações para melhorar os processos na revisão de supermercados kaizen (stock dupla caixa).\n\nSolicitamos, gentilmente, que responda ao questionário disponível no link abaixo:\n\nhttps://forms.office.com/Pages/ResponsePage.aspx?id=CEbIIh3wxUaAJGPMli5fUbQH0K98ewFHk-G3-YoM3Z5UMUw3OVZaRFNXSkFIMTRET1U4WkI5UTdMVy4u\n\n\n\nA sua colaboração será muito importante para nós.\n\nDesde já, agradecemos pela atenção e disponibilidade. Caso tenha qualquer dúvida, estamos à disposição para esclarecimentos.\n\n\nCom os melhores cumprimentos,\nGestão de Supermercados\nServiços Farmacêuticos - 3744\nServiços de Logística - 2511"
+    },
+    "formacao": {
+      "title": "Formação",
+      "rem": "gestao.supermercados@ulsm.min-saude.pt",
+      "para": "Serviço Clínico: Enfermeiro(a) gestor(a)",
+      "cc": "",
+      "assunto": "Agendamento de Formação para Utilização de Dupla Caixa",
+      "body": "Para garantir a correta utilização e manutenção deste equipamento, consideramos essencial realizar uma formação para os utilizadores do seu supermercado.\nDessa forma, solicitamos que nos informe as datas disponíveis para o agendamento desta formação.\nEstamos comprometidos em fornecer todo o suporte necessário para que a transição e utilização do novo sistema sejam o mais eficientes possível.\nEstamos à disposição para qualquer esclarecimento adicional que possa necessitar.\nCumprimentos,\n\n\nGestão de Supermercados\nServiços Farmacêuticos - 3744\nServiços de Logística - 2511"
     }
   },
   "phases": [
@@ -325,12 +341,11 @@
           "time": "1 min",
           "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Partilhar dados de devoluções por excesso e prazos expirados. Reforçar responsabilidades do SC na gestão de validades e armazenamento.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('resultadosfinais', event)\">✉ Ver template de e-mail</button>\n      "
         },
-       {
+        {
           "title": "E-mail com questionário)",
           "time": "1 min",
           "body": "\n        <span class=\"role-badge role-sf\">SF</span><span class=\"role-badge role-sl\">SL</span><br><br>\n        Solicitar o preenchimento do questionário de satisfação.\n        <br>\n        <button class=\"email-btn\" onclick=\"openEmail('resultadosfinais', event)\">✉ Ver template de e-mail</button>\n      "
         }
-
       ]
     },
     {
