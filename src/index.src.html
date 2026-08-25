@@ -524,7 +524,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.19.1</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.20.0</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2863,7 +2863,7 @@ const ROLE_COLORS = { SF:"#0284c7", SL:"#0d9488", SC:"#ea9a3e", TAS:"#e05252", T
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.19.1";
+const APP_VERSION = "3.20.0";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 
@@ -7722,6 +7722,29 @@ function KpisPanel() {
     const farPaused = !hasFar || calcStatus(p.farmacia, p.targetDate) === 'paused';
     return !(cliPaused && farPaused);
   });
+
+  // Cards de processos ativos — ordenados por percentagem (maior primeiro),
+  // com rebordo na cor da fase onde se encontram. Quando os dois percursos
+  // (clínico/farmácia) estão ativos, usa-se a fase do percurso mais atrasado,
+  // por ser o que está a condicionar o avanço geral do processo.
+  const activeProcsCards = activeProcs.map(p => {
+    const roleCli = p.roles?.clinico !== false;
+    const roleFar = p.roles?.farmacia !== false;
+    const activeCli = isRoleEffectivelyActive(p, 'clinico');
+    const activeFar = isRoleEffectivelyActive(p, 'farmacia');
+    const bothInactive = !activeCli && !activeFar;
+    const hasCli = bothInactive ? roleCli : activeCli;
+    const hasFar = bothInactive ? roleFar : activeFar;
+    const cliPct = hasCli ? totalPct(p.clinico) : null;
+    const farPct = hasFar ? totalPct(p.farmacia) : null;
+    const cliPhase = hasCli ? phases[p.clinico.currentPhase - 1] : null;
+    const farPhase = hasFar ? phases[p.farmacia.currentPhase - 1] : null;
+    const phase = hasCli && hasFar
+      ? (cliPct <= farPct ? cliPhase : farPhase)
+      : (hasCli ? cliPhase : farPhase);
+    return { proc: p, pct: procOverallPct(p), phase };
+  }).sort((a, b) => b.pct - a.pct);
+
   const fasesComAtraso = phaseStats.filter(s => s.desvio !== null && s.desvio > 0).length;
   const respostasAtraso = procs.filter(p => {
     const cr = p.roles?.clinico !== false ? calcAwaitingReply(p.clinico) : null;
@@ -8580,6 +8603,41 @@ function KpisPanel() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cards de processos ativos — ordenados por percentagem, rebordo na cor da fase */}
+            {activeProcsCards.length > 0 && (
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:10, color:'#7b8794', fontFamily:'monospace', letterSpacing:'.12em', marginBottom:16 }}>
+                  PROCESSOS ATIVOS — POR PROGRESSO
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:12 }}>
+                  {activeProcsCards.map(({ proc, pct, phase }) => {
+                    const color = phase?.color || '#7b8794';
+                    const label = (phase?.label || '').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').split('<')[0];
+                    return (
+                      <div key={proc.id} style={{ ...cardBase, border:`2px solid ${color}` }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8, marginBottom:8 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:'#1e293b', minWidth:0,
+                            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {proc.service || 'Serviço sem nome'}
+                          </div>
+                          <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace',
+                            color:pct===100?'#38d9a9':'#1e293b', flexShrink:0 }}>
+                            {pct}%
+                          </div>
+                        </div>
+                        <ProgressBar value={pct} color={color} h={4}/>
+                        <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
+                          <span style={{ width:7, height:7, borderRadius:'50%', background:color, flexShrink:0 }}/>
+                          <span style={{ fontSize:9, fontFamily:'monospace', color, fontWeight:700, flexShrink:0 }}>{phase?.code || '—'}</span>
+                          <span style={{ fontSize:10, color:'#7b8794', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
