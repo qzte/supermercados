@@ -12868,22 +12868,28 @@ function KpisPanel() {
     const color = execStatusColor[status] || '#0284c7';
     const diColor = desvioInicio == null ? '#7b8794' : desvioInicio <= 0 ? '#0d9488' : desvioInicio <= 7 ? '#ea9a3e' : '#e05252';
     const dfColor = desvioFim == null ? '#7b8794' : desvioFim <= 0 ? '#0d9488' : desvioFim <= 7 ? '#ea9a3e' : '#e05252';
+    // Evidenciar serviços "Em curso" e "Atrasado": fundo cinzento + fonte maior.
+    const emph = status === 'ok' || status === 'late';
+    const emphBg = '#e2e5ea';
+    const fs = emph ? 13 : 11;
     return /*#__PURE__*/React.createElement("tr", {
       key: entry.id,
       style: {
         borderBottom: '1px solid #d8e0ea',
+        background: emph ? emphBg : undefined,
         cursor: linked ? 'pointer' : 'default'
       },
       title: linked ? 'Ver próximos passos' : 'Sem processo de tracking associado',
       onClick: () => linked && setModalProc(linked),
-      onMouseEnter: e => e.currentTarget.style.background = 'rgba(30,45,70,.025)',
-      onMouseLeave: e => e.currentTarget.style.background = ''
+      onMouseEnter: e => e.currentTarget.style.background = emph ? '#d5d9df' : 'rgba(30,45,70,.025)',
+      onMouseLeave: e => e.currentTarget.style.background = emph ? emphBg : ''
     }, /*#__PURE__*/React.createElement("td", {
       style: {
         padding: '8px 10px',
         fontWeight: 600,
         color: '#1e293b',
         maxWidth: 140,
+        fontSize: emph ? 14 : undefined,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap'
@@ -12892,14 +12898,14 @@ function KpisPanel() {
       style: {
         padding: '8px 10px',
         fontFamily: 'monospace',
-        fontSize: 11,
+        fontSize: fs,
         color: '#7b8794'
       }
     }, entry.plannedStartDate ? fmtDate(entry.plannedStartDate) : '—'), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: '8px 10px',
         fontFamily: 'monospace',
-        fontSize: 11,
+        fontSize: fs,
         color: '#7b8794'
       }
     }, realStart ? fmtDate(realStart) : /*#__PURE__*/React.createElement("span", {
@@ -12910,7 +12916,7 @@ function KpisPanel() {
       style: {
         padding: '8px 10px',
         fontFamily: 'monospace',
-        fontSize: 11,
+        fontSize: fs,
         fontWeight: 700,
         color: diColor
       }
@@ -12918,14 +12924,14 @@ function KpisPanel() {
       style: {
         padding: '8px 10px',
         fontFamily: 'monospace',
-        fontSize: 11,
+        fontSize: fs,
         color: '#7b8794'
       }
     }, plannedEnd ? fmtDate(plannedEnd) : '—'), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: '8px 10px',
         fontFamily: 'monospace',
-        fontSize: 11,
+        fontSize: fs,
         color: '#7b8794'
       },
       title: linked ? ['clinico', 'farmacia'].filter(r => linked.roles?.[r] !== false).map(r => `${r === 'clinico' ? 'Clínico' : 'Farmácia'}: ${getRoleCompletionTs(linked[r]) ? fmtDate(getRoleCompletionTs(linked[r])) : 'não concluído'}`).join(' · ') : undefined
@@ -12937,7 +12943,7 @@ function KpisPanel() {
       style: {
         padding: '8px 10px',
         fontFamily: 'monospace',
-        fontSize: 11,
+        fontSize: fs,
         fontWeight: 700,
         color: dfColor
       }
@@ -12950,7 +12956,7 @@ function KpisPanel() {
         display: 'inline-block',
         padding: '2px 8px',
         borderRadius: 99,
-        fontSize: 9,
+        fontSize: emph ? 11 : 9,
         fontFamily: 'monospace',
         fontWeight: 700,
         background: color + '22',
