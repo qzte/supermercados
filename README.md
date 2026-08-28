@@ -1,6 +1,6 @@
 # ULSM · Gestão de Supermercados — GitHub Pages
 
-**Versão da aplicação:** v3.21.2
+**Versão da aplicação:** v3.21.3
 **URL de produção:** https://qzte.github.io/supermercados/
 
 ---
