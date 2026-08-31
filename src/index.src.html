@@ -3061,6 +3061,7 @@ function sanitizeProc(proc, idx = 0) {
     id: Number.isFinite(proc.id) ? proc.id : Date.now() + idx,
     service: toSafeText(proc.service, 180),
     costCenter: toSafeText(proc.costCenter, 120),
+    supermarketCode: toSafeText(proc.supermarketCode, 60),
     serviceContact: {
       name:  toSafeText(sc.name,  120),
       phone: toSafeText(sc.phone, 40),
@@ -3664,7 +3665,7 @@ function EMPTY_TRACKING() {
 function EMPTY_PROC() {
   return {
     id: newLocalId(),
-    service: "", costCenter: "",
+    service: "", costCenter: "", supermarketCode: "",
     serviceContact: { name: "", phone: "", email: "" },
     startDate: new Date().toISOString().slice(0,10), targetDate: "",
     status: "ok",
@@ -4660,6 +4661,7 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
               </div>
               <div style={{ display:"flex", flexWrap:"wrap", gap:10, fontSize:11, color:"#7b8794", fontFamily:"monospace", alignItems:"center" }}>
                 {draft.costCenter && <span style={{ background:"rgba(255,255,255,.05)", border:"1px solid #d8e0ea", borderRadius:4, padding:"2px 7px", fontSize:10 }}>CC {draft.costCenter}</span>}
+                {draft.supermarketCode && <span style={{ background:"rgba(255,255,255,.05)", border:"1px solid #d8e0ea", borderRadius:4, padding:"2px 7px", fontSize:10 }}>SM {draft.supermarketCode}</span>}
                 {trk.responsible && <span>👤 {trk.responsible}</span>}
                 {prazo && <span style={{ color: prazo.color }}>
                   📅 {prazo.text} · alvo: {fmtDate(draft.targetDate)}
@@ -4920,7 +4922,9 @@ function ProcessDetail({ proc, onClose, onSave, onDelete, isEditor }) {
                 </div>
               )}
               <div className="rg-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-                {[["service","NOME DO SERVIÇO","text"],["costCenter","CENTRO DE CUSTO","text"]].map(([f,l,t])=>(
+                <div style={{ gridColumn:"1 / -1" }}><label style={LS}>NOME DO SERVIÇO</label>
+                  <input type="text" value={draft.service} onChange={e=>isEditor&&upd("service",e.target.value)} readOnly={!isEditor} style={IS}/></div>
+                {[["costCenter","CENTRO DE CUSTO","text"],["supermarketCode","CÓDIGO DO SUPERMERCADO","text"]].map(([f,l,t])=>(
                   <div key={f}><label style={LS}>{l}</label>
                     <input type={t} value={draft[f]} onChange={e=>isEditor&&upd(f,e.target.value)} readOnly={!isEditor} style={IS}/></div>
                 ))}
@@ -5418,7 +5422,12 @@ function ProcessCard({ proc, onClick }) {
               boxShadow:`0 0 6px ${cfg.dot}88`,flexShrink:0 }}/>
             <span style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{proc.service||"Serviço sem nome"}</span>
           </div>
-          {proc.costCenter && <div style={{ fontSize:10, color:"#7b8794", fontFamily:"monospace" }}>CC {proc.costCenter}</div>}
+          {(proc.costCenter || proc.supermarketCode) && (
+            <div style={{ fontSize:10, color:"#7b8794", fontFamily:"monospace", display:"flex", gap:8 }}>
+              {proc.costCenter && <span>CC {proc.costCenter}</span>}
+              {proc.supermarketCode && <span>SM {proc.supermarketCode}</span>}
+            </div>
+          )}
         </div>
         <div style={{ display:"flex", alignItems:"flex-start", gap:8, flexShrink:0 }}>
           <button onClick={exportCardImage} disabled={isExportingCard}
@@ -5677,7 +5686,7 @@ function ProcessCard({ proc, onClick }) {
 // NEW PROCESS MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 function NewProcessModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({service:"",costCenter:"",contactName:"",contactPhone:"",contactEmail:"",responsavelClinico:"",responsavelFarmacia:"",targetDate:""});
+  const [form, setForm] = useState({service:"",costCenter:"",supermarketCode:"",contactName:"",contactPhone:"",contactEmail:"",responsavelClinico:"",responsavelFarmacia:"",targetDate:""});
   const [selectedTags, setSelectedTags] = useState([]);
   const [roles, setRoles] = useState({ clinico: true, farmacia: true });
   const upd = (f,v) => setForm(d=>({...d,[f]:v}));
@@ -5696,6 +5705,7 @@ function NewProcessModal({ onClose, onCreate }) {
     const base = EMPTY_PROC();
     base.service = form.service;
     base.costCenter = form.costCenter;
+    base.supermarketCode = form.supermarketCode;
     base.serviceContact = { name: form.contactName, phone: form.contactPhone, email: form.contactEmail };
     base.targetDate = form.targetDate;
     base.tags = selectedTags;
@@ -5719,8 +5729,12 @@ function NewProcessModal({ onClose, onCreate }) {
             <input value={form.service} onChange={e=>upd("service",e.target.value)}
               placeholder="Ex: UCIP, Ortopedia, CE Oftalmo…" style={IS}
               onKeyDown={e=>e.key==="Enter"&&doCreate()} /></div>
-          <div><label style={LS}>CENTRO DE CUSTO</label>
-            <input value={form.costCenter} onChange={e=>upd("costCenter",e.target.value)} placeholder="Código CC" style={IS}/></div>
+          <div className="rg-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div><label style={LS}>CENTRO DE CUSTO</label>
+              <input value={form.costCenter} onChange={e=>upd("costCenter",e.target.value)} placeholder="Código CC" style={IS}/></div>
+            <div><label style={LS}>CÓDIGO DO SUPERMERCADO</label>
+              <input value={form.supermarketCode} onChange={e=>upd("supermarketCode",e.target.value)} placeholder="Código SM" style={IS}/></div>
+          </div>
           {/* Contacto do responsável SC */}
           <div style={{ background:"rgba(30,45,70,.025)", border:"1px solid #d8e0ea", borderRadius:8, padding:"12px 14px" }}>
             <div style={{ fontSize:10, color:"#7b8794", fontFamily:"monospace", letterSpacing:".1em", marginBottom:10 }}>
@@ -7034,7 +7048,8 @@ function App() {
     if(search&&!p.service.toLowerCase().includes(search.toLowerCase())&&
        !(p.clinico.responsible||"").toLowerCase().includes(search.toLowerCase())&&
        !(p.farmacia.responsible||"").toLowerCase().includes(search.toLowerCase())&&
-       !(p.costCenter||"").toLowerCase().includes(search.toLowerCase())) return false;
+       !(p.costCenter||"").toLowerCase().includes(search.toLowerCase())&&
+       !(p.supermarketCode||"").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   }).slice().sort((a,b)=>{
     if(sortBy==="prazo"){
@@ -7587,7 +7602,12 @@ function ServiceStepsModal({ proc, onClose }) {
               PRÓXIMOS PASSOS
             </div>
             <div style={{ fontSize:15, fontWeight:700, color:'#1e293b' }}>{proc.service || 'Serviço sem nome'}</div>
-            {proc.costCenter && <div style={{ fontSize:10, color:'#7b8794', fontFamily:'monospace', marginTop:2 }}>CC {proc.costCenter}</div>}
+            {(proc.costCenter || proc.supermarketCode) && (
+              <div style={{ fontSize:10, color:'#7b8794', fontFamily:'monospace', marginTop:2, display:'flex', gap:8 }}>
+                {proc.costCenter && <span>CC {proc.costCenter}</span>}
+                {proc.supermarketCode && <span>SM {proc.supermarketCode}</span>}
+              </div>
+            )}
           </div>
           <button onClick={onClose} style={{ background:'#d8e0ea', border:'1px solid #d8e0ea',
             color:'#7b8794', borderRadius:6, padding:'6px 10px', cursor:'pointer', flexShrink:0 }}>✕</button>

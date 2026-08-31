@@ -3173,6 +3173,7 @@ function sanitizeProc(proc, idx = 0) {
     id: Number.isFinite(proc.id) ? proc.id : Date.now() + idx,
     service: toSafeText(proc.service, 180),
     costCenter: toSafeText(proc.costCenter, 120),
+    supermarketCode: toSafeText(proc.supermarketCode, 60),
     serviceContact: {
       name: toSafeText(sc.name, 120),
       phone: toSafeText(sc.phone, 40),
@@ -3882,6 +3883,7 @@ function EMPTY_PROC() {
     id: newLocalId(),
     service: "",
     costCenter: "",
+    supermarketCode: "",
     serviceContact: {
       name: "",
       phone: "",
@@ -5782,7 +5784,15 @@ function ProcessDetail({
       padding: "2px 7px",
       fontSize: 10
     }
-  }, "CC ", draft.costCenter), trk.responsible && /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC64 ", trk.responsible), prazo && /*#__PURE__*/React.createElement("span", {
+  }, "CC ", draft.costCenter), draft.supermarketCode && /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: "rgba(255,255,255,.05)",
+      border: "1px solid #d8e0ea",
+      borderRadius: 4,
+      padding: "2px 7px",
+      fontSize: 10
+    }
+  }, "SM ", draft.supermarketCode), trk.responsible && /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC64 ", trk.responsible), prazo && /*#__PURE__*/React.createElement("span", {
     style: {
       color: prazo.color
     }
@@ -6276,7 +6286,19 @@ function ProcessDetail({
       gridTemplateColumns: "1fr 1fr",
       gap: 14
     }
-  }, [["service", "NOME DO SERVIÇO", "text"], ["costCenter", "CENTRO DE CUSTO", "text"]].map(([f, l, t]) => /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      gridColumn: "1 / -1"
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: LS
+  }, "NOME DO SERVI\xC7O"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: draft.service,
+    onChange: e => isEditor && upd("service", e.target.value),
+    readOnly: !isEditor,
+    style: IS
+  })), [["costCenter", "CENTRO DE CUSTO", "text"], ["supermarketCode", "CÓDIGO DO SUPERMERCADO", "text"]].map(([f, l, t]) => /*#__PURE__*/React.createElement("div", {
     key: f
   }, /*#__PURE__*/React.createElement("label", {
     style: LS
@@ -7245,13 +7267,15 @@ function ProcessCard({
       fontSize: 14,
       color: "#1e293b"
     }
-  }, proc.service || "Serviço sem nome")), proc.costCenter && /*#__PURE__*/React.createElement("div", {
+  }, proc.service || "Serviço sem nome")), (proc.costCenter || proc.supermarketCode) && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       color: "#7b8794",
-      fontFamily: "monospace"
+      fontFamily: "monospace",
+      display: "flex",
+      gap: 8
     }
-  }, "CC ", proc.costCenter)), /*#__PURE__*/React.createElement("div", {
+  }, proc.costCenter && /*#__PURE__*/React.createElement("span", null, "CC ", proc.costCenter), proc.supermarketCode && /*#__PURE__*/React.createElement("span", null, "SM ", proc.supermarketCode))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "flex-start",
@@ -7772,6 +7796,7 @@ function NewProcessModal({
   const [form, setForm] = useState({
     service: "",
     costCenter: "",
+    supermarketCode: "",
     contactName: "",
     contactPhone: "",
     contactEmail: "",
@@ -7804,6 +7829,7 @@ function NewProcessModal({
     const base = EMPTY_PROC();
     base.service = form.service;
     base.costCenter = form.costCenter;
+    base.supermarketCode = form.supermarketCode;
     base.serviceContact = {
       name: form.contactName,
       phone: form.contactPhone,
@@ -7869,14 +7895,28 @@ function NewProcessModal({
     placeholder: "Ex: UCIP, Ortopedia, CE Oftalmo\u2026",
     style: IS,
     onKeyDown: e => e.key === "Enter" && doCreate()
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "rg-2",
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: LS
   }, "CENTRO DE CUSTO"), /*#__PURE__*/React.createElement("input", {
     value: form.costCenter,
     onChange: e => upd("costCenter", e.target.value),
     placeholder: "C\xF3digo CC",
     style: IS
-  })), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    style: LS
+  }, "C\xD3DIGO DO SUPERMERCADO"), /*#__PURE__*/React.createElement("input", {
+    value: form.supermarketCode,
+    onChange: e => upd("supermarketCode", e.target.value),
+    placeholder: "C\xF3digo SM",
+    style: IS
+  }))), /*#__PURE__*/React.createElement("div", {
     style: {
       background: "rgba(30,45,70,.025)",
       border: "1px solid #d8e0ea",
@@ -10070,7 +10110,7 @@ function App() {
       const procTags = p.tags || [];
       if (!filterTags.every(t => procTags.includes(t))) return false;
     }
-    if (search && !p.service.toLowerCase().includes(search.toLowerCase()) && !(p.clinico.responsible || "").toLowerCase().includes(search.toLowerCase()) && !(p.farmacia.responsible || "").toLowerCase().includes(search.toLowerCase()) && !(p.costCenter || "").toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !p.service.toLowerCase().includes(search.toLowerCase()) && !(p.clinico.responsible || "").toLowerCase().includes(search.toLowerCase()) && !(p.farmacia.responsible || "").toLowerCase().includes(search.toLowerCase()) && !(p.costCenter || "").toLowerCase().includes(search.toLowerCase()) && !(p.supermarketCode || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   }).slice().sort((a, b) => {
     if (sortBy === "prazo") {
@@ -11142,14 +11182,16 @@ function ServiceStepsModal({
       fontWeight: 700,
       color: '#1e293b'
     }
-  }, proc.service || 'Serviço sem nome'), proc.costCenter && /*#__PURE__*/React.createElement("div", {
+  }, proc.service || 'Serviço sem nome'), (proc.costCenter || proc.supermarketCode) && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       color: '#7b8794',
       fontFamily: 'monospace',
-      marginTop: 2
+      marginTop: 2,
+      display: 'flex',
+      gap: 8
     }
-  }, "CC ", proc.costCenter)), /*#__PURE__*/React.createElement("button", {
+  }, proc.costCenter && /*#__PURE__*/React.createElement("span", null, "CC ", proc.costCenter), proc.supermarketCode && /*#__PURE__*/React.createElement("span", null, "SM ", proc.supermarketCode))), /*#__PURE__*/React.createElement("button", {
     onClick: onClose,
     style: {
       background: '#d8e0ea',
