@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-04
 **Versão auditada:** v3.15.1 (`ec2a05a`)
-**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3 · A7 (SheetJS) em v3.15.4 · A3 em v3.15.5 · A8 (parcial, ver nota em v3.21.5) em v3.21.5
+**Corrigidos:** A2 e A2b em v3.15.2 · A5 e A9 em v3.15.3 · A7 (SheetJS) em v3.15.4 · A3 em v3.15.5 · A8 (parcial, ver nota em v3.21.5) em v3.21.5 · A4 em v3.21.6
 **Alvo:** `src/index.src.html` (fonte), `index.html` (servido), `tools/build.mjs`,
 `.github/workflows/build.yml`, `workflow-default.json`, `email-template.json`,
 `manifest.webmanifest`, histórico Git.
@@ -45,7 +45,7 @@ o histórico do processo.
 | A2 | XSS armazenado via ficheiro de workflow/backup importado | **Alta** | Sim | ✅ v3.15.2 |
 | A2b | Execução via `blob:` no visualizador de PDF | **Alta** | Sim | ✅ v3.15.2 |
 | A3 | Ausência total de Content-Security-Policy | **Média** | Amplifica A2/A4 | ✅ v3.15.5 (sem `'unsafe-inline'` fica por fazer) |
-| A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | parcial (1 de 5 alojada) |
+| A4 | Scripts de terceiros (CDN) sem Subresource Integrity | **Média** | Sim | ✅ v3.21.6 (5 de 5 alojadas; babel-standalone só em dev, ver nota) |
 | A5 | Dados pessoais e institucionais em repositório público | **Média** | Sim | ✅ v3.15.3 (parcial) |
 | A6 | Integridade dos dados não verificável (registos adulteráveis) | **Média** | Interno | aberto |
 | A7 | `xlsx` 0.18.5 e restantes bibliotecas CDN desactualizadas | **Baixa** | Improvável | ✅ v3.15.4 (SheetJS; restantes abertas) |
@@ -362,15 +362,58 @@ sessão tem `cdnjs.cloudflare.com` bloqueado pela política de rede
 (`403` na ligação), o que impede obter os ficheiros e calcular os hashes
 `sha384` reais. Preferiu-se não avançar a inserir hashes adivinhados ou
 copiados de outra fonte — um `integrity` errado bloqueia o carregamento do
-browser tal como seria suposto bloquear um ficheiro adulterado. Fica a
-recomendação prática: correr, num ambiente com acesso à cdnjs,
-```
-curl -sS <url> | openssl dgst -sha384 -binary | openssl base64 -A
-```
-para as cinco URLs de `src/index.src.html:74-76` e `loadLib()`, e aplicar
-`integrity="sha384-…"` + `crossorigin="anonymous"` a cada uma. A alternativa de
-alojar localmente (como já feito para o `xlsx` em A7) evita este problema por
-completo.
+browser tal como seria suposto bloquear um ficheiro adulterado.
+
+#### ✅ Corrigido em v3.21.6 — alojamento local em vez de SRI
+
+O `registry.npmjs.org` estava acessível na mesma sessão onde o `cdnjs` estava
+bloqueado (é uma das origens sempre permitidas pela política de rede do
+ambiente), o que tornou possível seguir a alternativa já identificada como mais
+robusta: em vez de adicionar `integrity` às tags do cdnjs, **React, ReactDOM,
+jsPDF e html2canvas passam a ser servidos pela própria aplicação**, tal como já
+acontecia com o `xlsx` (SheetJS) desde a A7.
+
+| Biblioteca | Versão | Ficheiro | Origem |
+|---|---|---|---|
+| React (UMD, produção) | 18.2.0 | `react.production.min.js` | `npm pack react@18.2.0` → `umd/react.production.min.js` |
+| ReactDOM (UMD, produção) | 18.2.0 | `react-dom.production.min.js` | `npm pack react-dom@18.2.0` → `umd/react-dom.production.min.js` |
+| jsPDF (UMD, min) | 2.5.1 | `jspdf.umd.min.js` | `npm pack jspdf@2.5.1` → `dist/jspdf.umd.min.js` |
+| html2canvas (min) | 1.4.1 | `html2canvas.min.js` | `npm pack html2canvas@1.4.1` → `dist/html2canvas.min.js` |
+
+As quatro tags/`loadLib()` que apontavam para `cdnjs.cloudflare.com` passaram a
+apontar para o caminho relativo do ficheiro local; o `script-src` da CSP já
+cobre isso por `'self'`. O `babel-standalone` **continua a vir do cdnjs** — só é
+usado ao abrir `src/index.src.html` directamente em desenvolvimento, e o
+`build.mjs` já o remove do `index.html` publicado (ver A3), pelo que vendorizá-lo
+(2,8 MB) não fecha nenhuma exposição real em produção.
+
+**Verificação de proveniência — a mesma ressalva do A7.** Os ficheiros vêm
+directamente dos pacotes publicados no npm pelos próprios mantenedores (React
+por Meta, jsPDF e html2canvas pelos seus autores), confirmados pela versão
+embutida no próprio código (`c.version="18.2.0"` no React) e pela forma UMD
+correcta. Não é uma comparação byte-a-byte com o que o cdnjs servia — não foi
+possível obter essa cópia nesta sessão — mas é uma fonte pelo menos tão fiável
+quanto uma CDN de terceiros, e deixa de haver qualquer terceiro capaz de
+substituir o ficheiro depois de publicado.
+
+**Guarda em `tools/validate.mjs`** — os quatro ficheiros entram no mesmo
+mecanismo `VENDORED` já usado para o `xlsx`: `sha256` fixado, falha o `npm run
+validate` se o ficheiro servido não corresponder.
+
+**Verificado** — build (`npm run build`), `npm run validate` e `npm run check`
+sem erros; arranque testado com Chromium via Playwright servindo o `index.html`
+localmente: `window.React`/`window.ReactDOM` carregam do ficheiro local, sem
+`boot-error-banner`, `loadLib('jspdf.umd.min.js', …)` e
+`loadLib('html2canvas.min.js', …)` carregam com sucesso, e **zero eventos
+`securitypolicyviolation`**.
+
+**Por fazer** — o `script-src` da CSP mantém `https://cdnjs.cloudflare.com`
+só por causa do `babel-standalone` do ficheiro-fonte de desenvolvimento; não
+afecta o `index.html` publicado. Actualizações futuras destas quatro
+bibliotecas seguem o mesmo processo manual do xlsx: `npm view
+<pacote>@<versão> dist.tarball`, descarregar, copiar o ficheiro `dist`/`umd`
+correcto e actualizar `version`/`sha256` em `tools/validate.mjs` no mesmo
+commit.
 
 ---
 
@@ -755,8 +798,10 @@ Registado por ser relevante para a avaliação e para não ser desfeito:
    `connect-src 'self'` e guardas no build. Continua a precisar de
    `'unsafe-inline'`/`'unsafe-eval'`: para a tornar eficaz é preciso converter os
    30 handlers inline e remover o `eval()` (A8).
-5. **A4**: `integrity` nas cinco bibliotecas de CDN, ou alojá-las localmente —
-   o que também resolve o arranque sem rede.
+5. ~~**A4**~~ ✅ **feito em v3.21.6** — React, ReactDOM, jsPDF e html2canvas
+   alojados localmente (npm em vez de cdnjs), hash fixado em `validate.mjs`.
+   O `babel-standalone` fica no cdnjs por ser só de desenvolvimento (removido
+   do `index.html` publicado pelo build).
 6. **A10**: guarda no `build.mjs` contra padrões proibidos; abandonar o fluxo de
    upload de ficheiros.
 

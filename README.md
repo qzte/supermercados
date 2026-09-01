@@ -208,7 +208,8 @@ O `npm run build` falha se a meta desaparecer, se descer para depois do primeiro
 `<script>`/`<link>`, ou se lhe faltar uma directiva essencial.
 
 O que a política entrega: nenhum script carrega de origem que não seja esta ou o
-cdnjs; `connect-src 'self'` corta a exfiltração de dados para fora da origem;
+cdnjs (só usado pelo `babel-standalone` em desenvolvimento — ver "Dependências
+externas" abaixo); `connect-src 'self'` corta a exfiltração de dados para fora da origem;
 `object-src`, `base-uri` e `form-action` fechados; e `default-src 'none'` a negar
 por omissão tudo o que não esteja enumerado.
 
@@ -224,13 +225,30 @@ ser actualizada, senão o recurso é bloqueado **em silêncio** para o utilizado
 
 ### Dependências externas
 
-React, ReactDOM e Babel são carregados de `cdnjs.cloudflare.com`. Se essas bibliotecas não carregarem (sem internet, bloqueio de rede/proxy), a app mostra um ecrã de erro explícito com botão de recarregar — em vez de uma página em branco. O mesmo acontece se o arranque falhar por outro motivo ou demorar mais de 12 s.
+**React, ReactDOM, jsPDF, html2canvas e SheetJS são todas servidas pela própria
+aplicação** (`react.production.min.js`, `react-dom.production.min.js`,
+`jspdf.umd.min.js`, `html2canvas.min.js`, `xlsx.full.min.js`), não por CDN. Sem
+terceiro capaz de substituir o ficheiro depois de publicado, e a app arranca e
+exporta PDF/Excel sem rede, incluindo em `file://`. Se algum destes ficheiros
+não carregar (falha ao servir, corrupção), a app mostra um ecrã de erro
+explícito com botão de recarregar — em vez de uma página em branco. O mesmo
+acontece se o arranque falhar por outro motivo ou demorar mais de 12 s.
 
-Os relatórios em PDF carregam `jsPDF` e `html2canvas` da mesma CDN, só no momento da exportação.
+O `babel-standalone` continua a vir de `cdnjs.cloudflare.com`, mas só é usado
+ao abrir `src/index.src.html` directamente em desenvolvimento — o `build.mjs`
+remove-o do `index.html` publicado, pelo que não é uma dependência de produção.
 
-O **`SheetJS` é servido pela própria aplicação** (`xlsx.full.min.js`, 930 KB), e não por CDN. A versão publicada no cdnjs está congelada na 0.18.5, que tem duas vulnerabilidades conhecidas (CVE-2023-30533, prototype pollution; CVE-2024-22363, ReDoS) — o SheetJS saiu do npm e do cdnjs, e as versões corrigidas só existem fora deles. Ao ser servido do mesmo sítio que a app, deixa também de haver um terceiro capaz de substituir o ficheiro, e a exportação passa a funcionar sem rede, incluindo em `file://`.
-
-> Para actualizar: descarregar de <https://cdn.sheetjs.com>, correr `sha256sum xlsx.full.min.js` e actualizar `version` e `sha256` em `tools/validate.mjs` **no mesmo commit**. O `npm run validate` falha se o ficheiro e o hash divergirem — uma troca silenciosa da biblioteca não passa despercebida.
+> Para actualizar qualquer uma das cinco bibliotecas: `npm view
+> <pacote>@<versão> dist.tarball` (ou, para o SheetJS, descarregar de
+> <https://cdn.sheetjs.com>), copiar o ficheiro `dist`/`umd` de produção
+> correcto, correr `sha256sum <ficheiro>` e actualizar `version` e `sha256`
+> da entrada correspondente em `tools/validate.mjs` **no mesmo commit**. O
+> `npm run validate` falha se algum ficheiro e o seu hash divergirem — uma
+> troca silenciosa da biblioteca não passa despercebida. A versão publicada de
+> SheetJS no cdnjs está congelada na 0.18.5, que tem duas vulnerabilidades
+> conhecidas (CVE-2023-30533, prototype pollution; CVE-2024-22363, ReDoS) — o
+> SheetJS saiu do npm e do cdnjs, e as versões corrigidas só existem fora
+> deles.
 
 ### Precedência do workflow
 
