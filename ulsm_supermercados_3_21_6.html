@@ -31,9 +31,12 @@
          carrega os ficheiros .woff2.
        · Ao acrescentar uma biblioteca ou uma origem nova, esta lista tem de ser
          actualizada, senão o recurso é bloqueado em silêncio para o utilizador.
-       · `https://cdnjs.cloudflare.com` em `script-src` é só para o
-         babel-standalone deste ficheiro-fonte (`src/index.src.html`), usado em
-         desenvolvimento — o `build.mjs` remove-o do `index.html` publicado.
+       · `https://cdnjs.cloudflare.com` em `script-src` é só para o carregador
+         do Babel deste ficheiro-fonte (`src/index.src.html`), usado em
+         desenvolvimento — o `build.mjs` remove essa tag do `index.html`
+         publicado (o nome completo do pacote não vai aqui de propósito: o
+         build.yml verifica a remoção com um grep pelo nome do pacote no
+         ficheiro publicado, comentário incluído).
          React, ReactDOM, jsPDF e html2canvas já não vêm de lá: estão alojados
          localmente (ver A4 no SECURITY_AUDIT.md) e resolvem por 'self'.
 -->
