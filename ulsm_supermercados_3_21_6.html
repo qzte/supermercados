@@ -31,6 +31,11 @@
          carrega os ficheiros .woff2.
        · Ao acrescentar uma biblioteca ou uma origem nova, esta lista tem de ser
          actualizada, senão o recurso é bloqueado em silêncio para o utilizador.
+       · `https://cdnjs.cloudflare.com` em `script-src` é só para o
+         babel-standalone deste ficheiro-fonte (`src/index.src.html`), usado em
+         desenvolvimento — o `build.mjs` remove-o do `index.html` publicado.
+         React, ReactDOM, jsPDF e html2canvas já não vêm de lá: estão alojados
+         localmente (ver A4 no SECURITY_AUDIT.md) e resolvem por 'self'.
 -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'none';
@@ -73,8 +78,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin referrerpolicy="no-referrer"></script>
+<script src="react.production.min.js"></script>
+<script src="react-dom.production.min.js"></script>
 <script>
 // ── Rede de segurança de arranque ────────────────────────────────────────────
 // O <body> arranca com visibility:hidden e só é revelado no fim do boot. Se algo
@@ -107,7 +112,7 @@
     var p = document.createElement('p');
     p.style.cssText = 'font-size:13px;line-height:1.6;color:#475569;margin-bottom:16px;';
     p.textContent = msg || 'Ocorreu um erro durante o carregamento. Verifique a ligação à internet ' +
-      '(a aplicação necessita das bibliotecas React alojadas em cdnjs.cloudflare.com) e tente novamente.';
+      'e tente novamente.';
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = 'Recarregar';
@@ -525,7 +530,7 @@ html, body { max-width: 100%; }
 <nav id="app-nav" aria-label="Navegação principal">
   <div class="brand">
     <span class="brand-sup">ULSM · Gestão de Supermercados</span>
-    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.21.5</span></span>
+    <span class="brand-name">Sistema de Revisão · Stock Dupla Caixa <span id="app-version-badge" style="font-size:9px;font-weight:400;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-left:6px;">v3.21.6</span></span>
   </div>
   <div class="nav-right">
     <span id="nav-editor-badge" role="status"><span class="dot" aria-hidden="true"></span>EDITOR</span>
@@ -2955,7 +2960,7 @@ const ROLE_COLORS = {
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE — JSON FILE (time-sharing via pasta partilhada)
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION = "3.21.5";
+const APP_VERSION = "3.21.6";
 const STORAGE_VERSION = 2;
 const BACKUP_FILENAME = "ulsm_supermercados_backup.json";
 function isObj(v) {
@@ -7121,7 +7126,7 @@ function ProcessCard({
     setIsExportingCard(true);
     const btn = e.currentTarget;
     try {
-      await loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', () => !!window.html2canvas);
+      await loadLib('html2canvas.min.js', () => !!window.html2canvas);
       // O próprio botão não deve aparecer no cartão partilhado — é chrome da
       // app, não informação do serviço.
       btn.style.visibility = 'hidden';
@@ -11894,8 +11899,8 @@ function KpisPanel() {
     setIsExporting(true);
     setExportFeedback('loading', 'A gerar PDF…', 0);
     try {
-      await loadLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', () => !!window.jspdf);
-      await loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', () => !!window.html2canvas);
+      await loadLib('jspdf.umd.min.js', () => !!window.jspdf);
+      await loadLib('html2canvas.min.js', () => !!window.html2canvas);
       const {
         jsPDF
       } = window.jspdf;
@@ -12079,7 +12084,7 @@ function KpisPanel() {
     setIsExporting(true);
     setExportFeedback('loading', 'A gerar imagem…', 0);
     try {
-      await loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', () => !!window.html2canvas);
+      await loadLib('html2canvas.min.js', () => !!window.html2canvas);
       const el = document.getElementById('painel-carga-servico');
       if (!el) {
         setExportFeedback('error', 'Painel não encontrado — muda para a vista Operacional.');

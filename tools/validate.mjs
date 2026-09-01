@@ -275,16 +275,54 @@ const VENDORED = [
     file: 'xlsx.full.min.js',
     name: 'SheetJS (xlsx)',
     version: '0.20.3',
+    usedBy: 'a exportação para Excel',
     // Anterior à 0.19.3 havia prototype pollution (CVE-2023-30533) e anterior à
     // 0.20.2 um ReDoS (CVE-2024-22363). A versão fixada aqui é posterior às duas.
     sha256: 'cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41',
+  },
+  // React, ReactDOM, jsPDF e html2canvas deixaram de vir do cdnjs (achado A4 do
+  // SECURITY_AUDIT.md — sem `integrity` nas tags, um cdnjs comprometido corria
+  // código com plenos privilégios da página). Alojar localmente elimina o
+  // terceiro capaz de substituir o ficheiro, tal como já tinha sido feito para
+  // o xlsx acima, e resolve de caminho a app não arrancar sem rede.
+  //
+  // Ao actualizar: `npm view <pacote>@<versão> dist.tarball`, descarregar,
+  // extrair o build UMD/min de produção, `sha256sum` o ficheiro e actualizar
+  // `version`/`sha256` no mesmo commit.
+  {
+    file: 'react.production.min.js',
+    name: 'React (UMD, produção)',
+    version: '18.2.0',
+    usedBy: 'toda a aplicação',
+    sha256: '4b4969fa4ef3594324da2c6d78ce8766fbbc2fd121fff395aedf997db0a99a06',
+  },
+  {
+    file: 'react-dom.production.min.js',
+    name: 'ReactDOM (UMD, produção)',
+    version: '18.2.0',
+    usedBy: 'toda a aplicação',
+    sha256: '21758ed084cd0e37e735722ee4f3957ea960628a29dfa6c3ce1a1d47a2d6e4f7',
+  },
+  {
+    file: 'jspdf.umd.min.js',
+    name: 'jsPDF (UMD, min)',
+    version: '2.5.1',
+    usedBy: 'a exportação de relatórios em PDF',
+    sha256: '98ccf17aa10c20bb1301762618fcc9b6ab3a4e7f26b6071d64d0b41154df3875',
+  },
+  {
+    file: 'html2canvas.min.js',
+    name: 'html2canvas (min)',
+    version: '1.4.1',
+    usedBy: 'a exportação de relatórios em PDF e as imagens de partilha',
+    sha256: 'e87e550794322e574a1fda0c1549a3c70dae5a93d9113417a429016838eab8cb',
   },
 ];
 
 for (const lib of VENDORED) {
   const buf = await readFile(join(ROOT, lib.file)).catch(() => null);
   if (buf === null) {
-    fail(`${lib.file} não existe — a exportação para Excel carrega-o desta origem.`, lib.file);
+    fail(`${lib.file} não existe — ${lib.usedBy} carrega-o desta origem.`, lib.file);
     continue;
   }
   const actual = createHash('sha256').update(buf).digest('hex');
